@@ -11,32 +11,34 @@
 
 .search-bar {
   display: flex;
+  align-items: center;
   gap: 8px;
   height: 44px;
   background: white;
   border-radius: 8px;
-  padding: 4px;
+  padding: 0 4px 0 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .search-input {
   flex: 1;
-  padding: 0 12px;
   font-size: 14px;
+  height: 44px;
+  line-height: 44px;
 }
 
 .search-btn {
-  padding: 0 20px;
+  padding: 0 10px;
   background: #5B8C7D;
   color: white;
   border-radius: 6px;
-  font-size: 14px;
-  height: 36px;
-  line-height: 36px;
-}
-
-.search-btn::after {
-  border: none;
+  font-size: 13px;
+  height: 30px;
+  line-height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .recent-searches {
@@ -148,9 +150,16 @@
   line-height: 1.6;
 }
 
+/* 高亮文本 */
+.highlight-text {
+  color: #E74C3C;
+  font-weight: 600;
+}
+
 /* 单词详情 */
 .word-detail {
   margin-top: 12px;
+  padding-bottom: 65px;
 }
 
 .back-btn {
@@ -185,10 +194,23 @@
   margin-bottom: 8px;
 }
 
+.word-title-wrap {
+  display: flex;
+  align-items: flex-start;
+}
+
 .word-main {
   font-size: 32px;
   font-weight: 700;
   color: #303133;
+}
+
+.word-accent {
+  font-size: 14px;
+  color: #606266;
+  margin-left: 4px;
+  margin-top: 2px;
+  font-weight: 600;
 }
 
 .audio-btn {
@@ -344,23 +366,33 @@
 
 /* 操作按钮 */
 .word-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #F5F7FA;
+  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.06);
+  z-index: 100;
 }
 
 .action-btn {
   flex: 1;
-  height: 44px;
-  line-height: 44px;
-  border: 1.5px solid #5B8C7D;
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  border: 1px solid #5B8C7D;
   color: #5B8C7D;
   background: white;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 13px;
 }
 
-.action-btn::after {
-  border: none;
+.action-btn.favorited {
+  background: #5B8C7D;
+  color: #fff;
 }
 
 /* 义项头部内容 */
@@ -388,4 +420,104 @@
   color: #5B8C7D;
   margin-bottom: 8px;
   display: block;
+}
+
+/* ===== 加入词单弹窗 ===== */
+.popup-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.popup-panel {
+  width: 100%;
+  max-height: 60vh;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #F2F3F5;
+}
+
+.popup-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.popup-close {
+  font-size: 18px;
+  color: #C0C4CC;
+  padding: 4px;
+}
+
+.popup-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.popup-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid #F5F7FA;
+}
+
+.popup-item-info {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.popup-item-name {
+  font-size: 15px;
+  color: #303133;
+}
+
+.popup-item-count {
+  font-size: 12px;
+  color: #C0C4CC;
+}
+
+.popup-checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #DCDFE6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: transparent;
+  flex-shrink: 0;
+}
+
+.popup-checkbox.checked {
+  background: #5B8C7D;
+  border-color: #5B8C7D;
+  color: #fff;
+}
+
+.popup-empty {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+  color: #909399;
+  font-size: 14px;
 }

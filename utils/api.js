@@ -44,6 +44,21 @@ const wordlistApi = {
   // 获取词单单词列表
   getWords(wordListId, page, size) {
     return get('/api/wordlist/words', { wordListId, page, size }) // 需要 token
+  },
+
+  // 获取默认词单（收藏夹）
+  getDefault() {
+    return get('/api/wordlist/default') // 需要 token
+  },
+
+  // 收藏单词
+  favorite(wordId, wordListId) {
+    return post('/api/wordlist/favorite', { wordId, wordListId }) // 需要 token
+  },
+
+  // 取消收藏
+  unfavorite(wordId, wordListId) {
+    return post('/api/wordlist/unfavorite', { wordId, wordListId }) // 需要 token
   }
 }
 

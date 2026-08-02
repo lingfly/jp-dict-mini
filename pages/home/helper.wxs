@@ -8,6 +8,14 @@ function includes(arr, item) {
   return false
 }
 
+// 数字转圆圈数字 0-10
+var circleNums = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
+function toCircle(num) {
+  if (num >= 0 && num <= 10) return circleNums[num]
+  return num
+}
+
 module.exports = {
-  includes: includes
+  includes: includes,
+  toCircle: toCircle
 }

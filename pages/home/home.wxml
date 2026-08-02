@@ -11,7 +11,7 @@
         bindinput="onSearchInput"
         bindconfirm="handleSearch"
       />
-      <button class="search-btn" bindtap="handleSearch">查询</button>
+      <view class="search-btn" bindtap="handleSearch">查询</view>
     </view>
 
     <!-- 最近查询 -->
@@ -47,10 +47,19 @@
         bindtap="selectWord"
       >
         <view class="result-word">
-          <text class="result-main jp-text">{{item.word.kanji || item.word.kana}}</text>
-          <text wx:if="{{item.word.kanji && item.word.kanji !== item.word.kana}}" class="result-kana jp-text">{{item.word.kana}}</text>
+          <!-- kanji 高亮 -->
+          <view class="result-main jp-text">
+            <text wx:for="{{item._kanjiSegments}}" wx:key="index" class="{{item.highlight ? 'highlight-text' : ''}}">{{item.text}}</text>
+          </view>
+          <!-- kana 高亮 -->
+          <view wx:if="{{item.word.kanji && item.word.kanji !== item.word.kana}}" class="result-kana jp-text">
+            <text wx:for="{{item._kanaSegments}}" wx:key="index" class="{{item.highlight ? 'highlight-text' : ''}}">{{item.text}}</text>
+          </view>
         </view>
-        <text class="result-meaning">{{item.definitions[0].definitionCn}}</text>
+        <!-- 释义高亮 -->
+        <view class="result-meaning">
+          <text wx:for="{{item._summaryDef._highlightedCn}}" wx:key="index" class="{{item.highlight ? 'highlight-text' : ''}}">{{item.text}}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -65,7 +74,10 @@
       <!-- 单词信息 -->
       <view class="word-info">
         <view class="word-main-row">
-          <text class="word-main jp-text">{{wordDetail.word.kanji || wordDetail.word.kana}}</text>
+          <view class="word-title-wrap">
+            <text class="word-main jp-text">{{wordDetail.word.kanji || wordDetail.word.kana}}</text>
+            <text wx:if="{{wordDetail.word.accent !== null && wordDetail.word.accent !== undefined}}" class="word-accent">{{helper.toCircle(wordDetail.word.accent)}}</text>
+          </view>
           <view wx:if="{{wordDetail.wordAudios.length > 0}}" class="audio-btn" data-audio-id="{{wordDetail.wordAudios[0].audioId}}" bindtap="playAudio">
             🔊
           </view>
@@ -122,11 +134,14 @@
         </view>
       </view>
 
-      <!-- 操作按钮 -->
-      <view class="word-actions">
-        <button class="action-btn" bindtap="addToWordlist">加入词单</button>
-        <button class="action-btn" bindtap="addToReview">加入复习</button>
-      </view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 — 悬浮底部 -->
+  <view wx:if="{{wordDetail}}" class="word-actions">
+    <view class="action-btn" bindtap="addToWordlist">加入词单</view>
+    <view class="action-btn {{wordDetail.isFavorited ? 'favorited' : ''}}" bindtap="addToReview">
+      {{wordDetail.isFavorited ? '已收藏' : '收藏'}}
     </view>
   </view>
 
@@ -134,5 +149,35 @@
   <view wx:else class="empty-lookup">
     <view class="empty-icon">🔍</view>
     <text class="empty-text">输入日语单词开始查询</text>
+  </view>
+
+  <!-- 加入词单弹窗 -->
+  <view wx:if="{{showWordListPopup}}" class="popup-mask" bindtap="closeWordListPopup">
+    <view class="popup-panel" catchtap="">
+      <view class="popup-header">
+        <text class="popup-title">加入词单</text>
+        <text class="popup-close" bindtap="closeWordListPopup">✕</text>
+      </view>
+      <scroll-view wx:if="{{myWordLists.length > 0}}" class="popup-list" scroll-y="true">
+        <view
+          wx:for="{{myWordLists}}"
+          wx:key="id"
+          class="popup-item {{item.containsWord ? 'checked' : ''}}"
+          data-index="{{index}}"
+          bindtap="toggleWordListSelect"
+        >
+          <view class="popup-item-info">
+            <text class="popup-item-name">{{item.name}}</text>
+            <text class="popup-item-count">{{item.wordCount || 0}} 词</text>
+          </view>
+          <view class="popup-checkbox {{item.containsWord ? 'checked' : ''}}">
+            <text wx:if="{{item.containsWord}}">✓</text>
+          </view>
+        </view>
+      </scroll-view>
+      <view wx:else class="popup-empty">
+        <text>暂无我的词单</text>
+      </view>
+    </view>
   </view>
 </view>
