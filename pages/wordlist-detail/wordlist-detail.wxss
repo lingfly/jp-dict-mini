@@ -1,1 +1,261 @@
 /* pages/wordlist-detail/wordlist-detail.wxss */
+.detail-page {
+  min-height: 100vh;
+  background: #F5F7FA;
+  padding: 16px;
+  padding-bottom: 100px;
+}
+
+/* ===== 词单基本信息 ===== */
+.info-section {
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.info-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.info-category {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: rgba(91, 140, 125, 0.1);
+  color: #5B8C7D;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.info-desc {
+  font-size: 14px;
+  color: #909399;
+  line-height: 1.6;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.info-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.info-count {
+  font-size: 13px;
+  color: #5B8C7D;
+  font-weight: 500;
+}
+
+.info-learned {
+  font-size: 13px;
+  color: #909399;
+  font-weight: 500;
+}
+
+/* ===== 单词列表 ===== */
+.word-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 80px 0;
+  color: #909399;
+  font-size: 14px;
+}
+
+.empty-state {
+  display: flex;
+  justify-content: center;
+  padding: 80px 0;
+}
+
+.empty-text {
+  color: #909399;
+  font-size: 14px;
+}
+
+.word-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.word-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+}
+
+.word-item.selected {
+  background: rgba(91, 140, 125, 0.05);
+  border: 1px solid rgba(91, 140, 125, 0.3);
+}
+
+/* 勾选框 */
+.word-checkbox {
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.checkbox-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #DCDFE6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: transparent;
+  transition: all 0.15s;
+}
+
+.checkbox-icon.checked {
+  background: #5B8C7D;
+  border-color: #5B8C7D;
+  color: #fff;
+}
+
+.word-checkbox.locked .checkbox-icon {
+  background: #C0C4CC;
+  border-color: #C0C4CC;
+  color: #fff;
+}
+
+.word-main {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.word-kanji {
+  font-size: 17px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.word-kana {
+  font-size: 12px;
+  color: #C0C4CC;
+}
+
+.word-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.word-meaning {
+  font-size: 13px;
+  color: #909399;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.word-arrow {
+  font-size: 20px;
+  color: #C0C4CC;
+  font-weight: 300;
+}
+
+/* ===== 加载更多 ===== */
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+  color: #909399;
+  font-size: 13px;
+}
+
+.no-more {
+  color: #C0C4CC;
+}
+
+/* ===== 底部操作栏 ===== */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+  z-index: 100;
+}
+
+.bottom-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.bottom-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  border-radius: 22px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.bottom-btn.sequential {
+  background: #F5F7FA;
+  color: #303133;
+  border: 1px solid #E4E7ED;
+}
+
+.bottom-btn.random {
+  background: #F5F7FA;
+  color: #303133;
+  border: 1px solid #E4E7ED;
+}
+
+.bottom-btn.select-words {
+  background: #5B8C7D;
+  color: #fff;
+}
+
+.btn-label {
+  font-size: 14px;
+}
+
+/* ===== 选择模式确认按钮 ===== */
+.bottom-confirm {
+  display: flex;
+  justify-content: center;
+}
+
+.confirm-btn {
+  width: 100%;
+  height: 48px;
+  background: #5B8C7D;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}

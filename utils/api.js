@@ -16,6 +16,16 @@ const wordlistApi = {
     return get('/api/wordlist/available') // 需要 token
   },
 
+  // 查询词单列表（支持分类、关键字、我的词单筛选）
+  list(params) {
+    return get('/api/wordlist/list', params) // 需要 token
+  },
+
+  // 获取词单分类列表
+  getCategories() {
+    return get('/api/wordlist/categories') // 需要 token
+  },
+
   // 选择词单
   select(userId, wordListId) {
     return post('/api/wordlist/select', { userId, wordListId }) // 需要 token
@@ -28,12 +38,12 @@ const wordlistApi = {
 
   // 获取词单详情
   getDetail(wordListId) {
-    return get(`/api/wordlist/${wordListId}`) // 需要 token
+    return get('/api/wordlist/detail', { wordListId }) // 需要 token
   },
 
   // 获取词单单词列表
   getWords(wordListId, page, size) {
-    return get(`/api/wordlist/${wordListId}/words`, { page, size }) // 需要 token
+    return get('/api/wordlist/words', { wordListId, page, size }) // 需要 token
   }
 }
 
@@ -67,8 +77,8 @@ const reviewApi = {
   },
 
   // 选择新词
-  selectNewWords(wordIds) {
-    return post('/api/review/select-new-words', { wordIds }) // 需要 token
+  selectNewWords(wordListId, wordIds) {
+    return post('/api/review/select-new-words', { wordListId, wordIds }) // 需要 token
   }
 }
 

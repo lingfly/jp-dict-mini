@@ -1,2 +1,71 @@
 <!--pages/wordlist-detail/wordlist-detail.wxml-->
-<text>pages/wordlist-detail/wordlist-detail.wxml</text>
+<wxs module="h" src="./helper.wxs"></wxs>
+<view class="detail-page">
+  <!-- 词单基本信息 -->
+  <view wx:if="{{wordList}}" class="info-section card">
+    <view class="info-header">
+      <text class="info-name">{{wordList.name}}</text>
+      <text wx:if="{{wordList.categoryLabel}}" class="info-category">{{wordList.categoryLabel}}</text>
+    </view>
+    <text wx:if="{{wordList.description}}" class="info-desc">{{wordList.description}}</text>
+    <view class="info-meta">
+      <text class="info-count">共 {{total}} 个单词</text>
+      <text class="info-learned">已学 {{wordList.learnedCount || 0}} 个</text>
+    </view>
+  </view>
+
+  <!-- 单词列表 -->
+  <view class="word-section">
+    <view wx:if="{{loading && words.length === 0}}" class="loading-state">
+      <text>加载中...</text>
+    </view>
+    <view wx:elif="{{words.length === 0}}" class="empty-state">
+      <text class="empty-text">暂无单词</text>
+    </view>
+    <view wx:else class="word-list">
+      <view
+        wx:for="{{words}}"
+        wx:key="wordId"
+        class="word-item card {{h.has(selectedWordIds, item.wordId) || item.learningStatus === 'learning' ? 'selected' : ''}}"
+        data-word-id="{{item.wordId}}"
+        bindtap="goWordDetail"
+      >
+        <view class="word-checkbox {{item.learningStatus === 'learning' ? 'locked' : ''}}" catchtap="onCheckboxTap" data-word-id="{{item.wordId}}">
+          <view class="checkbox-icon {{h.has(selectedWordIds, item.wordId) || item.learningStatus === 'learning' ? 'checked' : ''}}">
+            <text wx:if="{{h.has(selectedWordIds, item.wordId) || item.learningStatus === 'learning'}}">✓</text>
+          </view>
+        </view>
+        <view class="word-main">
+          <text class="word-kanji jp-text">{{item.kanji}}</text>
+        </view>
+        <view class="word-right">
+          <view class="word-arrow">›</view>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{loading && words.length > 0}}" class="load-more">
+      <text>加载中...</text>
+    </view>
+    <view wx:elif="{{!hasMore && words.length > 0}}" class="load-more">
+      <text class="no-more">— 已加载全部 —</text>
+    </view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar">
+    <view class="bottom-actions">
+      <view class="bottom-btn sequential" bindtap="startSequentialLearn">
+        <text class="btn-label">顺序</text>
+      </view>
+      <view class="bottom-btn random" bindtap="startRandomLearn">
+        <text class="btn-label">随机</text>
+      </view>
+      <view class="bottom-btn select-words" bindtap="onThirdBtnTap">
+        <text class="btn-label">
+          <text wx:if="{{selectedWordIds.length > 0}}">加入学习 {{displayLearnedCount}}/{{learningStatus.dailyNewWords || 20}}</text>
+          <text wx:else>今日待选 {{displayLearnedCount}}/{{learningStatus.dailyNewWords || 20}}</text>
+        </text>
+      </view>
+    </view>
+  </view>
+</view>

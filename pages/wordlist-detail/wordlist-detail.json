@@ -1,3 +1,5 @@
 {
-  "usingComponents": {}
+  "navigationBarTitleText": "词单详情",
+  "usingComponents": {},
+  "enablePullDownRefresh": true
 }

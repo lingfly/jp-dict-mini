@@ -1,33 +1,97 @@
 <!-- pages/wordlist/wordlist.wxml -->
-<view class="container">
-  <view class="header">
-    <text class="page-title">选择词单</text>
+<view class="wordlist-page">
+  <!-- 顶部搜索框 -->
+  <view class="search-section">
+    <view class="search-bar">
+      <input
+        class="search-input"
+        value="{{searchKeyword}}"
+        placeholder="搜索词单名称"
+        bindinput="onSearchInput"
+        bindconfirm="onSearchConfirm"
+      />
+      <view class="search-icon" bindtap="onSearchConfirm">🔍</view>
+    </view>
   </view>
 
-  <view wx:if="{{loading}}" class="loading">
-    <text>加载中...</text>
+  <!-- 分类横向滚动 -->
+  <view class="category-section">
+    <scroll-view class="category-scroll" scroll-x="true" enhanced="{{true}}" show-scrollbar="{{false}}">
+      <view class="category-list">
+        <view
+          class="category-item {{mineOnly ? 'active' : ''}}"
+          data-mine="true"
+          bindtap="onCategoryTap"
+        >
+          <text>我的</text>
+        </view>
+        <view
+          class="category-item {{!mineOnly && activeCategory === '' ? 'active' : ''}}"
+          data-category=""
+          data-mine="false"
+          bindtap="onCategoryTap"
+        >
+          <text>全部</text>
+        </view>
+        <view
+          wx:for="{{categories}}"
+          wx:key="code"
+          class="category-item {{!mineOnly && activeCategory === item.code ? 'active' : ''}}"
+          data-category="{{item.code}}"
+          data-mine="false"
+          bindtap="onCategoryTap"
+        >
+          <text>{{item.label}}</text>
+        </view>
+      </view>
+    </scroll-view>
   </view>
 
-  <view wx:else class="wordlist-container">
-    <view
-      wx:for="{{wordLists}}"
-      wx:key="id"
-      class="wordlist-item card {{item.isCurrent ? 'active' : ''}}"
-      bindtap="selectWordList"
-      data-id="{{item.id}}"
-    >
-      <view class="wordlist-content">
-        <view class="wordlist-header">
-          <text class="wordlist-name">{{item.name}}</text>
-          <view wx:if="{{item.isCurrent}}" class="current-badge">
-            <text>✓</text>
+  <!-- 词单列表 -->
+  <view class="wordlist-container">
+    <view wx:if="{{loading}}" class="loading-state">
+      <text>加载中...</text>
+    </view>
+
+    <view wx:elif="{{wordLists.length === 0}}" class="empty-state">
+      <text class="empty-text">暂无词单</text>
+    </view>
+
+    <view wx:else class="wordlist-list">
+      <view
+        wx:for="{{wordLists}}"
+        wx:key="id"
+        class="wordlist-card card {{item.isCurrent ? 'current' : ''}}"
+      >
+        <!-- 卡片内容区域，点击进入详情 -->
+        <view class="wordlist-main" data-id="{{item.id}}" bindtap="goWordListDetail">
+          <view class="wordlist-top">
+            <text class="wordlist-name">{{item.name}}</text>
+            <text wx:if="{{item.categoryLabel}}" class="wordlist-category">{{item.categoryLabel}}</text>
+          </view>
+          <text wx:if="{{item.description}}" class="wordlist-desc">{{item.description}}</text>
+          <view class="wordlist-bottom">
+            <text class="wordlist-count">{{item.wordCount || 0}} 个单词</text>
+            <view wx:if="{{item.isCurrent}}" class="current-tag">
+              <text>当前使用</text>
+            </view>
           </view>
         </view>
-        <text class="wordlist-desc">{{item.description}}</text>
-        <text class="wordlist-count">{{item.wordCount}} 个单词</text>
-      </view>
-      <view wx:if="{{!item.isCurrent}}" class="select-btn-wrap">
-        <view class="select-btn">选择</view>
+
+        <!-- 选择按钮 -->
+        <view class="wordlist-action">
+          <view
+            wx:if="{{!item.isCurrent}}"
+            class="select-btn"
+            data-id="{{item.id}}"
+            bindtap="selectWordList"
+          >
+            设为当前
+          </view>
+          <view wx:else class="selected-btn">
+            ✓ 当前词单
+          </view>
+        </view>
       </view>
     </view>
   </view>

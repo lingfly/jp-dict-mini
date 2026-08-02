@@ -1,15 +1,36 @@
 // pages/wordlist/wordlist.js
-const app = getApp()
 const { wordlistApi } = require('../../utils/api')
 
 Page({
   data: {
+    searchKeyword: '',
     loading: false,
-    wordLists: []
+    wordLists: [],
+    // 分类相关
+    categories: [],
+    activeCategory: '', // 空字符串表示"全部"
+    mineOnly: false // 是否只看我的词单
   },
 
   onLoad() {
+    this.loadCategories()
     this.loadWordLists()
+  },
+
+  /**
+   * 加载分类列表
+   */
+  async loadCategories() {
+    try {
+      const res = await wordlistApi.getCategories()
+      if (res.code === 200 && res.data) {
+        this.setData({
+          categories: res.data
+        })
+      }
+    } catch (error) {
+      console.error('加载分类失败:', error)
+    }
   },
 
   /**
@@ -19,11 +40,21 @@ Page({
     this.setData({ loading: true })
 
     try {
-      const res = await wordlistApi.getAvailable(app.globalData.userId)
+      const params = {}
+      if (this.data.mineOnly) {
+        params.mineOnly = true
+      } else if (this.data.activeCategory) {
+        params.category = this.data.activeCategory
+      }
+      if (this.data.searchKeyword.trim()) {
+        params.keyword = this.data.searchKeyword.trim()
+      }
+
+      const res = await wordlistApi.list(params)
 
       if (res.code === 200) {
         this.setData({
-          wordLists: res.data
+          wordLists: res.data || []
         })
       } else {
         wx.showToast({
@@ -43,21 +74,63 @@ Page({
   },
 
   /**
-   * 选择词单
+   * 搜索输入
+   */
+  onSearchInput(e) {
+    this.setData({
+      searchKeyword: e.detail.value
+    })
+  },
+
+  /**
+   * 搜索确认
+   */
+  onSearchConfirm() {
+    this.loadWordLists()
+  },
+
+  /**
+   * 切换分类
+   */
+  onCategoryTap(e) {
+    const category = e.currentTarget.dataset.category
+    const mine = e.currentTarget.dataset.mine === 'true'
+    this.setData({
+      activeCategory: category || '',
+      mineOnly: mine
+    })
+    this.loadWordLists()
+  },
+
+  /**
+   * 进入词单详情
+   */
+  goWordListDetail(e) {
+    const wordListId = e.currentTarget.dataset.id
+    wx.navigateTo({
+      url: `/pages/wordlist-detail/wordlist-detail?wordListId=${wordListId}`
+    })
+  },
+
+  /**
+   * 选择词单（设为当前学习词单）
    */
   async selectWordList(e) {
     const wordListId = e.currentTarget.dataset.id
 
-    // 如果已经是当前词单，不需要切换
     const currentList = this.data.wordLists.find(item => item.id === wordListId)
     if (currentList && currentList.isCurrent) {
-      wx.navigateBack()
+      wx.showToast({
+        title: '已是当前词单',
+        icon: 'none'
+      })
       return
     }
 
     wx.showLoading({ title: '切换中...' })
 
     try {
+      const app = getApp()
       const res = await wordlistApi.select(app.globalData.userId, wordListId)
 
       if (res.code === 200) {
@@ -65,11 +138,8 @@ Page({
           title: '切换成功',
           icon: 'success'
         })
-
-        // 延迟返回，让用户看到提示
-        setTimeout(() => {
-          wx.navigateBack()
-        }, 1000)
+        // 刷新列表
+        this.loadWordLists()
       } else {
         wx.showToast({
           title: res.message || '切换失败',
