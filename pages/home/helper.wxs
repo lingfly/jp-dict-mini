@@ -1,0 +1,13 @@
+// WXS 辅助函数
+// 判断数组中是否包含指定元素
+function includes(arr, item) {
+  if (!arr) return false
+  for (var i = 0; i < arr.length; i++) {
+    if (arr[i] === item) return true
+  }
+  return false
+}
+
+module.exports = {
+  includes: includes
+}

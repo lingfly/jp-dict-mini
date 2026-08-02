@@ -1,0 +1,391 @@
+/* pages/home/home.wxss */
+.home-page {
+  padding: 16px;
+  min-height: 100vh;
+}
+
+/* 搜索区 */
+.search-section {
+  margin-bottom: 16px;
+}
+
+.search-bar {
+  display: flex;
+  gap: 8px;
+  height: 44px;
+  background: white;
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.search-input {
+  flex: 1;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.search-btn {
+  padding: 0 20px;
+  background: #5B8C7D;
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  height: 36px;
+  line-height: 36px;
+}
+
+.search-btn::after {
+  border: none;
+}
+
+.recent-searches {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.recent-label {
+  color: #909399;
+}
+
+.recent-pill {
+  padding: 4px 12px;
+  background: white;
+  border-radius: 16px;
+  color: #606266;
+  font-size: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* 加载和空状态 */
+.loading-state,
+.empty-lookup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 32px;
+  color: #909399;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: #909399;
+}
+
+/* 搜索结果 */
+.search-results {
+  margin-top: 12px;
+}
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.results-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.clear-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  font-size: 18px;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-item {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.result-word {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.result-main {
+  font-size: 20px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.result-kana {
+  font-size: 14px;
+  color: #909399;
+}
+
+.result-meaning {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+}
+
+/* 单词详情 */
+.word-detail {
+  margin-top: 12px;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  color: #909399;
+  font-size: 14px;
+  background: white;
+  border-radius: 8px;
+  height: auto;
+  line-height: 1;
+}
+
+.back-btn::after {
+  border: none;
+}
+
+.detail-content {
+  padding: 16px;
+}
+
+.word-info {
+  margin-bottom: 24px;
+}
+
+.word-main-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.word-main {
+  font-size: 32px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.audio-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(91, 140, 125, 0.1);
+  font-size: 18px;
+}
+
+.word-kana {
+  font-size: 16px;
+  color: #909399;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.word-tags {
+  display: flex;
+  gap: 8px;
+}
+
+.word-tag {
+  padding: 4px 10px;
+  background: #F5F7FA;
+  color: #606266;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* 义项 */
+.sense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.sense-card {
+  border: 1px solid #E4E7ED;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.sense-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sense-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(91, 140, 125, 0.1);
+  color: #5B8C7D;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sense-title {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.sense-toggle {
+  font-size: 12px;
+  color: #909399;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.sense-toggle.expanded {
+  transform: rotate(180deg);
+}
+
+.sense-body {
+  margin-top: 12px;
+}
+
+.sense-usage {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.sense-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sense-example-item {
+  padding: 8px 12px;
+  background: #F5F7FA;
+  border-radius: 4px;
+  border-left: 3px solid #5B8C7D;
+}
+
+.sense-example-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ex-jp {
+  font-size: 16px;
+  color: #303133;
+}
+
+.ex-kana {
+  font-size: 12px;
+  color: #909399;
+}
+
+.ex-cn {
+  font-size: 14px;
+  color: #606266;
+}
+
+.sense-note {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(91, 140, 125, 0.1);
+  border-left: 3px solid #5B8C7D;
+  border-radius: 4px;
+}
+
+.note-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5B8C7D;
+  margin-bottom: 4px;
+}
+
+.note-body {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+  display: block;
+}
+
+/* 操作按钮 */
+.word-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.action-btn {
+  flex: 1;
+  height: 44px;
+  line-height: 44px;
+  border: 1.5px solid #5B8C7D;
+  color: #5B8C7D;
+  background: white;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.action-btn::after {
+  border: none;
+}
+
+/* 义项头部内容 */
+.sense-header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 用法说明 */
+.sense-usage-wrap {
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.usage-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5B8C7D;
+}
+
+/* 例句标签 */
+.examples-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5B8C7D;
+  margin-bottom: 8px;
+  display: block;
+}

@@ -1,0 +1,34 @@
+<!-- pages/wordlist/wordlist.wxml -->
+<view class="container">
+  <view class="header">
+    <text class="page-title">选择词单</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading">
+    <text>加载中...</text>
+  </view>
+
+  <view wx:else class="wordlist-container">
+    <view
+      wx:for="{{wordLists}}"
+      wx:key="id"
+      class="wordlist-item card {{item.isCurrent ? 'active' : ''}}"
+      bindtap="selectWordList"
+      data-id="{{item.id}}"
+    >
+      <view class="wordlist-content">
+        <view class="wordlist-header">
+          <text class="wordlist-name">{{item.name}}</text>
+          <view wx:if="{{item.isCurrent}}" class="current-badge">
+            <text>✓</text>
+          </view>
+        </view>
+        <text class="wordlist-desc">{{item.description}}</text>
+        <text class="wordlist-count">{{item.wordCount}} 个单词</text>
+      </view>
+      <view wx:if="{{!item.isCurrent}}" class="select-btn-wrap">
+        <view class="select-btn">选择</view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,91 @@
+<!-- pages/learn/learn.wxml -->
+<view class="learn-page">
+  <!-- 页面头部 -->
+  <view class="page-header">
+    <view class="back-btn" bindtap="goBack">
+      <text>‹</text>
+    </view>
+    <view class="progress-text">
+      <text class="current">{{todayStats.completed}}</text>
+      <text class="separator">/</text>
+      <text class="total">{{todayStats.total}}</text>
+    </view>
+    <view wx:if="{{wordType}}" class="type-tag {{getTypeColorClass(wordType)}}">
+      <text>{{getTypeDisplay(wordType)}}</text>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 学习完成 -->
+  <view wx:elif="{{!currentWord}}" class="empty-state">
+    <view class="success-icon">✓</view>
+    <text class="success-title">学习完成！</text>
+    <text class="success-desc">今日学习任务已完成</text>
+    <button class="btn btn-primary" bindtap="goHome">返回首页</button>
+  </view>
+
+  <!-- 学习内容 -->
+  <view wx:else class="learn-content">
+    <!-- 进度条 -->
+    <view class="progress-bar-wrap">
+      <view class="progress-fill" style="width: {{progressPercent}}%"></view>
+    </view>
+
+    <!-- 提示信息 -->
+    <view wx:if="{{hint}}" class="hint-message">
+      <text class="hint-icon">ⓘ</text>
+      <text>{{hint}}</text>
+    </view>
+
+    <!-- 单词卡片 -->
+    <view class="word-card card">
+      <!-- 问题阶段 - 只显示假名 -->
+      <view wx:if="{{!showAnswer}}" class="word-question">
+        <text class="word-kana jp-text">{{currentWord.kana}}</text>
+      </view>
+
+      <!-- 答案阶段 - 显示完整信息 -->
+      <view wx:else class="word-answer">
+        <text class="word-text jp-text">{{currentWord.word}}</text>
+        <text class="word-kana jp-text">{{currentWord.kana}}</text>
+        <text class="word-meaning">{{currentWord.meaning}}</text>
+
+        <!-- 例句（如果有） -->
+        <view wx:if="{{currentWord.example}}" class="word-example">
+          <text class="example-jp jp-text">{{currentWord.example}}</text>
+          <text class="example-cn">{{currentWord.exampleTranslation}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 评分按钮 -->
+    <view wx:if="{{showAnswer}}" class="score-buttons">
+      <view class="score-btn forget" bindtap="handleScore" data-score="0">
+        <text class="score-icon">😕</text>
+        <text class="score-text">忘记</text>
+      </view>
+      <view class="score-btn vague" bindtap="handleScore" data-score="1">
+        <text class="score-icon">🤔</text>
+        <text class="score-text">模糊</text>
+      </view>
+      <view class="score-btn know" bindtap="handleScore" data-score="2">
+        <text class="score-icon">😊</text>
+        <text class="score-text">认识</text>
+      </view>
+    </view>
+
+    <!-- 显示答案按钮 -->
+    <button wx:else class="show-answer-btn btn btn-primary" bindtap="toggleAnswer">
+      显示答案
+    </button>
+
+    <!-- 统计栏 -->
+    <view class="stats-bar">
+      <text class="stat-text">剩余: {{todayStats.remaining}}</text>
+    </view>
+  </view>
+</view>

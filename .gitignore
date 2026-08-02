@@ -1,0 +1,10 @@
+# 微信小程序
+miniprogram_npm/
+node_modules/
+
+# 开发工具
+.DS_Store
+*.log
+
+# 项目配置（包含个人信息）
+project.private.config.json

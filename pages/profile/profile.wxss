@@ -1,0 +1,139 @@
+/* pages/profile/profile.wxss */
+.profile-page {
+  padding: 16px;
+  min-height: 100vh;
+  background: #F5F7FA;
+}
+
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.loading-icon,
+.error-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.8;
+}
+
+.loading-text,
+.error-text {
+  font-size: 16px;
+  color: #606266;
+  margin-bottom: 24px;
+}
+
+.user-card {
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #F5F7FA;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.username {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.user-email {
+  font-size: 14px;
+  color: #909399;
+}
+
+.stats-card {
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #5B8C7D;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #909399;
+}
+
+.menu-card {
+  padding: 0;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F5F7FA;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-icon {
+  font-size: 24px;
+}
+
+.menu-text {
+  font-size: 16px;
+  color: #303133;
+}
+
+.menu-arrow {
+  font-size: 24px;
+  color: #C0C4CC;
+}

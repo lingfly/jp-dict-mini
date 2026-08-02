@@ -1,0 +1,51 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/wordlist/wordlist",
+    "pages/wordlist-detail/wordlist-detail",
+    "pages/word-detail/word-detail",
+    "pages/review-list/review-list",
+    "pages/learn/learn",
+    "pages/review-learn/review-learn",
+    "pages/new-learn/new-learn",
+    "pages/select-words/select-words",
+    "pages/profile/profile",
+    "pages/settings/settings",
+    "pages/login/login",
+    "pages/reset-password/reset-password"
+  ],
+  "tabBar": {
+    "color": "#909399",
+    "selectedColor": "#5B8C7D",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "查词"
+      },
+      {
+        "pagePath": "pages/wordlist/wordlist",
+        "text": "词单"
+      },
+      {
+        "pagePath": "pages/review-list/review-list",
+        "text": "复习"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的"
+      }
+    ]
+  },
+  "window": {
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTitleText": "日语词典",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F5F7FA",
+    "backgroundTextStyle": "light"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}
