@@ -123,6 +123,17 @@ const audioApi = {
 }
 
 /**
+ * AI 查词 API
+ */
+const aiDictApi = {
+  // SSE 流式查词 URL
+  getStreamUrl(word, token) {
+    const app = getApp()
+    return `${app.globalData.apiBaseUrl}/api/ai-dict/stream?word=${encodeURIComponent(word)}&token=${encodeURIComponent(token)}`
+  }
+}
+
+/**
  * 认证相关 API
  */
 const authApi = {
@@ -198,5 +209,6 @@ module.exports = {
   wordApi,
   audioApi,
   authApi,
-  userApi
+  userApi,
+  aiDictApi
 }

@@ -422,6 +422,138 @@
   display: block;
 }
 
+/* ===== AI 查词 ===== */
+.ai-search-section {
+  margin-top: 12px;
+  padding: 0 16px;
+}
+
+.ai-search-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.ai-no-result {
+  font-size: 15px;
+  color: #909399;
+}
+
+.ai-search-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1.5px dashed #5B8C7D;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.ai-search-icon {
+  font-size: 20px;
+}
+
+.ai-search-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #5B8C7D;
+}
+
+.ai-loading {
+  text-align: center;
+  padding: 24px 0;
+  color: #909399;
+  font-size: 14px;
+}
+
+.ai-result {
+  margin-top: 12px;
+  padding: 16px;
+}
+
+.ai-result-header {
+  margin-bottom: 8px;
+}
+
+.ai-result-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #5B8C7D;
+}
+
+.ai-result-content {
+  font-size: 15px;
+  color: #303133;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.ai-cursor {
+  color: #5B8C7D;
+  font-size: 16px;
+}
+
+/* AI Markdown 渲染 */
+.ai-markdown {
+  margin-top: 12px;
+  padding: 16px 18px;
+}
+
+.ai-md-body {
+  line-height: 1.8;
+}
+
+.ai-md-br {
+  height: 8px;
+}
+
+.ai-md-h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #303133;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #F2F3F5;
+}
+
+.ai-md-h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 6px;
+  margin-top: 12px;
+}
+
+.ai-md-h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 4px;
+  margin-top: 8px;
+}
+
+.ai-md-li {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding-left: 4px;
+  color: #303133;
+  font-size: 14px;
+}
+
+.ai-md-bullet {
+  color: #5B8C7D;
+  flex-shrink: 0;
+}
+
+.ai-md-p {
+  font-size: 14px;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
 /* ===== 加入词单弹窗 ===== */
 .popup-mask {
   position: fixed;

@@ -1,5 +1,5 @@
 // pages/home/home.js
-const { wordApi, audioApi, wordlistApi } = require('../../utils/api')
+const { wordApi, audioApi, wordlistApi, aiDictApi } = require('../../utils/api')
 
 Page({
   data: {
@@ -12,7 +12,12 @@ Page({
     currentAudio: null,
     // 加入词单弹窗
     showWordListPopup: false,
-    myWordLists: []
+    myWordLists: [],
+    // AI 查词
+    showAiSearch: false,
+    aiStreaming: false,
+    aiMarkdown: '',      // 流式累积的原始 markdown
+    aiBlocks: []         // 解析后的渲染块 [{ type, content }]
   },
 
   onLoad() {
@@ -53,7 +58,7 @@ Page({
       return
     }
 
-    this.setData({ loading: true, wordDetail: null, searchResults: [] })
+    this.setData({ loading: true, wordDetail: null, searchResults: [], showAiSearch: false, aiBlocks: [], aiMarkdown: '' })
 
     try {
       const res = await wordApi.search(keyword)
@@ -72,11 +77,7 @@ Page({
           this.setData({ recentSearches: recent })
         }
       } else {
-        this.setData({ searchResults: [] })
-        wx.showToast({
-          title: '未找到相关单词',
-          icon: 'none'
-        })
+        this.setData({ searchResults: [], showAiSearch: true, aiBlocks: [], aiMarkdown: '' })
       }
     } catch (error) {
       console.error('查询失败:', error)
@@ -287,6 +288,138 @@ Page({
     } finally {
       wx.hideLoading()
     }
+  },
+
+  /** AI 流式查词 — 返回 markdown */
+  startAiSearch() {
+    const keyword = this.data.searchKeyword.trim()
+    if (!keyword) return
+
+    const app = getApp()
+    const token = app.globalData.token
+    if (!token) {
+      wx.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
+
+    this.setData({ aiStreaming: true, aiBlocks: [], aiMarkdown: '' })
+
+    const url = aiDictApi.getStreamUrl(keyword, token)
+    const that = this
+    let sseBuffer = ''
+
+    const requestTask = wx.request({
+      url,
+      method: 'GET',
+      enableChunked: true,
+      success() {
+        that._parseMarkdown()
+        that.setData({ aiStreaming: false })
+      },
+      fail(err) {
+        console.error('AI查词失败:', err)
+        that.setData({ aiStreaming: false })
+        if (!that.data.aiMarkdown) {
+          wx.showToast({ title: 'AI查词请求失败', icon: 'none' })
+        }
+      }
+    })
+
+    if (requestTask && requestTask.onChunkReceived) {
+      console.log('onChunkReceived 已注册')
+      requestTask.onChunkReceived(res => {
+        console.log('收到chunk, 字节数:', res.data && (res.data.byteLength || res.data.length))
+        try {
+          const text = that._arrayBufferToString(res.data)
+          console.log('chunk文本:', text.substring(0, 200))
+          sseBuffer += text
+
+          // SSE 事件成对解析：event: xxx \n data: xxx \n\n
+          const parts = sseBuffer.split('\n\n')
+          sseBuffer = parts.pop() // 最后一段可能不完整
+
+          for (const part of parts) {
+            const lines = part.split('\n')
+            let eventName = ''
+            let dataContent = ''
+
+            for (const line of lines) {
+              if (line.startsWith('event:')) {
+                eventName = line.substring(6).trim()
+              } else if (line.startsWith('data:')) {
+                dataContent = line.substring(5).trim()
+              }
+            }
+
+            if (eventName === 'chunk' && dataContent) {
+              // markdown 文本，处理转义 \n
+              let md = dataContent.replace(/\\n/g, '\n')
+              that.data.aiMarkdown += md
+              that._parseMarkdown()
+            } else if (eventName === 'done') {
+              // 流结束，success 回调也会触发
+            } else if (eventName === 'error') {
+              try {
+                const errObj = JSON.parse(dataContent)
+                wx.showToast({ title: errObj.error || 'AI查词出错', icon: 'none' })
+              } catch (e) { /* ignore */ }
+              that.setData({ aiStreaming: false })
+            }
+          }
+        } catch (e) {
+          console.error('解析chunk失败:', e)
+        }
+      })
+    }
+
+    this._aiRequestTask = requestTask
+  },
+
+  /** 将 markdown 解析为渲染块数组 */
+  _parseMarkdown() {
+    const md = this.data.aiMarkdown
+    if (!md) return
+
+    const lines = md.split('\n')
+    const blocks = []
+
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i]
+      const trimmed = raw.trim()
+      if (!trimmed) {
+        blocks.push({ type: 'br' })
+        continue
+      }
+
+      // 标题
+      const hMatch = trimmed.match(/^(#{1,3})\s+(.+)$/)
+      if (hMatch) {
+        blocks.push({ type: 'h' + hMatch[1].length, content: hMatch[2] })
+        continue
+      }
+
+      // 无序列表
+      if (/^[-*+]\s/.test(trimmed)) {
+        const content = trimmed.replace(/^[-*+]\s+/, '')
+        blocks.push({ type: 'li', content })
+        continue
+      }
+
+      // 普通段落
+      blocks.push({ type: 'p', content: trimmed })
+    }
+
+    this.setData({ aiBlocks: blocks })
+  },
+
+  /** ArrayBuffer 转字符串 */
+  _arrayBufferToString(buffer) {
+    if (typeof buffer === 'string') return buffer
+    if (buffer instanceof ArrayBuffer) {
+      const decoder = new TextDecoder('utf-8')
+      return decoder.decode(new Uint8Array(buffer))
+    }
+    return String(buffer)
   },
 
   async addToReview() {
