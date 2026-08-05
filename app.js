@@ -15,6 +15,29 @@ App({
     // 如果没有登录，自动执行微信登录
     if (!this.isLoggedIn()) {
       this.autoWechatLogin()
+    } else {
+      // 已登录，更新 tabBar 复习角标
+      this.updateReviewBadge()
+    }
+  },
+
+  /**
+   * 更新复习 tabBar 角标（显示今日需复习词数）
+   */
+  async updateReviewBadge() {
+    try {
+      const { reviewApi } = require('./utils/api')
+      const res = await reviewApi.getLearningStatus()
+      if (res.code === 200 && res.data.dueCount > 0) {
+        wx.setTabBarBadge({
+          index: 2,
+          text: String(res.data.dueCount)
+        })
+      } else {
+        wx.removeTabBarBadge({ index: 2 })
+      }
+    } catch (error) {
+      console.error('更新复习角标失败:', error)
     }
   },
 
@@ -50,7 +73,10 @@ App({
         // 保存登录信息
         this.saveLoginInfo(res.data.token, res.data.userInfo)
         console.log('自动登录成功')
-        
+
+        // 更新复习角标
+        this.updateReviewBadge()
+
         // 通知页面刷新
         if (this.loginSuccessCallback) {
           this.loginSuccessCallback()

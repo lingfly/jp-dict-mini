@@ -46,6 +46,19 @@
   background: #F5F7FA;
 }
 
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #7BA597, #5B8C7D);
+}
+
+.avatar-initial {
+  font-size: 28px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
 .user-details {
   display: flex;
   flex-direction: column;

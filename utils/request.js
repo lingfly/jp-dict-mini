@@ -1,7 +1,56 @@
 /**
  * 封装 wx.request，支持 token 认证
  */
-const app = getApp()
+
+// 用缓存存储 apiBaseUrl 和 token，避免依赖 getApp() 的模块加载时序问题
+let _cachedApiBaseUrl = 'http://localhost:8080'
+let _cachedToken = wx.getStorageSync('token') || null
+
+/**
+ * 设置基础 URL
+ */
+function setApiBaseUrl(url) {
+  _cachedApiBaseUrl = url
+}
+
+/**
+ * 获取 App 实例（懒加载）
+ */
+function getAppInstance() {
+  try {
+    return getApp()
+  } catch (e) {
+    return null
+  }
+}
+
+/**
+ * 获取 token（优先从 app.globalData，fallback 到 storage 缓存）
+ */
+function getToken() {
+  const app = getAppInstance()
+  if (app && app.globalData && app.globalData.token) {
+    _cachedToken = app.globalData.token
+    return app.globalData.token
+  }
+  // fallback：从本地缓存读取（handle app.js require 时序问题）
+  if (!_cachedToken) {
+    _cachedToken = wx.getStorageSync('token') || null
+  }
+  return _cachedToken
+}
+
+/**
+ * 获取 API 基础 URL（优先从 app.globalData，fallback 到缓存）
+ */
+function getApiBaseUrl() {
+  const app = getAppInstance()
+  if (app && app.globalData && app.globalData.apiBaseUrl) {
+    _cachedApiBaseUrl = app.globalData.apiBaseUrl
+    return app.globalData.apiBaseUrl
+  }
+  return _cachedApiBaseUrl
+}
 
 /**
  * 发送请求
@@ -12,19 +61,24 @@ const app = getApp()
  * @returns {Promise}
  */
 function request(url, method = 'GET', data = {}, needAuth = true) {
+  const app = getAppInstance()
+
   return new Promise((resolve, reject) => {
     const header = {
       'Content-Type': 'application/json'
     }
 
     // 添加 Authorization token
-    if (needAuth && app.globalData.token) {
-      header['Authorization'] = `Bearer ${app.globalData.token}`
+    const token = getToken()
+    if (needAuth && token) {
+      header['Authorization'] = `Bearer ${token}`
       console.log('请求携带 token:', url)
     }
 
+    const baseUrl = getApiBaseUrl()
+
     wx.request({
-      url: `${app.globalData.apiBaseUrl}${url}`,
+      url: `${baseUrl}${url}`,
       method: method,
       data: data,
       header: header,
@@ -34,24 +88,34 @@ function request(url, method = 'GET', data = {}, needAuth = true) {
         if (res.statusCode === 200) {
           resolve(res.data)
         } else if (res.statusCode === 401) {
-          // token 失效，清除登录信息并重新登录
+          // token 失效，清除登录信息并尝试重新登录
           console.log('token 已失效，重新登录')
-          app.clearLoginInfo()
 
-          wx.showToast({
-            title: '登录已过期，正在重新登录',
-            icon: 'none',
-            duration: 2000
-          })
+          // 清除缓存的 token
+          _cachedToken = null
+          wx.removeStorageSync('token')
 
-          // 自动重新登录
-          app.autoWechatLogin().then(() => {
-            // 登录成功后，重新发起原请求
-            console.log('重新登录成功，重试请求')
-            request(url, method, data, needAuth).then(resolve).catch(reject)
-          }).catch(() => {
-            reject(new Error('重新登录失败'))
-          })
+          if (app && app.clearLoginInfo) {
+            app.clearLoginInfo()
+          }
+
+          // 自动重新登录（仅在 app 可用时）
+          if (app && app.autoWechatLogin) {
+            wx.showToast({
+              title: '登录已过期，正在重新登录',
+              icon: 'none',
+              duration: 2000
+            })
+            app.autoWechatLogin().then(() => {
+              console.log('重新登录成功，重试请求')
+              request(url, method, data, needAuth).then(resolve).catch(reject)
+            }).catch(() => {
+              reject(new Error('重新登录失败'))
+            })
+          } else {
+            // app 不可用，直接返回错误让调用方处理
+            reject(new Error('登录已过期，请重新打开小程序'))
+          }
         } else {
           wx.showToast({
             title: res.data.message || '请求失败',
@@ -102,5 +166,6 @@ function post(url, data = {}, needAuth = true) {
 module.exports = {
   request,
   get,
-  post
+  post,
+  setApiBaseUrl
 }

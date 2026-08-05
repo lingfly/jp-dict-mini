@@ -11,7 +11,10 @@
     <!-- 用户信息卡片 -->
     <view class="user-card card">
       <view class="user-info">
-        <image class="avatar" src="{{userInfo.avatarUrl || '/images/default-avatar.png'}}" mode="aspectFill" />
+        <image wx:if="{{userInfo.avatarUrl}}" class="avatar" src="{{userInfo.avatarUrl}}" mode="aspectFill" />
+        <view wx:else class="avatar avatar-placeholder">
+          <text class="avatar-initial">{{userInfo.nickname ? userInfo.nickname[0] : (userInfo.username ? userInfo.username[0] : '?')}}</text>
+        </view>
         <view class="user-details">
           <text class="username">{{userInfo.nickname || userInfo.username}}</text>
           <text class="user-email">{{userInfo.email || 'ID: ' + userInfo.id}}</text>

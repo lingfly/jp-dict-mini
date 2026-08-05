@@ -16,7 +16,8 @@ Page({
     // AI 查词
     showAiSearch: false,
     aiStreaming: false,
-    aiFeedbackDone: false  // 防止重复提交反馈
+    aiFeedbackDone: false,  // 防止重复提交反馈
+    isAiResult: false       // 当前搜索结果是否来自 AI 查词
   },
 
   onLoad() {
@@ -57,7 +58,7 @@ Page({
       return
     }
 
-    this.setData({ loading: true, wordDetail: null, searchResults: [], showAiSearch: false })
+    this.setData({ loading: true, wordDetail: null, searchResults: [], showAiSearch: false, isAiResult: false })
 
     try {
       const res = await wordApi.search(keyword)
@@ -126,7 +127,8 @@ Page({
       searchKeyword: '',
       searchResults: [],
       wordDetail: null,
-      showAiSearch: false
+      showAiSearch: false,
+      isAiResult: false
     })
   },
 
@@ -312,7 +314,8 @@ Page({
         this.setData({
           searchResults: processed,
           showAiSearch: false,
-          aiStreaming: false
+          aiStreaming: false,
+          isAiResult: true
         })
 
         // 添加到最近搜索

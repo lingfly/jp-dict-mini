@@ -108,7 +108,7 @@ const wordApi = {
 
   // 获取单词详情
   getDetail(wordId) {
-    return get(`/api/word/detail/${wordId}`) // 需要 token
+    return get(`/api/word/${wordId}`) // 需要 token
   }
 }
 
