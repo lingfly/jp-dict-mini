@@ -69,44 +69,18 @@
     <view class="ai-search-header">
       <text class="ai-no-result">未找到匹配单词</text>
     </view>
-    <view wx:if="{{!aiStreaming && aiBlocks.length === 0}}" class="ai-search-entry" bindtap="startAiSearch">
+    <view class="ai-search-entry" bindtap="startAiSearch">
       <text class="ai-search-icon">✨</text>
       <text class="ai-search-text">AI 查词</text>
     </view>
-    <!-- AI 流式 Markdown 渲染 -->
-    <view wx:if="{{aiBlocks.length > 0}}" class="ai-markdown card">
-      <view class="ai-result-header">
-        <text class="ai-result-title">AI 释义</text>
-        <text wx:if="{{aiStreaming}}" class="ai-cursor">|</text>
-      </view>
-      <view class="ai-md-body">
-        <block wx:for="{{aiBlocks}}" wx:key="index">
-          <!-- 换行 -->
-          <view wx:if="{{item.type === 'br'}}" class="ai-md-br"></view>
-          <!-- 标题 -->
-          <view wx:elif="{{item.type === 'h1'}}" class="ai-md-h1"><text class="jp-text">{{item.content}}</text></view>
-          <view wx:elif="{{item.type === 'h2'}}" class="ai-md-h2"><text class="jp-text">{{item.content}}</text></view>
-          <view wx:elif="{{item.type === 'h3'}}" class="ai-md-h3"><text class="jp-text">{{item.content}}</text></view>
-          <!-- 列表项 -->
-          <view wx:elif="{{item.type === 'li'}}" class="ai-md-li">
-            <text class="ai-md-bullet">•</text>
-            <text class="jp-text">{{item.content}}</text>
-          </view>
-          <!-- 段落 -->
-          <view wx:else class="ai-md-p">
-            <text class="jp-text">{{item.content}}</text>
-          </view>
-        </block>
-      </view>
-    </view>
-    <view wx:if="{{aiStreaming && aiBlocks.length === 0}}" class="ai-loading">
-      <text>AI 正在生成释义...</text>
+    <view wx:if="{{aiStreaming}}" class="ai-loading">
+      <text>AI 正在查询...</text>
     </view>
   </view>
 
   <!-- 单词详情 -->
   <view wx:elif="{{wordDetail}}" class="word-detail">
-    <button wx:if="{{searchResults.length > 1}}" class="back-btn" bindtap="backToResults">
+    <button wx:if="{{searchResults.length > 1 || wordDetail._fromAi}}" class="back-btn" bindtap="backToResults">
       ‹ 返回搜索结果
     </button>
 
@@ -178,7 +152,13 @@
   </view>
 
   <!-- 操作按钮 — 悬浮底部 -->
-  <view wx:if="{{wordDetail}}" class="word-actions">
+  <!-- AI查词结果：反馈按钮 -->
+  <view wx:if="{{wordDetail && wordDetail._fromAi}}" class="word-actions">
+    <view class="action-btn action-incorrect {{aiFeedbackDone ? 'disabled' : ''}}" bindtap="aiMarkIncorrect">不符合预期</view>
+    <view class="action-btn action-correct {{aiFeedbackDone ? 'disabled' : ''}}" bindtap="aiMarkCorrect">符合预期并加入词库</view>
+  </view>
+  <!-- 普通搜索结果：加入词单/收藏按钮 -->
+  <view wx:elif="{{wordDetail}}" class="word-actions">
     <view class="action-btn" bindtap="addToWordlist">加入词单</view>
     <view class="action-btn {{wordDetail.isFavorited ? 'favorited' : ''}}" bindtap="addToReview">
       {{wordDetail.isFavorited ? '已收藏' : '收藏'}}

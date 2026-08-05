@@ -126,6 +126,21 @@ const audioApi = {
  * AI 查词 API
  */
 const aiDictApi = {
+  // 同步查词（返回 AiDictQueryResult: { logId, words: [...] }）
+  query(word, thinking, reasoningEffort) {
+    return post('/api/ai-dict/query', { word, thinking, reasoningEffort })
+  },
+
+  // 反馈：符合预期（将 AI 查词结果加入词库）
+  markCorrect(logId) {
+    return post('/api/ai-dict/feedback/correct', { logId, isCorrect: true })
+  },
+
+  // 反馈：不符合预期
+  markIncorrect(logId) {
+    return post('/api/ai-dict/feedback/incorrect', { logId, isCorrect: false })
+  },
+
   // SSE 流式查词 URL
   getStreamUrl(word, token) {
     const app = getApp()

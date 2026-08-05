@@ -395,6 +395,24 @@
   color: #fff;
 }
 
+/* AI 反馈按钮 */
+.action-btn.action-incorrect {
+  border-color: #E74C3C;
+  color: #E74C3C;
+  background: white;
+}
+
+.action-btn.action-correct {
+  border-color: #5B8C7D;
+  background: #5B8C7D;
+  color: #fff;
+}
+
+.action-btn.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 /* 义项头部内容 */
 .sense-header-content {
   flex: 1;
