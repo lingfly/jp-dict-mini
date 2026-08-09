@@ -78,6 +78,12 @@ Page({
     }
   },
 
+  goToSettings() {
+    wx.navigateTo({
+      url: '/pages/settings/settings'
+    })
+  },
+
   goToNewWordAudit() {
     wx.navigateTo({
       url: '/pages/new-word-audit/new-word-audit'

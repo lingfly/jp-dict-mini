@@ -5,7 +5,7 @@
  * - true（默认）: 需要 token 认证
  * - false: 不需要 token（如登录接口）
  */
-const { get, post } = require('./request')
+const { get, post, put } = require('./request')
 
 /**
  * 词单相关 API（需要认证）
@@ -212,9 +212,24 @@ const userApi = {
     return get('/api/user/learning-config') // 需要 token
   },
 
-  // 更新学习配置
-  updateLearningConfig(data) {
-    return post('/api/user/learning-config', data) // 需要 token
+  // 更新每日新词数量
+  updateDailyNewWords(dailyNewWords) {
+    return put('/api/user/learning-config/daily-new-words', { dailyNewWords }) // 需要 token
+  },
+
+  // 更新单词发音配置
+  updateVoiceConfig(voiceConfig) {
+    return put('/api/user/learning-config/voice-config', { voiceConfig }) // 需要 token
+  },
+
+  // 更新查询时释义折叠配置
+  updateCollapseDefinitionOnQuery(collapseDefinitionOnQuery) {
+    return put('/api/user/learning-config/collapse-definition-on-query', { collapseDefinitionOnQuery }) // 需要 token
+  },
+
+  // 更新复习时释义折叠配置
+  updateCollapseDefinitionOnReview(collapseDefinitionOnReview) {
+    return put('/api/user/learning-config/collapse-definition-on-review', { collapseDefinitionOnReview }) // 需要 token
   }
 }
 

@@ -1,1 +1,77 @@
 /* pages/settings/settings.wxss */
+.settings-page {
+  padding: 16px;
+  min-height: 100vh;
+  background: #F5F7FA;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+}
+
+.loading-text {
+  font-size: 16px;
+  color: #909399;
+}
+
+.settings-content {
+  background: #FFFFFF;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #F5F7FA;
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.setting-title {
+  font-size: 16px;
+  color: #303133;
+  font-weight: 500;
+}
+
+.setting-desc {
+  font-size: 13px;
+  color: #909399;
+}
+
+.setting-control {
+  flex-shrink: 0;
+  margin-left: 16px;
+}
+
+/* 每日新词数量输入 */
+.number-input {
+  width: 60px;
+  height: 36px;
+  border: 1px solid #DCDFE6;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 16px;
+  color: #303133;
+  background: #FFFFFF;
+  padding: 0 8px;
+}
+
+.setting-unit {
+  font-size: 13px;
+  color: #909399;
+  margin-left: 6px;
+}

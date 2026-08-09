@@ -1,2 +1,71 @@
-<!--pages/settings/settings.wxml-->
-<text>pages/settings/settings.wxml</text>
+<!-- pages/settings/settings.wxml -->
+<view class="settings-page">
+  <view wx:if="{{loading}}" class="loading-state">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <view wx:else class="settings-content">
+    <!-- 每日新词数量 -->
+    <view class="setting-item">
+      <view class="setting-label">
+        <text class="setting-title">每日新词数量</text>
+        <text class="setting-desc">每天学习的新词上限</text>
+      </view>
+      <view class="setting-control">
+        <input 
+          class="number-input" 
+          type="number" 
+          value="{{learningConfig.dailyNewWords}}" 
+          bindblur="onChangeDailyNewWords"
+          placeholder="10"
+        />
+        <text class="setting-unit">个/天</text>
+      </view>
+    </view>
+
+    <!-- 单词发音配置 -->
+    <view class="setting-item">
+      <view class="setting-label">
+        <text class="setting-title">单词发音</text>
+        <text class="setting-desc">学习时自动播放发音</text>
+      </view>
+      <view class="setting-control">
+        <switch 
+          checked="{{learningConfig.voiceConfig}}" 
+          bindchange="onToggleVoiceConfig"
+          color="#5B8C7D"
+        />
+      </view>
+    </view>
+
+    <!-- 查询时释义折叠 -->
+    <view class="setting-item">
+      <view class="setting-label">
+        <text class="setting-title">查询时释义折叠</text>
+        <text class="setting-desc">查词结果默认折叠释义</text>
+      </view>
+      <view class="setting-control">
+        <switch 
+          checked="{{learningConfig.collapseDefinitionOnQuery}}" 
+          bindchange="onToggleCollapseOnQuery"
+          color="#5B8C7D"
+        />
+      </view>
+    </view>
+
+    <!-- 复习时释义折叠 -->
+    <view class="setting-item">
+      <view class="setting-label">
+        <text class="setting-title">复习时释义折叠</text>
+        <text class="setting-desc">复习单词时默认折叠释义</text>
+      </view>
+      <view class="setting-control">
+        <switch 
+          checked="{{learningConfig.collapseDefinitionOnReview}}" 
+          bindchange="onToggleCollapseOnReview"
+          color="#5B8C7D"
+        />
+      </view>
+    </view>
+  </view>
+</view>

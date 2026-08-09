@@ -163,9 +163,20 @@ function post(url, data = {}, needAuth = true) {
   return request(url, 'POST', data, needAuth)
 }
 
+/**
+ * PUT 请求
+ * @param {String} url - 请求路径
+ * @param {Object} data - 请求数据
+ * @param {Boolean} needAuth - 是否需要认证（默认 true）
+ */
+function put(url, data = {}, needAuth = true) {
+  return request(url, 'PUT', data, needAuth)
+}
+
 module.exports = {
   request,
   get,
   post,
+  put,
   setApiBaseUrl
 }
