@@ -5,6 +5,7 @@ const { authApi, reviewApi } = require('../../utils/api')
 Page({
   data: {
     isLoggedIn: false,
+    isAdmin: false,
     userInfo: null,
     learningStats: {
       totalWords: 0,
@@ -49,7 +50,8 @@ Page({
     try {
       const res = await authApi.getCurrentUser()
       if (res.code === 200) {
-        this.setData({ userInfo: res.data })
+        const isAdmin = res.data.userType === 1
+        this.setData({ userInfo: res.data, isAdmin })
         app.globalData.userInfo = res.data
         wx.setStorageSync('userInfo', res.data)
       }
@@ -76,9 +78,15 @@ Page({
     }
   },
 
-  goToSettings() {
+  goToNewWordAudit() {
     wx.navigateTo({
-      url: '/pages/settings/settings'
+      url: '/pages/new-word-audit/new-word-audit'
+    })
+  },
+
+  goToCorrectionAudit() {
+    wx.navigateTo({
+      url: '/pages/correction-audit/correction-audit'
     })
   },
 

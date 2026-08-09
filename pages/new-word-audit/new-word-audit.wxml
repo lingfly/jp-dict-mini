@@ -1,0 +1,200 @@
+<!-- pages/new-word-audit/new-word-audit.wxml -->
+<view class="audit-page">
+
+  <!-- ============ 第一层：queryWord 列表 ============ -->
+  <block wx:if="{{!currentRecord}}">
+    <!-- 状态筛选按钮 -->
+    <view class="tab-bar">
+      <view
+        class="tab-item {{activeTab === 'pending' ? 'active' : ''}}"
+        bindtap="switchTab"
+        data-tab="pending"
+      >待审核</view>
+      <view
+        class="tab-item {{activeTab === 'incorrect' ? 'active' : ''}}"
+        bindtap="switchTab"
+        data-tab="incorrect"
+      >不符合预期</view>
+      <view
+        class="tab-item {{activeTab === 'unmarked' ? 'active' : ''}}"
+        bindtap="switchTab"
+        data-tab="unmarked"
+      >未标记</view>
+    </view>
+
+    <!-- 加载中 -->
+    <view wx:if="{{loading}}" class="loading-state card">
+      <view class="loading-icon">⏳</view>
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <!-- queryWord 列表 -->
+    <view wx:else class="list-content">
+      <view wx:if="{{list.length === 0}}" class="empty-state card">
+        <text class="empty-text">暂无数据</text>
+      </view>
+
+      <view
+        wx:for="{{list}}"
+        wx:key="logId"
+        class="queryword-card card"
+        bindtap="enterResults"
+        data-record="{{item}}"
+      >
+        <view class="queryword-row">
+          <text class="queryword-text">{{item.queryWord}}</text>
+          <text class="arrow">›</text>
+        </view>
+        <view class="queryword-meta">
+          <text wx:if="{{item.results && item.results.length > 0}}" class="meta-count">{{item.results.length}} 个结果</text>
+          <text wx:if="{{item.status}}" class="status-tag status-{{item.status}}">{{statusMap[item.status] || item.status}}</text>
+        </view>
+      </view>
+
+      <!-- 加载更多 -->
+      <view wx:if="{{hasMore && list.length > 0}}" class="load-more" bindtap="loadMore">
+        <text>{{loadingMore ? '加载中...' : '加载更多'}}</text>
+      </view>
+    </view>
+  </block>
+
+  <!-- ============ 第二层：results 列表 ============ -->
+  <block wx:elif="{{!currentWord}}">
+    <!-- 返回 + 标题 -->
+    <view class="layer-header">
+      <view class="back-btn" bindtap="backToList">‹ 返回</view>
+      <text class="layer-title">{{currentRecord.queryWord}}</text>
+    </view>
+
+    <view wx:if="{{currentRecord.results && currentRecord.results.length > 0}}" class="results-list">
+      <view
+        wx:for="{{currentRecord.results}}"
+        wx:key="index"
+        wx:for-item="result"
+        class="result-card card"
+        bindtap="enterWordDetail"
+        data-word="{{result}}"
+      >
+        <view class="result-header">
+          <text class="word-kanji">{{result.word.kanji || result.word.kana}}</text>
+          <text wx:if="{{result.word.kana && result.word.kana !== result.word.kanji}}" class="word-kana">{{result.word.kana}}</text>
+          <view wx:if="{{result.submitted}}" class="submitted-tag">已提交</view>
+          <text class="arrow">›</text>
+        </view>
+        <view class="result-meta">
+          <text wx:if="{{result.word.wordType}}">{{result.word.wordType}}</text>
+          <text wx:if="{{result.word.jlptLevel}}"> · {{result.word.jlptLevel}}</text>
+          <text wx:if="{{result.word.accent !== null && result.word.accent !== undefined}}"> · {{result.word.accent}}调</text>
+        </view>
+        <!-- 第一条释义摘要 -->
+        <view wx:if="{{result.definitions && result.definitions.length > 0}}" class="result-def-preview">
+          {{result.definitions[0].definitionCn}}
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty-state card">
+      <text class="empty-text">无单词数据</text>
+    </view>
+  </block>
+
+  <!-- ============ 第三层：单词详情（和查词页面一致） ============ -->
+  <block wx:else>
+    <!-- 返回 + 标题 -->
+    <view class="layer-header">
+      <view class="back-btn" bindtap="backToResults">‹ 返回</view>
+      <text class="layer-title">{{currentWord.word.kanji || currentWord.word.kana}}</text>
+    </view>
+
+    <view class="detail-content card" style="padding-bottom: 65px;">
+      <!-- 单词信息 -->
+      <view class="word-info">
+        <view class="word-main-row">
+          <view class="word-title-wrap">
+            <text class="word-main jp-text">{{currentWord.word.kanji || currentWord.word.kana}}</text>
+            <text wx:if="{{currentWord.word.accent !== null && currentWord.word.accent !== undefined}}" class="word-accent">{{helper.toCircle(currentWord.word.accent)}}</text>
+          </view>
+          <view wx:if="{{currentWord.submitted}}" class="submitted-badge">已提交</view>
+        </view>
+        <text wx:if="{{currentWord.word.kanji && currentWord.word.kanji !== currentWord.word.kana}}" class="word-kana-detail jp-text">{{currentWord.word.kana}}</text>
+        <view class="word-tags">
+          <text wx:if="{{currentWord.word.jlptLevel}}" class="word-tag">{{currentWord.word.jlptLevel}}</text>
+          <text wx:if="{{currentWord.word.wordType}}" class="word-tag">{{currentWord.word.wordType}}</text>
+          <text wx:if="{{currentWord.word.romaji}}" class="word-tag">{{currentWord.word.romaji}}</text>
+        </view>
+      </view>
+
+      <!-- 义项列表 -->
+      <view wx:if="{{currentWord.definitions && currentWord.definitions.length > 0}}" class="sense-list">
+        <view
+          wx:for="{{currentWord.definitions}}"
+          wx:key="id"
+          wx:for-item="definition"
+          wx:for-index="defIndex"
+          class="sense-card"
+        >
+          <view class="sense-header" data-index="{{defIndex}}" bindtap="toggleSense">
+            <text class="sense-number">{{defIndex + 1}}</text>
+            <view class="sense-header-content">
+              <text class="sense-title">{{definition.definitionCn}}</text>
+            </view>
+            <text class="sense-toggle {{helper.includes(expandedSense, defIndex) ? 'expanded' : ''}}">▼</text>
+          </view>
+
+          <view wx:if="{{helper.includes(expandedSense, defIndex)}}" class="sense-body">
+            <!-- 用法说明 -->
+            <view wx:if="{{definition.usage}}" class="sense-usage-wrap">
+              <text class="usage-label">用法：</text>
+              <text class="sense-usage">{{definition.usage}}</text>
+            </view>
+
+            <!-- 例句 -->
+            <view wx:if="{{definition.examples && definition.examples.length > 0}}" class="sense-examples">
+              <text class="examples-label">例句：</text>
+              <view wx:for="{{definition.examples}}" wx:key="id" wx:for-item="example" class="sense-example-item">
+                <view class="sense-example-text">
+                  <text class="ex-jp jp-text">{{example.sentenceJp}}</text>
+                  <text wx:if="{{example.sentenceKana}}" class="ex-kana jp-text">{{example.sentenceKana}}</text>
+                  <text class="ex-cn">{{example.sentenceCn}}</text>
+                </view>
+              </view>
+            </view>
+
+            <!-- 注释 -->
+            <view wx:if="{{definition.note}}" class="sense-note">
+              <text class="note-title">注：</text>
+              <text class="note-body">{{definition.note}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 审核操作 -->
+      <view class="audit-actions">
+        <button class="btn btn-danger" bindtap="reject">驳回</button>
+        <button class="btn btn-success" bindtap="approve">采纳</button>
+      </view>
+    </view>
+  </block>
+
+</view>
+
+<wxs module="helper">
+  function includes(arr, item) {
+    if (!arr) return false
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i] === item) return true
+    }
+    return false
+  }
+
+  function toCircle(num) {
+    var circles = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
+    if (num >= 0 && num <= 10) return circles[num]
+    return num !== undefined ? String(num) : ''
+  }
+
+  module.exports = {
+    includes: includes,
+    toCircle: toCircle
+  }
+</wxs>

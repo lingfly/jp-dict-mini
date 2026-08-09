@@ -131,14 +131,14 @@ const aiDictApi = {
     return post('/api/ai-dict/query', { word, thinking, reasoningEffort })
   },
 
-  // 反馈：符合预期（将 AI 查词结果加入词库）
-  markCorrect(logId) {
-    return post('/api/ai-dict/feedback/correct', { logId, isCorrect: true })
+  // 反馈：符合预期（将 AI 查词结果加入词库，需传入 selectedIndex）
+  markCorrect(logId, selectedIndex) {
+    return post('/api/ai-dict/feedback/correct', { logId, selectedIndex })
   },
 
   // 反馈：不符合预期
   markIncorrect(logId) {
-    return post('/api/ai-dict/feedback/incorrect', { logId, isCorrect: false })
+    return post('/api/ai-dict/feedback/incorrect', { logId })
   },
 
   // SSE 流式查词 URL

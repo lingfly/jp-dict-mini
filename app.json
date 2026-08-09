@@ -12,7 +12,9 @@
     "pages/profile/profile",
     "pages/settings/settings",
     "pages/login/login",
-    "pages/reset-password/reset-password"
+    "pages/reset-password/reset-password",
+    "pages/new-word-audit/new-word-audit",
+    "pages/correction-audit/correction-audit"
   ],
   "tabBar": {
     "color": "#909399",

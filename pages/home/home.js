@@ -105,6 +105,8 @@ Page({
 
     // 深拷贝避免引用问题，并确保数据结构完整
     const wordDetail = JSON.parse(JSON.stringify(word))
+    // 保存 AI 查词结果中的索引位置，用于反馈接口的 selectedIndex
+    wordDetail._resultIndex = index
     console.log('深拷贝后 wordDetail:', JSON.stringify(wordDetail, null, 2))
 
     this.setData({
@@ -407,13 +409,15 @@ Page({
   /** AI 反馈：符合预期并加入词库 */
   async aiMarkCorrect() {
     if (this.data.aiFeedbackDone) return
-    const logId = this.data.wordDetail._logId
+    const wordDetail = this.data.wordDetail
+    const logId = wordDetail._logId
+    const selectedIndex = wordDetail._resultIndex
     if (!logId) return
 
     this.setData({ aiFeedbackDone: true })
     wx.showLoading({ title: '提交中...' })
     try {
-      const res = await aiDictApi.markCorrect(logId)
+      const res = await aiDictApi.markCorrect(logId, selectedIndex)
       wx.hideLoading()
       if (res.code === 200) {
         wx.showToast({ title: '已加入词库', icon: 'success' })
