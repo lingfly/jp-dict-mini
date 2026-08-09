@@ -1,0 +1,159 @@
+<!-- pages/feedback/feedback.wxml -->
+<view class="feedback-page">
+  <!-- Tab 切换 -->
+  <view class="tab-bar">
+    <view class="tab-item {{currentTab === 'create' ? 'active' : ''}}" bindtap="switchTab" data-tab="create">
+      <text>提交反馈</text>
+    </view>
+    <view class="tab-item {{currentTab === 'list' ? 'active' : ''}}" bindtap="switchTab" data-tab="list">
+      <text>我的反馈</text>
+    </view>
+  </view>
+
+  <!-- 提交反馈 -->
+  <view wx:if="{{currentTab === 'create'}}" class="create-section">
+    <!-- 反馈类型选择 -->
+    <view class="card type-selector">
+      <text class="section-title">反馈类型</text>
+      <view class="type-options">
+        <view
+          wx:for="{{feedbackTypes}}"
+          wx:key="value"
+          class="type-option {{feedbackType === item.value ? 'selected' : ''}}"
+          data-type="{{item.value}}"
+          bindtap="selectType"
+        >
+          <text>{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 反馈标题 -->
+    <view class="card title-card">
+      <text class="section-title">反馈标题</text>
+      <input
+        class="title-input"
+        placeholder="请简要描述您的问题或建议"
+        value="{{title}}"
+        bindinput="onTitleInput"
+        maxlength="100"
+      />
+    </view>
+
+    <!-- 反馈内容 -->
+    <view class="card content-card">
+      <text class="section-title">反馈内容</text>
+      <textarea
+        class="content-textarea"
+        placeholder="请详细描述您遇到的问题或建议..."
+        value="{{content}}"
+        bindinput="onContentInput"
+        maxlength="2000"
+        auto-height
+      />
+      <view class="char-count">
+        <text>{{content.length}}/2000</text>
+      </view>
+    </view>
+
+    <!-- 联系方式 -->
+    <view class="card contact-card">
+      <text class="section-title">联系方式（选填）</text>
+      <input
+        class="contact-input"
+        placeholder="邮箱/微信号，方便我们联系您"
+        value="{{contact}}"
+        bindinput="onContactInput"
+        maxlength="100"
+      />
+    </view>
+
+    <!-- 提交按钮 -->
+    <button class="submit-btn" bindtap="submitFeedback" disabled="{{submitting}}">
+      {{submitting ? '提交中...' : '提交反馈'}}
+    </button>
+  </view>
+
+  <!-- 反馈列表 -->
+  <view wx:if="{{currentTab === 'list'}}" class="list-section">
+    <view wx:if="{{listLoading && feedbackList.length === 0}}" class="loading-state">
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <view wx:elif="{{feedbackList.length === 0}}" class="empty-state">
+      <view class="empty-icon">📋</view>
+      <text class="empty-text">暂无反馈记录</text>
+      <text class="empty-hint">遇到问题或有好建议？去提交反馈吧</text>
+    </view>
+
+    <view wx:else class="feedback-list">
+      <view
+        wx:for="{{feedbackList}}"
+        wx:key="id"
+        class="feedback-item card"
+        data-id="{{item.id}}"
+        bindtap="viewDetail"
+      >
+        <view class="feedback-header">
+          <view class="feedback-type-tag {{item.feedbackType}}">{{item.feedbackType === 'bug' ? '问题反馈' : item.feedbackType === 'suggestion' ? '功能建议' : '其他'}}</view>
+          <view class="feedback-status status-{{item.status}}">
+            {{item.status === 0 ? '待处理' : item.status === 1 ? '处理中' : item.status === 2 ? '已完成' : '已关闭'}}
+          </view>
+        </view>
+        <view class="feedback-content-preview">{{item.title}}</view>
+        <view class="feedback-footer">
+          <text class="feedback-time">{{item.createTime}}</text>
+          <text class="feedback-arrow">查看详情 ›</text>
+        </view>
+      </view>
+
+      <view wx:if="{{hasMore}}" class="load-more" bindtap="loadMore">
+        <text class="load-more-text">加载更多</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 反馈详情 -->
+  <view wx:if="{{currentTab === 'detail'}}" class="detail-section">
+    <view wx:if="{{detailLoading}}" class="loading-state">
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <view wx:elif="{{feedbackDetail}}" class="detail-content">
+      <view class="card detail-header-card">
+        <view class="detail-type-row">
+          <view class="feedback-type-tag {{feedbackDetail.feedbackType}}">{{feedbackDetail.feedbackType === 'bug' ? '问题反馈' : feedbackDetail.feedbackType === 'suggestion' ? '功能建议' : '其他'}}</view>
+          <view class="feedback-status status-{{feedbackDetail.status}}">
+            {{feedbackDetail.status === 0 ? '待处理' : feedbackDetail.status === 1 ? '处理中' : feedbackDetail.status === 2 ? '已完成' : '已关闭'}}
+          </view>
+        </view>
+        <text class="detail-time">{{feedbackDetail.createTime}}</text>
+      </view>
+
+      <view class="card detail-body-card">
+        <text class="section-title">反馈标题</text>
+        <text class="detail-title-text">{{feedbackDetail.title}}</text>
+      </view>
+
+      <view class="card detail-body-card">
+        <text class="section-title">反馈内容</text>
+        <text class="detail-text">{{feedbackDetail.content}}</text>
+      </view>
+
+      <view wx:if="{{feedbackDetail.contact}}" class="card detail-contact-card">
+        <text class="section-title">联系方式</text>
+        <text class="detail-text">{{feedbackDetail.contact}}</text>
+      </view>
+
+      <view wx:if="{{feedbackDetail.reply}}" class="card detail-reply-card">
+        <text class="section-title">官方回复</text>
+        <text class="detail-text">{{feedbackDetail.reply}}</text>
+        <text wx:if="{{feedbackDetail.replyTime}}" class="detail-reply-time">{{feedbackDetail.replyTime}}</text>
+      </view>
+    </view>
+
+    <view class="back-btn-wrap">
+      <button class="back-btn" bindtap="backToList">返回列表</button>
+    </view>
+  </view>
+</view>

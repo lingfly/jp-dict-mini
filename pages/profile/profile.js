@@ -96,6 +96,12 @@ Page({
     })
   },
 
+  goToFeedback() {
+    wx.navigateTo({
+      url: '/pages/feedback-menu/feedback-menu'
+    })
+  },
+
   handleLogout() {
     wx.showModal({
       title: '提示',

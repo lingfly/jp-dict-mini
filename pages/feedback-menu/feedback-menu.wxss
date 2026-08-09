@@ -1,0 +1,81 @@
+/* pages/feedback-menu/feedback-menu.wxss */
+.feedback-menu-page {
+  min-height: 100vh;
+  background: #F5F7FA;
+  padding: 16px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 20px;
+  padding: 8px 0;
+}
+
+.menu-list {
+  background: #FFFFFF;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 16px;
+  border-bottom: 1px solid #EBEEF5;
+  transition: background 0.2s;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-item:active {
+  background: #F5F7FA;
+}
+
+.menu-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.menu-icon {
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F5F7FA;
+  border-radius: 10px;
+}
+
+.menu-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menu-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #303133;
+  line-height: 1.4;
+}
+
+.menu-desc {
+  font-size: 13px;
+  color: #909399;
+  line-height: 1.3;
+}
+
+.menu-arrow {
+  font-size: 24px;
+  color: #C0C4CC;
+  margin-left: 8px;
+}

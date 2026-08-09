@@ -14,7 +14,9 @@
     "pages/login/login",
     "pages/reset-password/reset-password",
     "pages/new-word-audit/new-word-audit",
-    "pages/correction-audit/correction-audit"
+    "pages/correction-audit/correction-audit",
+    "pages/feedback-menu/feedback-menu",
+    "pages/feedback/feedback"
   ],
   "tabBar": {
     "color": "#909399",

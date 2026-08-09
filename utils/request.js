@@ -72,7 +72,6 @@ function request(url, method = 'GET', data = {}, needAuth = true) {
     const token = getToken()
     if (needAuth && token) {
       header['Authorization'] = `Bearer ${token}`
-      console.log('请求携带 token:', url)
     }
 
     const baseUrl = getApiBaseUrl()
@@ -83,8 +82,6 @@ function request(url, method = 'GET', data = {}, needAuth = true) {
       data: data,
       header: header,
       success: (res) => {
-        console.log('请求成功:', url, res.statusCode)
-
         if (res.statusCode === 200) {
           resolve(res.data)
         } else if (res.statusCode === 401) {

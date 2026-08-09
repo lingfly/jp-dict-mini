@@ -233,6 +233,26 @@ const userApi = {
   }
 }
 
+/**
+ * 用户反馈 API（需要认证）
+ */
+const feedbackApi = {
+  // 提交反馈
+  create(data) {
+    return post('/api/feedback', data)
+  },
+
+  // 查看我的反馈列表
+  list(pageNum, pageSize) {
+    return get('/api/feedback/my', { pageNum, pageSize })
+  },
+
+  // 查看我的反馈详情
+  getDetail(feedbackId) {
+    return get(`/api/feedback/my/${feedbackId}`)
+  }
+}
+
 module.exports = {
   wordlistApi,
   reviewApi,
@@ -240,5 +260,6 @@ module.exports = {
   audioApi,
   authApi,
   userApi,
-  aiDictApi
+  aiDictApi,
+  feedbackApi
 }
