@@ -1,4 +1,58 @@
 /* pages/home/home.wxss */
+
+/* 自定义导航栏 */
+.custom-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 150;
+  background: #fff;
+}
+
+.custom-nav-bar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  position: relative;
+}
+
+.nav-back-btn {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.nav-back-btn::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-left: 2px solid #303133;
+  border-bottom: 2px solid #303133;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.nav-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 17px;
+  font-weight: 600;
+  color: #303133;
+  white-space: nowrap;
+}
+
+.nav-placeholder {
+  width: 48px;
+  flex-shrink: 0;
+}
+
 .home-page {
   padding: 16px;
   min-height: 100vh;
@@ -162,24 +216,6 @@
   padding-bottom: 65px;
 }
 
-.detail-top-bar {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 12px;
-  color: #909399;
-  font-size: 14px;
-  background: white;
-  border-radius: 8px;
-  height: auto;
-  line-height: 1;
-}
-
 .detail-content {
   position: relative;
 }
@@ -233,10 +269,6 @@
 
 .popup-menu-item:active {
   background: #F5F7FA;
-}
-
-.back-btn::after {
-  border: none;
 }
 
 .detail-content {

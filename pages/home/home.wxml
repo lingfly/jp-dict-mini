@@ -1,6 +1,17 @@
 <!-- pages/home/home.wxml -->
 <wxs module="helper" src="./helper.wxs"></wxs>
-<view class="home-page">
+
+<!-- 自定义导航栏 -->
+<view class="custom-nav" style="padding-top: {{statusBarHeight}}px;">
+  <view class="custom-nav-bar">
+    <view wx:if="{{wordDetail}}" class="nav-back-btn" bindtap="backToResults"></view>
+    <view wx:else class="nav-placeholder"></view>
+    <text class="nav-title">查词</text>
+    <view class="nav-placeholder"></view>
+  </view>
+</view>
+
+<view class="home-page" style="padding-top: {{statusBarHeight + 44 + 16}}px;">
   <!-- 搜索栏 -->
   <view class="search-section">
     <view class="search-bar">
@@ -84,12 +95,6 @@
 
   <!-- 单词详情 -->
   <view wx:elif="{{wordDetail}}" class="word-detail">
-    <view class="detail-top-bar">
-      <view class="back-btn" bindtap="backToResults">
-        ‹ 返回搜索结果
-      </view>
-    </view>
-
     <view class="detail-content card">
       <!-- 右上角更多菜单按钮 -->
       <view class="more-btn-wrap">

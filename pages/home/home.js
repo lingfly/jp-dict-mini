@@ -10,6 +10,7 @@ Page({
     recentSearches: ['ありがとう', '桜', '美味しい', '頑張る'],
     expandedSense: [0],
     currentAudio: null,
+    statusBarHeight: 20,
     // 加入词单弹窗
     showWordListPopup: false,
     myWordLists: [],
@@ -27,6 +28,9 @@ Page({
   onLoad() {
     this.loadDefaultWordListId()
     this.loadCollapseConfig()
+    // 获取状态栏高度用于自定义导航栏
+    const sysInfo = wx.getSystemInfoSync()
+    this.setData({ statusBarHeight: sysInfo.statusBarHeight || 20 })
   },
 
   /** 加载释义折叠配置 */
