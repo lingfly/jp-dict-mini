@@ -4,7 +4,7 @@
     <!-- Logo 和标题 -->
     <view class="login-header">
       <view class="logo">📚</view>
-      <text class="title">日语词典</text>
+      <text class="title">日语词卡</text>
       <text class="subtitle">科学记忆，高效学习</text>
     </view>
 

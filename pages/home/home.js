@@ -121,15 +121,11 @@ Page({
   selectWord(e) {
     const index = e.currentTarget.dataset.index
     const word = this.data.searchResults[index]
-    console.log('选中单词:', JSON.stringify(word, null, 2))
-    console.log('wordDetail.definitions:', word.definitions)
-    console.log('wordDetail.word:', word.word)
 
     // 深拷贝避免引用问题，并确保数据结构完整
     const wordDetail = JSON.parse(JSON.stringify(word))
     // 保存 AI 查词结果中的索引位置，用于反馈接口的 selectedIndex
     wordDetail._resultIndex = index
-    console.log('深拷贝后 wordDetail:', JSON.stringify(wordDetail, null, 2))
 
     // 根据配置决定释义是否默认展开
     const expandAll = !this.data.collapseDefinitionOnQuery
@@ -140,10 +136,6 @@ Page({
       wordDetail: wordDetail,
       expandedSense: initialExpanded,
       aiFeedbackDone: false // 重置反馈状态
-    }, () => {
-      // setData 回调中确认数据已更新
-      console.log('setData 完成, wordDetail:', this.data.wordDetail)
-      console.log('setData 完成, expandedSense:', this.data.expandedSense)
     })
   },
 
