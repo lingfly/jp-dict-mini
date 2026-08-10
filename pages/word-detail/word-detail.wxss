@@ -1,1 +1,240 @@
 /* pages/word-detail/word-detail.wxss */
+.detail-page {
+  min-height: 100vh;
+  background: #F5F7FA;
+  padding: 16px;
+}
+
+/* 加载状态 */
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 80px 0;
+  color: #909399;
+  font-size: 14px;
+}
+
+/* 单词详情 */
+.word-detail {
+  margin-top: 12px;
+}
+
+.detail-content {
+  padding: 16px;
+}
+
+.card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.word-info {
+  margin-bottom: 24px;
+}
+
+.word-main-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.word-title-wrap {
+  display: flex;
+  align-items: flex-start;
+}
+
+.word-main {
+  font-size: 32px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.word-accent {
+  font-size: 14px;
+  color: #606266;
+  margin-left: 4px;
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+.audio-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(91, 140, 125, 0.1);
+  font-size: 18px;
+}
+
+.word-kana {
+  font-size: 16px;
+  color: #909399;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.word-tags {
+  display: flex;
+  gap: 8px;
+}
+
+.word-tag {
+  padding: 4px 10px;
+  background: #F5F7FA;
+  color: #606266;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* 义项 */
+.sense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.sense-card {
+  border: 1px solid #E4E7ED;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.sense-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sense-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(91, 140, 125, 0.1);
+  color: #5B8C7D;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sense-header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sense-title {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.sense-toggle {
+  font-size: 12px;
+  color: #909399;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.sense-toggle.expanded {
+  transform: rotate(180deg);
+}
+
+.sense-body {
+  margin-top: 12px;
+}
+
+.sense-usage-wrap {
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.usage-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5B8C7D;
+}
+
+.sense-usage {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.sense-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.examples-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5B8C7D;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.sense-example-item {
+  padding: 8px 12px;
+  background: #F5F7FA;
+  border-radius: 4px;
+  border-left: 3px solid #5B8C7D;
+}
+
+.sense-example-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ex-jp {
+  font-size: 16px;
+  color: #303133;
+}
+
+.ex-kana {
+  font-size: 12px;
+  color: #909399;
+}
+
+.ex-cn {
+  font-size: 14px;
+  color: #606266;
+}
+
+.sense-note {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(91, 140, 125, 0.1);
+  border-left: 3px solid #5B8C7D;
+  border-radius: 4px;
+}
+
+.note-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5B8C7D;
+  margin-bottom: 4px;
+}
+
+.note-body {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+  display: block;
+}
+
+/* 日语字体 */
+.jp-text {
+  font-family: -apple-system, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+}

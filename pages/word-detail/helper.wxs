@@ -1,0 +1,21 @@
+// WXS 辅助函数
+// 判断数组中是否包含指定元素
+function includes(arr, item) {
+  if (!arr) return false
+  for (var i = 0; i < arr.length; i++) {
+    if (arr[i] === item) return true
+  }
+  return false
+}
+
+// 数字转圆圈数字 0-10
+var circleNums = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
+function toCircle(num) {
+  if (num >= 0 && num <= 10) return circleNums[num]
+  return num
+}
+
+module.exports = {
+  includes: includes,
+  toCircle: toCircle
+}

@@ -24,8 +24,8 @@ Page({
           learningConfig: {
             dailyNewWords: res.data.dailyNewWords || 10,
             voiceConfig: res.data.voiceConfig != null ? !!res.data.voiceConfig : false,
-            collapseDefinitionOnQuery: res.data.collapseDefinitionOnQuery || false,
-            collapseDefinitionOnReview: res.data.collapseDefinitionOnReview || false
+            collapseDefinitionOnQuery: res.data.collapseDefinitionOnQuery === 1,
+            collapseDefinitionOnReview: res.data.collapseDefinitionOnReview === 1
           },
           loading: false
         })
@@ -70,29 +70,31 @@ Page({
 
   // 切换查询时释义折叠
   async onToggleCollapseOnQuery(e) {
-    const value = e.detail.value
+    const boolValue = e.detail.value
+    const intValue = boolValue ? 1 : 0
     try {
-      const res = await userApi.updateCollapseDefinitionOnQuery(value)
+      const res = await userApi.updateCollapseDefinitionOnQuery(intValue)
       if (res.code === 200) {
-        this.setData({ 'learningConfig.collapseDefinitionOnQuery': value })
+        this.setData({ 'learningConfig.collapseDefinitionOnQuery': boolValue })
       }
     } catch (error) {
       console.error('更新查询时释义折叠失败:', error)
-      this.setData({ 'learningConfig.collapseDefinitionOnQuery': !value })
+      this.setData({ 'learningConfig.collapseDefinitionOnQuery': !boolValue })
     }
   },
 
   // 切换复习时释义折叠
   async onToggleCollapseOnReview(e) {
-    const value = e.detail.value
+    const boolValue = e.detail.value
+    const intValue = boolValue ? 1 : 0
     try {
-      const res = await userApi.updateCollapseDefinitionOnReview(value)
+      const res = await userApi.updateCollapseDefinitionOnReview(intValue)
       if (res.code === 200) {
-        this.setData({ 'learningConfig.collapseDefinitionOnReview': value })
+        this.setData({ 'learningConfig.collapseDefinitionOnReview': boolValue })
       }
     } catch (error) {
       console.error('更新复习时释义折叠失败:', error)
-      this.setData({ 'learningConfig.collapseDefinitionOnReview': !value })
+      this.setData({ 'learningConfig.collapseDefinitionOnReview': !boolValue })
     }
   }
 })

@@ -1,5 +1,5 @@
 // pages/home/home.js
-const { wordApi, audioApi, wordlistApi, aiDictApi } = require('../../utils/api')
+const { wordApi, audioApi, wordlistApi, aiDictApi, userApi } = require('../../utils/api')
 
 Page({
   data: {
@@ -17,11 +17,27 @@ Page({
     showAiSearch: false,
     aiStreaming: false,
     aiFeedbackDone: false,  // 防止重复提交反馈
-    isAiResult: false       // 当前搜索结果是否来自 AI 查词
+    isAiResult: false,      // 当前搜索结果是否来自 AI 查词
+    // 释义折叠配置
+    collapseDefinitionOnQuery: false
   },
 
   onLoad() {
     this.loadDefaultWordListId()
+    this.loadCollapseConfig()
+  },
+
+  /** 加载释义折叠配置 */
+  async loadCollapseConfig() {
+    try {
+      const res = await userApi.getLearningConfig()
+      if (res.code === 200 && res.data) {
+        const collapse = res.data.collapseDefinitionOnQuery === 1
+        this.setData({ collapseDefinitionOnQuery: collapse })
+      }
+    } catch (e) {
+      console.error('加载释义折叠配置失败:', e)
+    }
   },
 
   /** 加载并缓存默认词单（收藏夹）ID */
@@ -109,9 +125,14 @@ Page({
     wordDetail._resultIndex = index
     console.log('深拷贝后 wordDetail:', JSON.stringify(wordDetail, null, 2))
 
+    // 根据配置决定释义是否默认展开
+    const expandAll = !this.data.collapseDefinitionOnQuery
+    const definitions = wordDetail.definitions || []
+    const initialExpanded = expandAll ? definitions.map((_, i) => i) : []
+
     this.setData({
       wordDetail: wordDetail,
-      expandedSense: [0], // 默认展开第一个义项
+      expandedSense: initialExpanded,
       aiFeedbackDone: false // 重置反馈状态
     }, () => {
       // setData 回调中确认数据已更新

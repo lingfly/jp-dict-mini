@@ -96,13 +96,8 @@ function request(url, method = 'GET', data = {}, needAuth = true) {
             app.clearLoginInfo()
           }
 
-          // 自动重新登录（仅在 app 可用时）
+          // 自动重新登录（仅在 app 可用时），无感登录，不提示用户
           if (app && app.autoWechatLogin) {
-            wx.showToast({
-              title: '登录已过期，正在重新登录',
-              icon: 'none',
-              duration: 2000
-            })
             app.autoWechatLogin().then(() => {
               console.log('重新登录成功，重试请求')
               request(url, method, data, needAuth).then(resolve).catch(reject)

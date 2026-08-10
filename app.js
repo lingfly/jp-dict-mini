@@ -3,7 +3,7 @@ App({
   globalData: {
     token: null,
     userInfo: null,
-    apiBaseUrl: 'https://jp-cika.cn' // API 基础地址
+    apiBaseUrl: 'http://localhost:8080' // API 基础地址
   },
 
   onLaunch() {

@@ -1,5 +1,5 @@
 // pages/review-list/review-list.js
-const { reviewApi, wordApi } = require('../../utils/api')
+const { reviewApi, wordApi, userApi } = require('../../utils/api')
 
 Page({
   data: {
@@ -17,16 +17,30 @@ Page({
       remaining: 0
     },
     progressPercent: 0,
-    startTime: 0
+    startTime: 0,
+    collapseDefinitionOnReview: false
   },
 
   onLoad() {
+    this.loadCollapseConfig()
     this.initReview()
   },
 
   onShow() {
     // 每次显示时刷新今日复习数量
     this.fetchLearningStatus()
+  },
+
+  /** 加载释义折叠配置 */
+  async loadCollapseConfig() {
+    try {
+      const res = await userApi.getLearningConfig()
+      if (res.code === 200 && res.data) {
+        this.setData({ collapseDefinitionOnReview: res.data.collapseDefinitionOnReview === 1 })
+      }
+    } catch (e) {
+      console.error('加载释义折叠配置失败:', e)
+    }
   },
 
   /**
@@ -117,10 +131,15 @@ Page({
         // 加载单词详情
         const detail = await this.fetchWordDetail(data.wordId)
         if (detail && detail.word) {
+          // 根据配置决定释义是否默认展开
+          const definitions = detail.definitions || []
+          const expandAll = !this.data.collapseDefinitionOnReview
+          const initialExpanded = expandAll ? definitions.map((_, i) => i) : []
+
           this.setData({
             currentWord: detail.word,
             wordDetail: detail,
-            expandedSense: [],
+            expandedSense: initialExpanded,
             wordType: data.type,
             hint: data.hint || '',
             startTime: Date.now()
@@ -156,9 +175,14 @@ Page({
    * 切换答案显示
    */
   toggleAnswer() {
+    // 根据配置决定释义是否默认展开
+    const definitions = (this.data.wordDetail && this.data.wordDetail.definitions) || []
+    const expandAll = !this.data.collapseDefinitionOnReview
+    const initialExpanded = expandAll ? definitions.map((_, i) => i) : []
+
     this.setData({
       showAnswer: !this.data.showAnswer,
-      expandedSense: []
+      expandedSense: initialExpanded
     })
   },
 
