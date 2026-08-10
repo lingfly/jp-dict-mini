@@ -84,9 +84,9 @@
 
   <!-- 单词详情 -->
   <view wx:elif="{{wordDetail}}" class="word-detail">
-    <button wx:if="{{searchResults.length > 1 || wordDetail._fromAi}}" class="back-btn" bindtap="backToResults">
+    <view class="back-btn" bindtap="backToResults">
       ‹ 返回搜索结果
-    </button>
+    </view>
 
     <view class="detail-content card">
       <!-- 单词信息 -->
