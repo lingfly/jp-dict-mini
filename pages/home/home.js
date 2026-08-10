@@ -19,7 +19,9 @@ Page({
     aiFeedbackDone: false,  // 防止重复提交反馈
     isAiResult: false,      // 当前搜索结果是否来自 AI 查词
     // 释义折叠配置
-    collapseDefinitionOnQuery: false
+    collapseDefinitionOnQuery: false,
+    // 更多菜单
+    showMenu: false
   },
 
   onLoad() {
@@ -143,6 +145,26 @@ Page({
 
   backToResults() {
     this.setData({ wordDetail: null })
+  },
+
+  /** 切换更多菜单 */
+  showCorrectionMenu() {
+    this.setData({ showMenu: !this.data.showMenu })
+  },
+
+  /** 关闭菜单 */
+  closeMenu() {
+    this.setData({ showMenu: false })
+  },
+
+  /** 进入纠错页面 */
+  goCorrection() {
+    this.setData({ showMenu: false })
+    const wordId = this.data.wordDetail && this.data.wordDetail.word && this.data.wordDetail.word.id
+    if (!wordId) return
+    wx.navigateTo({
+      url: `/pages/correction/correction?wordId=${wordId}`
+    })
   },
 
   clearSearch() {

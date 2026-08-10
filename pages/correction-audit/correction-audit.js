@@ -1,6 +1,5 @@
 // pages/correction-audit/correction-audit.js
-const app = getApp()
-const { get, post } = require('../../utils/request')
+const { correctionApi } = require('../../utils/api')
 
 Page({
   data: {
@@ -12,12 +11,21 @@ Page({
     this.loadList()
   },
 
+  onShow() {
+    // 从详情页返回后刷新列表（仅在已加载过时刷新，避免 onLoad 重复）
+    if (this.data.list.length > 0 || !this.data.loading) {
+      this.loadList()
+    }
+  },
+
   async loadList() {
     this.setData({ loading: true })
     try {
-      const res = await get('/api/admin/audit/corrections')
+      const res = await correctionApi.listPending()
       if (res.code === 200) {
         this.setData({ list: res.data || [] })
+      } else {
+        wx.showToast({ title: res.message || '加载失败', icon: 'none' })
       }
     } catch (error) {
       console.error('加载纠错审核列表失败:', error)
@@ -27,31 +35,15 @@ Page({
     }
   },
 
-  async approve(e) {
-    const id = e.currentTarget.dataset.id
-    try {
-      const res = await post('/api/admin/audit/corrections/approve', { id })
-      if (res.code === 200) {
-        wx.showToast({ title: '已通过', icon: 'success' })
-        this.loadList()
-      }
-    } catch (error) {
-      console.error('审核操作失败:', error)
-      wx.showToast({ title: '操作失败', icon: 'none' })
-    }
-  },
-
-  async reject(e) {
-    const id = e.currentTarget.dataset.id
-    try {
-      const res = await post('/api/admin/audit/corrections/reject', { id })
-      if (res.code === 200) {
-        wx.showToast({ title: '已拒绝', icon: 'success' })
-        this.loadList()
-      }
-    } catch (error) {
-      console.error('审核操作失败:', error)
-      wx.showToast({ title: '操作失败', icon: 'none' })
-    }
+  /** 进入纠错详情 */
+  goDetail(e) {
+    const index = e.currentTarget.dataset.index
+    const item = this.data.list[index]
+    if (!item) return
+    // 将纠错数据编码传递到详情页
+    const data = encodeURIComponent(JSON.stringify(item))
+    wx.navigateTo({
+      url: `/pages/correction-audit-detail/correction-audit-detail?data=${data}`
+    })
   }
 })

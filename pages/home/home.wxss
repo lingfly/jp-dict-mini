@@ -162,17 +162,77 @@
   padding-bottom: 65px;
 }
 
+.detail-top-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .back-btn {
   display: inline-flex;
   align-items: center;
   padding: 8px 12px;
-  margin-bottom: 12px;
   color: #909399;
   font-size: 14px;
   background: white;
   border-radius: 8px;
   height: auto;
   line-height: 1;
+}
+
+.detail-content {
+  position: relative;
+}
+
+/* 更多按钮容器（绝对定位在卡片右上角） */
+.more-btn-wrap {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+}
+
+.more-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  border-radius: 6px;
+}
+
+.more-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #909399;
+}
+
+/* 弹出菜单 */
+.popup-menu {
+  position: absolute;
+  top: 0;
+  right: 40px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  white-space: nowrap;
+  z-index: 20;
+}
+
+.popup-menu-item {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #303133;
+  white-space: nowrap;
+}
+
+.popup-menu-item:active {
+  background: #F5F7FA;
 }
 
 .back-btn::after {

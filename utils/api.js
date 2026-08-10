@@ -5,7 +5,7 @@
  * - true（默认）: 需要 token 认证
  * - false: 不需要 token（如登录接口）
  */
-const { get, post, put } = require('./request')
+const { get, post, put, formPost } = require('./request')
 
 /**
  * 词单相关 API（需要认证）
@@ -253,6 +253,36 @@ const feedbackApi = {
   }
 }
 
+/**
+ * 纠错相关 API（需要认证）
+ */
+const correctionApi = {
+  // 提交单词基本信息纠错（multipart/form-data）
+  submitWord(data) {
+    return formPost('/api/correction/word', data)
+  },
+
+  // 提交释义纠错（JSON body）
+  submitDefinition(data) {
+    return post('/api/correction/definition', data)
+  },
+
+  // 获取待审核纠错列表
+  listPending() {
+    return get('/api/correction/pending')
+  },
+
+  // 审核通过纠错（form-data，可修改字段）
+  approve(correctionId, data) {
+    return formPost(`/api/correction/${correctionId}/approve`, data)
+  },
+
+  // 驳回纠错
+  reject(correctionId, reason) {
+    return post(`/api/correction/${correctionId}/reject`, { reason })
+  }
+}
+
 module.exports = {
   wordlistApi,
   reviewApi,
@@ -261,5 +291,6 @@ module.exports = {
   authApi,
   userApi,
   aiDictApi,
-  feedbackApi
+  feedbackApi,
+  correctionApi
 }

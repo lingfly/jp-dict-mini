@@ -84,11 +84,28 @@
 
   <!-- 单词详情 -->
   <view wx:elif="{{wordDetail}}" class="word-detail">
-    <view class="back-btn" bindtap="backToResults">
-      ‹ 返回搜索结果
+    <view class="detail-top-bar">
+      <view class="back-btn" bindtap="backToResults">
+        ‹ 返回搜索结果
+      </view>
     </view>
 
     <view class="detail-content card">
+      <!-- 右上角更多菜单按钮 -->
+      <view class="more-btn-wrap">
+        <view class="more-btn" bindtap="showCorrectionMenu">
+          <view class="more-dot"></view>
+          <view class="more-dot"></view>
+          <view class="more-dot"></view>
+        </view>
+        <!-- 弹出菜单 -->
+        <view wx:if="{{showMenu}}" class="popup-menu" catchtap="">
+          <view class="popup-menu-item" bindtap="goCorrection">
+            <text>单词纠错</text>
+          </view>
+        </view>
+      </view>
+
       <!-- 单词信息 -->
       <view class="word-info">
         <view class="word-main-row">

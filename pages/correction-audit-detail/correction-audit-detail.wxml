@@ -1,0 +1,103 @@
+<!--pages/correction-audit-detail/correction-audit-detail.wxml-->
+<view wx:if="{{item}}" class="detail-page">
+  <!-- 单词标题 -->
+  <view class="detail-header">
+    <text class="header-kanji">{{item.wordKanji}}</text>
+    <text wx:if="{{item.wordKana}}" class="header-kana">{{item.wordKana}}</text>
+  </view>
+
+  <!-- 原单词信息 vs 纠错信息 对比 -->
+  <view class="compare-section card">
+    <view class="section-title">基本信息对比</view>
+
+    <!-- 汉字 -->
+    <view class="compare-row">
+      <text class="compare-label">汉字</text>
+      <text class="compare-original">{{item.wordKanji}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction {{item.correctionKanji !== item.wordKanji ? 'changed' : ''}}">{{item.correctionKanji || item.wordKanji}}</text>
+    </view>
+
+    <!-- 假名 -->
+    <view class="compare-row">
+      <text class="compare-label">假名</text>
+      <text class="compare-original">{{item.wordKana}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction {{item.correctionKana !== item.wordKana ? 'changed' : ''}}">{{item.correctionKana || item.wordKana}}</text>
+    </view>
+
+    <!-- 罗马字 -->
+    <view wx:if="{{item.wordRomaji}}" class="compare-row">
+      <text class="compare-label">罗马字</text>
+      <text class="compare-original">{{item.wordRomaji}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction">-</text>
+    </view>
+
+    <!-- 音调 -->
+    <view class="compare-row">
+      <text class="compare-label">音调</text>
+      <text class="compare-original">{{item.wordAccent}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction {{item.correctionAccent !== item.wordAccent ? 'changed' : ''}}">{{item.correctionAccent != null ? item.correctionAccent : item.wordAccent}}</text>
+    </view>
+
+    <!-- 词性 -->
+    <view class="compare-row">
+      <text class="compare-label">词性</text>
+      <text class="compare-original">{{item.wordWordType || '-'}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction {{item.correctionWordType !== item.wordWordType ? 'changed' : ''}}">{{item.correctionWordType || item.wordWordType || '-'}}</text>
+    </view>
+
+    <!-- JLPT -->
+    <view wx:if="{{item.wordJlptLevel}}" class="compare-row">
+      <text class="compare-label">JLPT</text>
+      <text class="compare-original">{{item.wordJlptLevel}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction">-</text>
+    </view>
+  </view>
+
+  <!-- 纠错说明 -->
+  <view wx:if="{{item.remark}}" class="remark-section card">
+    <text class="section-title">纠错说明</text>
+    <text class="remark-text">{{item.remark}}</text>
+  </view>
+
+  <!-- 编辑面板 -->
+  <view class="edit-section card">
+    <view class="edit-toggle" bindtap="toggleEdit">
+      <text class="section-title">修改审核</text>
+      <text class="edit-arrow {{showEdit ? 'expanded' : ''}}">▼</text>
+    </view>
+    <view wx:if="{{showEdit}}" class="edit-form">
+      <view class="edit-item">
+        <text class="edit-label">汉字</text>
+        <input class="edit-input" value="{{editForm.kanji}}" data-field="kanji" bindinput="onEditInput" />
+      </view>
+      <view class="edit-item">
+        <text class="edit-label">假名</text>
+        <input class="edit-input" value="{{editForm.kana}}" data-field="kana" bindinput="onEditInput" />
+      </view>
+      <view class="edit-item">
+        <text class="edit-label">音调</text>
+        <input class="edit-input" value="{{editForm.accent}}" data-field="accent" bindinput="onEditInput" type="number" />
+      </view>
+      <view class="edit-item">
+        <text class="edit-label">词性</text>
+        <input class="edit-input" value="{{editForm.wordType}}" data-field="wordType" bindinput="onEditInput" />
+      </view>
+      <view class="edit-item">
+        <text class="edit-label">备注</text>
+        <textarea class="edit-textarea" value="{{editForm.remark}}" data-field="remark" bindinput="onEditInput" auto-height maxlength="500" />
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-bar">
+    <view class="btn btn-success" bindtap="approve">通过</view>
+    <view class="btn btn-danger" bindtap="reject">拒绝</view>
+  </view>
+</view>

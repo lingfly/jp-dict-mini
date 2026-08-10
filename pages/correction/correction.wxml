@@ -1,0 +1,58 @@
+<!--pages/correction/correction.wxml-->
+<view class="correction-page">
+  <view class="page-header">
+    <text class="page-title">单词纠错</text>
+    <text class="page-subtitle">纠错单词：{{wordInfo.kanji || wordInfo.kana}}</text>
+  </view>
+
+  <!-- 单词基本信息纠错 -->
+  <view class="correction-form">
+    <view class="form-item">
+      <text class="form-label">汉字 *</text>
+      <input class="form-input" value="{{wordForm.kanji}}" data-field="kanji" bindinput="onWordInput" placeholder="请输入正确的汉字" />
+    </view>
+    <view class="form-item">
+      <text class="form-label">假名 *</text>
+      <input class="form-input" value="{{wordForm.kana}}" data-field="kana" bindinput="onWordInput" placeholder="请输入正确的假名" />
+    </view>
+    <view class="form-item">
+      <text class="form-label">音调</text>
+      <input class="form-input" value="{{wordForm.accent}}" data-field="accent" bindinput="onWordInput" type="number" placeholder="音调数字，如 0、1" />
+    </view>
+    <view class="form-item">
+      <text class="form-label">词性</text>
+      <view class="word-type-select" bindtap="toggleWordTypeDropdown">
+        <text wx:if="{{selectedWordTypeLabels.length === 0}}" class="word-type-placeholder">请选择词性</text>
+        <view wx:else class="word-type-tags">
+          <text wx:for="{{selectedWordTypeLabels}}" wx:key="*this" class="word-type-tag">{{item}}</text>
+        </view>
+        <text class="word-type-arrow">▼</text>
+      </view>
+      <view wx:if="{{showWordTypeDropdown}}" class="word-type-dropdown" catchtap="">
+        <scroll-view scroll-y class="dropdown-scroll">
+          <view wx:for="{{wordTypeGroups}}" wx:key="name" class="dropdown-group">
+            <text class="dropdown-group-title">{{item.name}}</text>
+            <view
+              wx:for="{{item.options}}"
+              wx:key="value"
+              wx:for-item="opt"
+              class="word-type-option {{selectedWordTypes.indexOf(opt.value) > -1 ? 'checked' : ''}}"
+              data-value="{{opt.value}}"
+              data-label="{{opt.label}}"
+              bindtap="toggleWordType"
+            >
+              <text class="option-label">{{opt.label}}</text>
+              <text wx:if="{{selectedWordTypes.indexOf(opt.value) > -1}}" class="option-check">✓</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+    <view class="form-item">
+      <text class="form-label">补充说明</text>
+      <textarea class="form-textarea" value="{{wordForm.remark}}" data-field="remark" bindinput="onWordInput" placeholder="请说明需要纠正的内容及原因" auto-height maxlength="500" />
+    </view>
+
+    <button class="submit-btn" bindtap="submitWord" disabled="{{submitting}}" loading="{{submitting}}">提交纠错</button>
+  </view>
+</view>

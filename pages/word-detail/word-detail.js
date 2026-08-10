@@ -8,7 +8,8 @@ Page({
     wordDetail: null,
     expandedSense: [],
     currentAudio: null,
-    collapseDefinitionOnQuery: false
+    collapseDefinitionOnQuery: false,
+    showMenu: false
   },
 
   onLoad(options) {
@@ -57,6 +58,21 @@ Page({
       this.setData({ loading: false })
       wx.showToast({ title: '加载失败', icon: 'none' })
     }
+  },
+
+  /** 切换更多菜单 */
+  showCorrectionMenu() {
+    this.setData({ showMenu: !this.data.showMenu })
+  },
+
+  /** 进入纠错页面 */
+  goCorrection() {
+    this.setData({ showMenu: false })
+    const wordId = this.data.wordDetail && this.data.wordDetail.word && this.data.wordDetail.word.id
+    if (!wordId) return
+    wx.navigateTo({
+      url: `/pages/correction/correction?wordId=${wordId}`
+    })
   },
 
   toggleSense(e) {

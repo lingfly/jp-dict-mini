@@ -1,9 +1,8 @@
-<!-- pages/correction-audit/correction-audit.wxml -->
+<!--pages/correction-audit/correction-audit.wxml-->
 <view class="audit-page">
   <!-- 加载中 -->
-  <view wx:if="{{loading}}" class="loading-state card">
-    <view class="loading-icon">⏳</view>
-    <text class="loading-text">加载中...</text>
+  <view wx:if="{{loading}}" class="loading-state">
+    <text>加载中...</text>
   </view>
 
   <!-- 纠错审核列表 -->
@@ -12,36 +11,26 @@
       <text class="empty-text">暂无待审核的纠错</text>
     </view>
 
-    <view wx:for="{{list}}" wx:key="id" class="audit-card card">
-      <view class="audit-header">
-        <text class="word-kanji">{{item.kanji || item.word}}</text>
-        <text wx:if="{{item.kana}}" class="word-kana">{{item.kana}}</text>
+    <view
+      wx:for="{{list}}"
+      wx:key="id"
+      wx:for-item="item"
+      wx:for-index="idx"
+      class="audit-card card"
+      data-index="{{idx}}"
+      bindtap="goDetail"
+    >
+      <view class="audit-word">
+        <text class="word-kanji">{{item.wordKanji}}</text>
+        <text wx:if="{{item.wordKana}}" class="word-kana">{{item.wordKana}}</text>
       </view>
-
-      <!-- 纠错内容对比 -->
-      <view class="compare-section">
-        <view class="compare-row">
-          <text class="compare-label">原文：</text>
-          <text class="compare-content old">{{item.originalContent || '-'}}</text>
-        </view>
-        <view class="compare-row">
-          <text class="compare-label">建议：</text>
-          <text class="compare-content new">{{item.suggestedContent || '-'}}</text>
-        </view>
-        <view class="compare-row">
-          <text class="compare-label">字段：</text>
-          <text class="compare-content">{{item.field || '-'}}</text>
-        </view>
-        <view wx:if="{{item.reason}}" class="compare-row">
-          <text class="compare-label">原因：</text>
-          <text class="compare-content">{{item.reason}}</text>
-        </view>
+      <view class="audit-summary">
+        <text wx:if="{{item.correctionKanji && item.correctionKanji !== item.wordKanji}}" class="change-tag">汉字</text>
+        <text wx:if="{{item.correctionKana && item.correctionKana !== item.wordKana}}" class="change-tag">假名</text>
+        <text wx:if="{{item.correctionAccent != null && item.correctionAccent !== item.wordAccent}}" class="change-tag">音调</text>
+        <text wx:if="{{item.correctionWordType && item.correctionWordType !== item.wordWordType}}" class="change-tag">词性</text>
       </view>
-
-      <view class="audit-actions">
-        <button class="btn btn-success" bindtap="approve" data-id="{{item.id}}">通过</button>
-        <button class="btn btn-danger" bindtap="reject" data-id="{{item.id}}">拒绝</button>
-      </view>
+      <view class="audit-arrow">›</view>
     </view>
   </view>
 </view>

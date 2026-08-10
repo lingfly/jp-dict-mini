@@ -156,6 +156,75 @@ function post(url, data = {}, needAuth = true) {
 }
 
 /**
+ * POST 表单请求（multipart/form-data）
+ * @param {String} url - 请求路径
+ * @param {Object} data - 表单数据
+ * @param {Boolean} needAuth - 是否需要认证（默认 true）
+ */
+function formPost(url, data = {}, needAuth = true) {
+  const app = getAppInstance()
+
+  return new Promise((resolve, reject) => {
+    const header = {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    const token = getToken()
+    if (needAuth && token) {
+      header['Authorization'] = `Bearer ${token}`
+    }
+
+    // 将对象转为 URL 编码的 form data 字符串
+    const formData = Object.keys(data)
+      .filter(key => data[key] !== undefined && data[key] !== null)
+      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
+      .join('&')
+
+    const baseUrl = getApiBaseUrl()
+
+    wx.request({
+      url: `${baseUrl}${url}`,
+      method: 'POST',
+      data: formData,
+      header: header,
+      success: (res) => {
+        if (res.statusCode === 200) {
+          resolve(res.data)
+        } else if (res.statusCode === 401) {
+          _cachedToken = null
+          wx.removeStorageSync('token')
+          if (app && app.clearLoginInfo) {
+            app.clearLoginInfo()
+          }
+          if (app && app.autoWechatLogin) {
+            app.autoWechatLogin().then(() => {
+              formPost(url, data, needAuth).then(resolve).catch(reject)
+            }).catch(() => {
+              reject(new Error('重新登录失败'))
+            })
+          } else {
+            reject(new Error('登录已过期，请重新打开小程序'))
+          }
+        } else {
+          wx.showToast({
+            title: res.data.message || '请求失败',
+            icon: 'none'
+          })
+          reject(res)
+        }
+      },
+      fail: (err) => {
+        console.error('请求失败:', url, err)
+        wx.showToast({
+          title: '网络错误',
+          icon: 'none'
+        })
+        reject(err)
+      }
+    })
+  })
+}
+
+/**
  * PUT 请求
  * @param {String} url - 请求路径
  * @param {Object} data - 请求数据
@@ -169,6 +238,7 @@ module.exports = {
   request,
   get,
   post,
+  formPost,
   put,
   setApiBaseUrl
 }
