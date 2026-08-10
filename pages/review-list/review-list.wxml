@@ -40,7 +40,7 @@
           <view class="word-main-row">
             <view class="word-title-wrap">
               <text class="word-main jp-text">{{currentWord.kanji || currentWord.kana}}</text>
-              <text wx:if="{{currentWord.accent !== null && currentWord.accent !== undefined}}" class="word-accent">{{toCircle(currentWord.accent)}}</text>
+              <text wx:if="{{currentWord.accent !== null && currentWord.accent !== undefined}}" class="word-accent">{{helper.toCircle(currentWord.accent)}}</text>
             </view>
             <view wx:if="{{wordDetail.wordAudios && wordDetail.wordAudios.length > 0}}" class="audio-btn">
               🔊

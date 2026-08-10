@@ -7,6 +7,14 @@ function includes(arr, item) {
   return false
 }
 
+function toCircle(num) {
+  if (num === null || num === undefined) return ''
+  var circleNums = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
+  if (num >= 0 && num <= 10) return circleNums[num]
+  return '' + num
+}
+
 module.exports = {
-  includes: includes
+  includes: includes,
+  toCircle: toCircle
 }
