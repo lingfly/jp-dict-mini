@@ -16,8 +16,12 @@ Page({
     displayLearnedCount: 0  // 显示用的 n = 接口n + 当前勾选数
   },
 
+  /** 已加载的页码集合，用于随机选词时避免与顺序翻页冲突 */
+  loadedPages: new Set(),
+
   onLoad(options) {
     const wordListId = options.wordListId || ''
+    this.loadedPages = new Set()  // 每次进入页面重置已加载页码
     this.setData({ wordListId })
     if (wordListId) {
       this.loadDetail()
@@ -77,12 +81,18 @@ Page({
     if (this.data.loading) return
     if (isLoadMore && !this.data.hasMore) return
     const page = isLoadMore ? this.data.page + 1 : 1
+    if (this.loadedPages.has(page)) {
+      // 该页已通过随机加载过，跳过 API 调用，只需更新 page 和 hasMore
+      this.setData({ page, hasMore: this.data.words.length < this.data.total })
+      return
+    }
     this.setData({ loading: true })
     try {
       const res = await wordlistApi.getWords(this.data.wordListId, page, this.data.size)
       if (res.code === 200 && res.data) {
         const records = (res.data.records || []).map(w => ({ ...w, wordId: String(w.id || w.wordId) }))
         const newWords = isLoadMore ? [...this.data.words, ...records] : records
+        this.loadedPages.add(page)
         this.setData({
           words: newWords, page, total: res.data.total || 0,
           hasMore: newWords.length < (res.data.total || 0)
@@ -111,7 +121,7 @@ Page({
     return remain <= 0 ? 20 : remain
   },
 
-  /** 从未勾选+未在学的单词中取 N 个（顺序） */
+  /** 从未勾选+未在学的单词中取 N 个（顺序），每次重新替换之前的选择 */
   async startSequentialLearn() {
     const count = this.getPickCount()
     const { newIds, firstPickIndex } = await this.pickAvailableWords(count, false)
@@ -119,12 +129,12 @@ Page({
       wx.showToast({ title: '没有更多可选单词', icon: 'none' })
       return
     }
-    this.setData({ selectedWordIds: [...this.data.selectedWordIds, ...newIds] })
+    this.setData({ selectedWordIds: newIds })
     this.updateDisplayCount()
     this.scrollToWord(firstPickIndex)
   },
 
-  /** 从未勾选+未在学的单词中取 N 个（随机） */
+  /** 从未勾选+未在学的单词中取 N 个（随机），每次重新随机替换之前的选择 */
   async startRandomLearn() {
     const count = this.getPickCount()
     wx.showLoading({ title: '加载中...' })
@@ -134,12 +144,14 @@ Page({
       wx.showToast({ title: '没有更多可选单词', icon: 'none' })
       return
     }
-    this.setData({ selectedWordIds: [...this.data.selectedWordIds, ...newIds] })
+    this.setData({ selectedWordIds: newIds })
     this.updateDisplayCount()
     this.scrollToWord(firstPickIndex)
   },
 
   /** 从未勾选+未在学的单词中凑 count 个，不够则加载更多页
+   *  random=true 时：随机加载 n>3 页（非顺序），再从全局池中随机选
+   *  random=false 时：按顺序逐页加载
    *  返回 { newIds, firstPickIndex } */
   async pickAvailableWords(count, random) {
     const selectedSet = new Set(this.data.selectedWordIds)
@@ -147,26 +159,88 @@ Page({
 
     let words = [...this.data.words]
     let available = words.filter(isAvailable)
-    let p = this.data.page
-    let hasMore = this.data.hasMore
 
-    while (available.length < count && hasMore) {
-      p++
-      try {
-        const res = await wordlistApi.getWords(this.data.wordListId, p, this.data.size)
-        if (res.code === 200 && res.data) {
-          const records = (res.data.records || []).map(w => ({ ...w, wordId: String(w.id || w.wordId) }))
-          words = [...words, ...records]
-          hasMore = words.length < (res.data.total || 0)
-          available = words.filter(isAvailable)
-        } else {
-          break
+    if (random) {
+      // ========== 随机模式：随机加载多页 ==========
+      const totalPages = Math.ceil(this.data.total / this.data.size)
+      if (totalPages <= 1) {
+        // 只有一页，直接用现有数据随机选
+        const picked = this.shuffleArray(available).slice(0, count)
+        const newIds = picked.map(w => String(w.wordId))
+        let firstPickIndex = newIds.length > 0 ? words.findIndex(w => String(w.wordId) === newIds[0]) : -1
+        return { newIds, firstPickIndex }
+      }
+
+      // 需要加载的页数：至少 4 页，但不超过总页数；至少覆盖 count 个单词
+      const MIN_RANDOM_PAGES = 4
+      const pagesNeeded = Math.max(MIN_RANDOM_PAGES, Math.ceil(count / this.data.size))
+      const pagesToLoad = Math.min(pagesNeeded, totalPages)
+
+      // 生成候选页码：1..totalPages 中排除已加载的页，随机打乱后取前 pagesToLoad 个
+      const unloadedPages = []
+      for (let i = 1; i <= totalPages; i++) {
+        if (!this.loadedPages.has(i)) unloadedPages.push(i)
+      }
+      const shuffledPages = this.shuffleArray(unloadedPages)
+      const targetPages = shuffledPages.slice(0, Math.min(pagesToLoad, unloadedPages.length))
+
+      if (targetPages.length > 0) {
+        // 并行加载所有目标页
+        const pageResults = await Promise.all(
+          targetPages.map(async (p) => {
+            try {
+              const res = await wordlistApi.getWords(this.data.wordListId, p, this.data.size)
+              if (res.code === 200 && res.data) {
+                const records = (res.data.records || []).map(w => ({ ...w, wordId: String(w.id || w.wordId) }))
+                return { page: p, records }
+              }
+            } catch (e) { /* skip failed page */ }
+            return null
+          })
+        )
+
+        // 将加载结果插入 words（按页码排序），并标记已加载
+        const pageMap = {} // page -> records
+        for (const pr of pageResults) {
+          if (pr && pr.records.length > 0) {
+            pageMap[pr.page] = pr.records
+            this.loadedPages.add(pr.page)
+          }
         }
-      } catch (e) { break }
+
+        // 重建 words：按页码顺序合并已有数据和新增页数据
+        words = this.mergeWordsByPage(words, pageMap)
+        available = words.filter(isAvailable)
+      }
+    } else {
+      // ========== 顺序模式：逐页加载直到凑够 ==========
+      let p = this.data.page
+      let hasMore = this.data.hasMore
+
+      while (available.length < count && hasMore) {
+        p++
+        if (this.loadedPages.has(p)) {
+          // 已加载过，直接用缓存数据
+          hasMore = this.data.words.length < this.data.total
+          available = words.filter(isAvailable)
+          continue
+        }
+        try {
+          const res = await wordlistApi.getWords(this.data.wordListId, p, this.data.size)
+          if (res.code === 200 && res.data) {
+            const records = (res.data.records || []).map(w => ({ ...w, wordId: String(w.id || w.wordId) }))
+            words = [...words, ...records]
+            this.loadedPages.add(p)
+            hasMore = words.length < (res.data.total || 0)
+            available = words.filter(isAvailable)
+          } else { break }
+        } catch (e) { break }
+      }
     }
 
+    // 更新 words 到 data（如果 words 有变化）
     if (words.length > this.data.words.length) {
-      this.setData({ words, page: p, hasMore })
+      this.setData({ words })
     }
 
     const picked = random ? this.shuffleArray(available).slice(0, count) : available.slice(0, count)
@@ -179,6 +253,37 @@ Page({
     }
 
     return { newIds, firstPickIndex }
+  },
+
+  /**
+   * 将随机加载的页数据按页码合并到现有 words 数组中
+   * existingWords: 当前已顺序加载的单词列表（按页码连续）
+   * pageMap: { pageNum: [records] } 新加载的页数据
+   * 返回按页码全局排序的新数组
+   */
+  mergeWordsByPage(existingWords, pageMap) {
+    const size = this.data.size
+
+    // 如果没有新增页，直接返回
+    const newPageNums = Object.keys(pageMap).map(Number)
+    if (newPageNums.length === 0) return existingWords
+
+    // 按页码从大到小插入，避免索引偏移
+    const result = [...existingWords]
+    const sortedNewPages = newPageNums.sort((a, b) => b - a) // 降序
+
+    for (const pageNum of sortedNewPages) {
+      const records = pageMap[pageNum]
+      // 该页在全局列表中的起始索引
+      const insertIndex = (pageNum - 1) * size
+      if (insertIndex >= result.length) {
+        result.push(...records)
+      } else {
+        result.splice(insertIndex, 0, ...records)
+      }
+    }
+
+    return result
   },
 
   /** 滚动到指定单词位置 */
@@ -243,6 +348,7 @@ Page({
         wx.hideLoading()
         wx.showToast({ title: '已加入学习', icon: 'success' })
         // 刷新页面数据
+        this.loadedPages = new Set()
         this.setData({ selectedWordIds: [], page: 1, words: [] })
         await this.loadLearningStatus()
         this.loadDetail()
