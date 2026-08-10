@@ -3,7 +3,7 @@
  */
 
 // 用缓存存储 apiBaseUrl 和 token，避免依赖 getApp() 的模块加载时序问题
-let _cachedApiBaseUrl = 'http://localhost:8080'
+let _cachedApiBaseUrl = 'https://jp-cika.cn'
 let _cachedToken = wx.getStorageSync('token') || null
 
 /**
