@@ -18,7 +18,8 @@ Page({
     },
     progressPercent: 0,
     startTime: 0,
-    collapseDefinitionOnReview: false
+    collapseDefinitionOnReview: false,
+    showMenu: false
   },
 
   onLoad() {
@@ -290,5 +291,20 @@ Page({
    */
   startReview() {
     this.initReview()
+  },
+
+  /** 切换更多菜单 */
+  showCorrectionMenu() {
+    this.setData({ showMenu: !this.data.showMenu })
+  },
+
+  /** 进入纠错页面 */
+  goCorrection() {
+    this.setData({ showMenu: false })
+    const wordId = this.data.currentWord && this.data.currentWord.id
+    if (!wordId) return
+    wx.navigateTo({
+      url: `/pages/correction/correction?wordId=${wordId}`
+    })
   }
 })

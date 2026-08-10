@@ -101,6 +101,58 @@
 .word-card {
   padding: 16px;
   text-align: left;
+  position: relative;
+}
+
+/* 更多按钮容器（绝对定位在卡片右上角） */
+.more-btn-wrap {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+}
+
+.more-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  border-radius: 6px;
+}
+
+.more-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #909399;
+}
+
+/* 弹出菜单 */
+.popup-menu {
+  position: absolute;
+  top: 0;
+  right: 40px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  white-space: nowrap;
+  z-index: 20;
+}
+
+.popup-menu-item {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #303133;
+  white-space: nowrap;
+}
+
+.popup-menu-item:active {
+  background: #F5F7FA;
 }
 
 .word-question {
@@ -135,14 +187,14 @@
 
 /* 单词基本信息 */
 .word-info {
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .word-main-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .word-title-wrap {
@@ -151,13 +203,13 @@
 }
 
 .word-main {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   color: #303133;
 }
 
 .word-accent {
-  font-size: 13px;
+  font-size: 14px;
   color: #606266;
   margin-left: 4px;
   margin-top: 2px;
@@ -165,21 +217,21 @@
 }
 
 .audio-btn {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(91, 140, 125, 0.1);
-  font-size: 16px;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
 .word-answer-detail .word-kana {
-  font-size: 15px;
+  font-size: 16px;
   color: #909399;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   display: block;
 }
 
@@ -189,24 +241,24 @@
 }
 
 .word-tag {
-  padding: 2px 8px;
+  padding: 4px 10px;
   background: #F5F7FA;
   color: #606266;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* 义项列表 */
 .sense-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .sense-card {
   border: 1px solid #E4E7ED;
   border-radius: 8px;
-  padding: 10px;
+  padding: 12px;
 }
 
 .sense-header {
@@ -216,12 +268,12 @@
 }
 
 .sense-number {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: rgba(91, 140, 125, 0.1);
   color: #5B8C7D;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -235,13 +287,13 @@
 }
 
 .sense-title {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
   color: #303133;
 }
 
 .sense-toggle {
-  font-size: 11px;
+  font-size: 12px;
   color: #909399;
   transition: transform 0.2s;
   flex-shrink: 0;
@@ -252,42 +304,44 @@
 }
 
 .sense-body {
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .sense-usage-wrap {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   line-height: 1.6;
 }
 
 .usage-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #5B8C7D;
 }
 
 .sense-usage {
-  font-size: 13px;
+  font-size: 16px;
   color: #606266;
   line-height: 1.6;
+  margin-bottom: 12px;
+  display: block;
 }
 
 .sense-examples {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .examples-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #5B8C7D;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
   display: block;
 }
 
 .sense-example-item {
-  padding: 8px 10px;
+  padding: 8px 12px;
   background: #F5F7FA;
   border-radius: 4px;
   border-left: 3px solid #5B8C7D;
@@ -296,41 +350,41 @@
 .sense-example-text {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .ex-jp {
-  font-size: 14px;
+  font-size: 16px;
   color: #303133;
 }
 
 .ex-kana {
-  font-size: 11px;
+  font-size: 12px;
   color: #909399;
 }
 
 .ex-cn {
-  font-size: 13px;
+  font-size: 14px;
   color: #606266;
 }
 
 .sense-note {
-  margin-top: 10px;
-  padding: 6px 10px;
+  margin-top: 12px;
+  padding: 8px 12px;
   background: rgba(91, 140, 125, 0.1);
   border-left: 3px solid #5B8C7D;
   border-radius: 4px;
 }
 
 .note-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #5B8C7D;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .note-body {
-  font-size: 13px;
+  font-size: 14px;
   color: #606266;
   line-height: 1.6;
   display: block;
