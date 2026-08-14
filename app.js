@@ -6,6 +6,9 @@ App({
     apiBaseUrl: 'https://jp-cika.cn' // API 基础地址
   },
 
+  // 登录去重锁：缓存在进行的登录 Promise，避免并发重复登录
+  _loginPromise: null,
+
   onLaunch() {
     console.log('小程序启动')
 
@@ -42,9 +45,36 @@ App({
   },
 
   /**
-   * 自动微信登录（静默登录）
+   * 等待登录完成（页面/请求在需要 token 前调用，避免未登录时发请求导致 401 重复登录）
+   * @returns {Promise<void>}
    */
-  async autoWechatLogin() {
+  waitForLogin() {
+    if (this.isLoggedIn()) {
+      return Promise.resolve()
+    }
+    // 有正在进行的登录则复用，否则启动一次
+    return this._loginPromise || this.autoWechatLogin()
+  },
+
+  /**
+   * 自动微信登录（静默登录）
+   * 带并发去重锁：多次调用共享同一个 in-flight Promise，避免并发重复登录
+   * @returns {Promise<void>}
+   */
+  autoWechatLogin() {
+    if (this._loginPromise) {
+      return this._loginPromise
+    }
+    this._loginPromise = this._doAutoLogin().finally(() => {
+      this._loginPromise = null
+    })
+    return this._loginPromise
+  },
+
+  /**
+   * 实际执行微信登录
+   */
+  async _doAutoLogin() {
     try {
       console.log('开始自动登录...')
 

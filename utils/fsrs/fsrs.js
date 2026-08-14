@@ -125,7 +125,7 @@ function formatDueText(dueTs, nowMs) {
   const diffMs = dueTs - nowMs
   const minutes = Math.round(diffMs / 60000)
   if (minutes <= 0) return '立即'
-  if (minutes < 60) return `${minutes}分钟后`
+  if (minutes < 60) return '今天'
   const hours = Math.round(minutes / 60)
   if (hours < 24) return `${hours}小时后`
   const days = Math.round(hours / 24)

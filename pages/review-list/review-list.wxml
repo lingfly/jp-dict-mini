@@ -112,10 +112,10 @@
       </view>
     </view>
 
-    <!-- 显示答案按钮 -->
-    <button wx:if="{{!showAnswer}}" class="show-answer-btn btn btn-primary" bindtap="toggleAnswer">
-      显示答案
-    </button>
+    <!-- 下方空白点击区域（问题阶段点击显示答案） -->
+    <view wx:if="{{!showAnswer}}" class="blank-tap-area" bindtap="onCardTap">
+      <text class="blank-tap-hint">点击空白处显示答案</text>
+    </view>
   </view>
 
   <!-- 评分按钮 — 固定悬浮底部 -->

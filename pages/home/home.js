@@ -25,12 +25,16 @@ Page({
     showMenu: false
   },
 
-  onLoad() {
-    this.loadDefaultWordListId()
-    this.loadCollapseConfig()
-    // 获取状态栏高度用于自定义导航栏
+  async onLoad() {
+    // 获取状态栏高度用于自定义导航栏（不依赖登录，立即执行）
     const sysInfo = wx.getSystemInfoSync()
     this.setData({ statusBarHeight: sysInfo.statusBarHeight || 20 })
+
+    // 等待登录完成，再发需要 token 的请求，避免未登录时 401 触发重复登录
+    await getApp().waitForLogin()
+
+    this.loadDefaultWordListId()
+    this.loadCollapseConfig()
   },
 
   /** 加载释义折叠配置 */

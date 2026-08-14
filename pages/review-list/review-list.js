@@ -212,6 +212,16 @@ Page({
   },
 
   /**
+   * 点击下方空白处（问题阶段）显示答案
+   */
+  onCardTap() {
+    // 只在未显示答案时响应，避免答案阶段误触发
+    if (!this.data.showAnswer) {
+      this.toggleAnswer()
+    }
+  },
+
+  /**
    * 切换答案显示
    */
   toggleAnswer() {
