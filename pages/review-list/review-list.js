@@ -1,5 +1,7 @@
 // pages/review-list/review-list.js
-const { reviewApi, wordApi, userApi } = require('../../utils/api')
+const { wordApi, userApi } = require('../../utils/api')
+const fsrs = require('../../utils/fsrs/fsrs')
+const dataSource = require('../../utils/fsrs/dataSource')
 
 Page({
   data: {
@@ -19,8 +21,15 @@ Page({
     progressPercent: 0,
     startTime: 0,
     collapseDefinitionOnReview: false,
-    showMenu: false
+    showMenu: false,
+    ratingPreviews: [] // 四级评分对应的下次复习时间
   },
+
+  // 本地 FSRS 队列调度状态
+  queue: [], // [{ wordId, type, fsrsCard, word }]
+  queueIndex: 0, // 当前指针
+  initialTotal: 0, // 初始队列长度（当天应复习卡片数）
+  completedCount: 0, // 已毕业（移出队列）卡片数
 
   onLoad() {
     this.loadCollapseConfig()
@@ -45,17 +54,33 @@ Page({
   },
 
   /**
-   * 初始化复习流程
+   * 初始化复习流程：批量拉取当天卡片，构建本地 FSRS 队列
    */
   async initReview() {
     this.setData({ loading: true })
 
     try {
-      // 并行获取学习状态和第一个复习单词
-      await Promise.all([
-        this.fetchLearningStatus(),
-        this.fetchNextWord()
-      ])
+      const res = await dataSource.getDueCards()
+      const data = res.data || {}
+      const cards = data.cards || []
+
+      // 按 due 升序排序，组成待复习队列
+      this.queue = cards.slice().sort((a, b) => (a.fsrsCard.due || 0) - (b.fsrsCard.due || 0))
+      this.queueIndex = 0
+      this.initialTotal = this.queue.length
+      this.completedCount = 0
+
+      this.updateStats()
+
+      // 队列为空 → 显示空闲/完成态
+      if (this.queue.length === 0) {
+        this.setData({ currentWord: null, wordDetail: null })
+      } else {
+        await this.showCurrentCard()
+      }
+
+      // 刷新角标
+      this.fetchLearningStatus()
     } catch (error) {
       console.error('初始化复习失败:', error)
       wx.showToast({
@@ -68,11 +93,65 @@ Page({
   },
 
   /**
+   * 展示队列当前卡片
+   * @returns {Boolean} 是否有可展示的卡片
+   */
+  async showCurrentCard() {
+    if (this.queueIndex >= this.queue.length) {
+      this.setData({ currentWord: null, wordDetail: null })
+      this.updateStats()
+      return false
+    }
+
+    const item = this.queue[this.queueIndex]
+
+    // 单词详情：mock 卡片内嵌平铺结构（word + definitions）；真实接口为 { word, definitions, ... }
+    let currentWord = null
+    let wordDetail = null
+    if (item.word && item.word.definitions) {
+      currentWord = item.word
+      wordDetail = item.word
+    } else {
+      const detail = await this.fetchWordDetail(item.wordId)
+      if (detail && detail.word) {
+        currentWord = detail.word
+        wordDetail = detail
+      }
+    }
+
+    if (!currentWord) {
+      // 单词详情获取失败，跳过这张卡
+      this.queue.splice(this.queueIndex, 1)
+      return this.showCurrentCard()
+    }
+
+    // 根据配置决定释义是否默认展开
+    const definitions = wordDetail.definitions || []
+    const expandAll = !this.data.collapseDefinitionOnReview
+    const initialExpanded = expandAll ? definitions.map((_, i) => i) : []
+
+    // 预计算四级评分对应的下次复习时间（用于评分按钮下方展示）
+    const ratingPreviews = fsrs.getRatingPreviews(item.fsrsCard, new Date())
+
+    this.setData({
+      currentWord,
+      wordDetail,
+      expandedSense: initialExpanded,
+      wordType: item.type,
+      hint: '',
+      showAnswer: false,
+      startTime: Date.now(),
+      ratingPreviews
+    })
+    return true
+  },
+
+  /**
    * 获取学习状态（今日需复习数量）
    */
   async fetchLearningStatus() {
     try {
-      const res = await reviewApi.getLearningStatus()
+      const res = await dataSource.getLearningStatus()
 
       if (res.code === 200) {
         const data = res.data
@@ -98,65 +177,6 @@ Page({
   },
 
   /**
-   * 获取下一个复习单词
-   */
-  async fetchNextWord() {
-    try {
-      const res = await reviewApi.getNextWord()
-
-      if (res.code === 200) {
-        const data = res.data
-
-        // 更新进度统计
-        const stats = {
-          total: data.progress ? data.progress.total : 0,
-          completed: data.progress ? data.progress.completed : 0,
-          remaining: data.progress ? data.progress.remaining : 0
-        }
-
-        const percent = stats.total > 0
-          ? Math.round((stats.completed / stats.total) * 100)
-          : 0
-
-        this.setData({
-          todayStats: stats,
-          progressPercent: percent
-        })
-
-        // 检查是否全部完成
-        if (data.type === 'COMPLETED' || !data.wordId) {
-          this.setData({ currentWord: null })
-          return false
-        }
-
-        // 加载单词详情
-        const detail = await this.fetchWordDetail(data.wordId)
-        if (detail && detail.word) {
-          // 根据配置决定释义是否默认展开
-          const definitions = detail.definitions || []
-          const expandAll = !this.data.collapseDefinitionOnReview
-          const initialExpanded = expandAll ? definitions.map((_, i) => i) : []
-
-          this.setData({
-            currentWord: detail.word,
-            wordDetail: detail,
-            expandedSense: initialExpanded,
-            wordType: data.type,
-            hint: data.hint || '',
-            startTime: Date.now()
-          })
-          return true
-        }
-      }
-
-      return false
-    } catch (error) {
-      console.error('获取下一个单词失败:', error)
-      throw error
-    }
-  },
-
-  /**
    * 获取单词详情
    */
   async fetchWordDetail(wordId) {
@@ -170,6 +190,25 @@ Page({
       console.error('获取单词详情失败:', error)
       return null
     }
+  },
+
+  /**
+   * 更新进度统计
+   */
+  updateStats() {
+    const remaining = Math.max(0, this.queue.length - this.queueIndex)
+    const percent = this.initialTotal > 0
+      ? Math.round((this.completedCount / this.initialTotal) * 100)
+      : 0
+
+    this.setData({
+      todayStats: {
+        total: this.initialTotal,
+        completed: this.completedCount,
+        remaining
+      },
+      progressPercent: percent
+    })
   },
 
   /**
@@ -200,52 +239,93 @@ Page({
   },
 
   /**
-   * 数字转圆圈数字（音调）
-   */
-  toCircle(num) {
-    const circleNums = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
-    if (num >= 0 && num <= 10) return circleNums[num]
-    return String(num)
-  },
-
-  /**
-   * 处理评分
+   * 处理评分（FSRS 核心调度）
    */
   async handleScore(e) {
-    const score = parseInt(e.currentTarget.dataset.score)
-    if (!this.data.currentWord) return
+    const rating = parseInt(e.currentTarget.dataset.score) // 0=忘记 1=模糊 2=认识 3=简单
+    if (this.queueIndex >= this.queue.length) return
 
+    const item = this.queue[this.queueIndex]
+    const now = new Date()
     const responseTimeMs = Date.now() - this.data.startTime
 
     this.setData({ loading: true })
 
     try {
-      const res = await reviewApi.submitReview({
-        wordId: this.data.currentWord.id,
-        score: score,
-        responseTimeMs: responseTimeMs
+      // 1. FSRS 计算新状态
+      const result = fsrs.scheduleNext(item.fsrsCard, rating, now)
+      const newCard = result.card
+
+      console.log('[handleScore] card:', JSON.stringify(newCard))
+      console.log('[handleScore] log:', JSON.stringify(result.log))
+
+      // 2. 上报复习结果到后端（评分 + FSRS 新状态）
+      const res = await dataSource.submitReview({
+        wordId: item.wordId,
+        rating,
+        responseTimeMs,
+        card: newCard,
+        log: result.log
       })
 
-      if (res.code === 200) {
-        // 重置答案显示状态
-        this.setData({ showAnswer: false })
-
-        // 刷新学习状态（更新角标）
-        this.fetchLearningStatus()
-
-        // 获取下一个单词
-        const hasNext = await this.fetchNextWord()
-        if (!hasNext) {
+      // 3. 处理后端返回（幂等/冲突），确定本次生效的卡片状态
+      //    - 正常：后端 card 即本地提交的 newCard（仅持久化，不重算）
+      //    - conflict：跨设备冲突，本地快照已过期，以库中最新 card 为准
+      //    - duplicated：幂等命中（网络重试），后端已入库，按成功继续
+      const serverData = (res && res.data) || {}
+      let effectiveCard = newCard
+      if (serverData.card) {
+        effectiveCard = serverData.card
+        if (serverData.conflict) {
+          console.warn('[handleScore] 跨设备冲突，已使用库中最新状态:', JSON.stringify(effectiveCard))
           wx.showToast({
-            title: '今日复习完成',
-            icon: 'success'
+            title: '已同步最新复习状态',
+            icon: 'none'
           })
+        } else if (serverData.duplicated) {
+          console.log('[handleScore] 重复提交（幂等命中），跳过重复处理')
         }
-      } else {
-        wx.showToast({
-          title: res.message || '提交失败',
-          icon: 'none'
+      }
+
+      // 4. 队列调度（基于最终生效的卡片状态）
+      //    移出当前卡片
+      this.queue.splice(this.queueIndex, 1)
+
+      //    判断：进入 Review 长期记忆 → 当天毕业，移出队列
+      //    判断：Learning/Relearning 短间隔（scheduled_days === 0）→ 按"卡片数"重新插入
+      const isLongTerm = effectiveCard.state === fsrs.State.Review && effectiveCard.scheduled_days > 0
+      const isShortTerm = effectiveCard.state === fsrs.State.Learning || effectiveCard.state === fsrs.State.Relearning
+
+      if (isLongTerm) {
+        // 当天毕业
+        this.completedCount++
+      } else if (isShortTerm || effectiveCard.scheduled_days === 0) {
+        // 短间隔：分钟 → 卡片数偏移（1 分钟 = 1 卡片）
+        const offset = fsrs.calcCardOffset(effectiveCard, now.getTime())
+        // 最近优先：偏移超出剩余卡片数时插入队尾
+        const insertPos = Math.min(this.queue.length, this.queueIndex + offset)
+        this.queue.splice(insertPos, 0, {
+          wordId: item.wordId,
+          type: item.type,
+          fsrsCard: effectiveCard,
+          word: item.word // 保留单词数据，mock 模式下短间隔卡再次出现直接可用
         })
+      } else {
+        // 其它情况（如 scheduled_days > 0 但非 Review）视为毕业
+        this.completedCount++
+      }
+
+      this.updateStats()
+
+      // 4. 展示下一张卡片
+      const hasNext = await this.showCurrentCard()
+      if (!hasNext) {
+        wx.showToast({
+          title: '今日复习完成',
+          icon: 'success'
+        })
+        // 刷新角标
+        this.fetchLearningStatus()
       }
     } catch (error) {
       console.error('提交评分失败:', error)

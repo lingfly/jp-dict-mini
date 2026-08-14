@@ -408,9 +408,11 @@
 .score-btn {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 14px 12px;
+  gap: 4px;
+  padding: 12px 8px;
   border-radius: 12px;
   transition: all 0.2s;
 }
@@ -443,10 +445,23 @@
   background: rgba(103, 194, 58, 0.22);
 }
 
+.score-btn.easy {
+  background: rgba(64, 158, 255, 0.12);
+}
+
+.score-btn.easy:active {
+  background: rgba(64, 158, 255, 0.22);
+}
+
 .score-label {
   font-size: 15px;
   font-weight: 500;
   color: #303133;
+}
+
+.score-next {
+  font-size: 11px;
+  color: #909399;
 }
 
 /* 显示答案按钮 */

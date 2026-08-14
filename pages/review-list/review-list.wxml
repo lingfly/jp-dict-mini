@@ -122,12 +122,19 @@
   <view wx:if="{{showAnswer}}" class="score-bar">
     <view class="score-btn forget" bindtap="handleScore" data-score="0">
       <text class="score-label">忘记</text>
+      <text class="score-next">{{ratingPreviews[0].text}}</text>
     </view>
     <view class="score-btn vague" bindtap="handleScore" data-score="1">
       <text class="score-label">模糊</text>
+      <text class="score-next">{{ratingPreviews[1].text}}</text>
     </view>
     <view class="score-btn know" bindtap="handleScore" data-score="2">
       <text class="score-label">认识</text>
+      <text class="score-next">{{ratingPreviews[2].text}}</text>
+    </view>
+    <view class="score-btn easy" bindtap="handleScore" data-score="3">
+      <text class="score-label">简单</text>
+      <text class="score-next">{{ratingPreviews[3].text}}</text>
     </view>
   </view>
 </view>

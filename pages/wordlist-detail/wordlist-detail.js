@@ -1,5 +1,5 @@
 // pages/wordlist-detail/wordlist-detail.js
-const { wordlistApi, reviewApi } = require('../../utils/api')
+const { wordlistApi, reviewApi, fsrsApi } = require('../../utils/api')
 
 Page({
   data: {
@@ -343,10 +343,19 @@ Page({
     }
     wx.showLoading({ title: '提交中...' })
     try {
-      const res = await reviewApi.selectNewWords(this.data.wordListId, this.data.selectedWordIds)
+      // 批量创建 FSRS 学习卡：POST /api/fsrs/cards（幂等，已存在的跳过）
+      // 保持字符串传参：wordId 可能超 JS 安全整数（后端 ToStringSerializer），Jackson 字符串→Long 无损
+      const res = await fsrsApi.addCards(this.data.selectedWordIds)
       if (res.code === 200) {
         wx.hideLoading()
-        wx.showToast({ title: '已加入学习', icon: 'success' })
+        // FsrsBatchAddCardResponse：{ total, created, skipped, cards }
+        const batch = res.data || {}
+        const skipped = batch.skipped || 0
+        console.log('[submitSelection] 批量加卡成功:', JSON.stringify(batch))
+        wx.showToast({
+          title: skipped > 0 ? `已加入学习（${skipped}个已在学习中）` : '已加入学习',
+          icon: 'none'
+        })
         // 刷新页面数据
         this.loadedPages = new Set()
         this.setData({ selectedWordIds: [], page: 1, words: [] })

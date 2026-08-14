@@ -63,7 +63,50 @@ const wordlistApi = {
 }
 
 /**
+ * FSRS 复习 API（需要认证）
+ * 对应后端 FsrsReviewController：
+ * - GET  /api/fsrs/due-count?endTs=  查询当天待复习单词总数（用于角标/入口展示）
+ * - GET  /api/fsrs/due?endTs=        查询当天全部待复习卡片（进入复习后拉取）
+ * - GET  /api/fsrs/card/{wordId}     查询单词 FSRS 卡片状态
+ * - POST /api/fsrs/review            提交复习结果（评分 + FSRS 新状态）
+ *
+ * endTs：本地时区当天 23:59:59.999（Unix 毫秒）
+ */
+const fsrsApi = {
+  // 提交 FSRS 复习结果
+  submitReview(data) {
+    return post('/api/fsrs/review', data) // 需要 token
+  },
+
+  // 添加单个新词（创建 FSRS 学习卡，幂等：已存在返回已有卡片）
+  addCard(wordId) {
+    return post('/api/fsrs/card', { wordId }) // 需要 token
+  },
+
+  // 批量添加新词（创建 FSRS 学习卡，幂等：已存在的跳过）
+  addCards(wordIds) {
+    return post('/api/fsrs/cards', { wordIds }) // 需要 token
+  },
+
+  // 查询某单词的 FSRS 卡片状态
+  getCard(wordId) {
+    return get(`/api/fsrs/card/${wordId}`) // 需要 token
+  },
+
+  // 查询当天所有需要复习的单词卡片
+  getDueCards(endTs) {
+    return get('/api/fsrs/due', { endTs }) // 需要 token
+  },
+
+  // 查询当天需要复习的单词总数
+  getDueCount(endTs) {
+    return get('/api/fsrs/due-count', { endTs }) // 需要 token
+  }
+}
+
+/**
  * 复习相关 API（需要认证）
+ * 注意：以下为旧接口（/api/review/*），新流程统一走 fsrsApi
  */
 const reviewApi = {
   // 获取下一个单词（实时查询）
@@ -71,7 +114,12 @@ const reviewApi = {
     return get('/api/review/next-word') // 需要 token
   },
 
-  // 提交复习结果
+  // 批量获取当天待复习卡片（新词 + 到期卡，含 FSRS 状态）
+  getDueCards() {
+    return get('/api/review/due-cards') // 需要 token
+  },
+
+  // 提交复习结果（rating 0-3，card/log 为 FSRS 新状态）
   submitReview(data) {
     return post('/api/review/submit', data) // 需要 token
   },
@@ -285,6 +333,7 @@ const correctionApi = {
 
 module.exports = {
   wordlistApi,
+  fsrsApi,
   reviewApi,
   wordApi,
   audioApi,

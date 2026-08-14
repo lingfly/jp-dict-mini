@@ -26,8 +26,8 @@ App({
    */
   async updateReviewBadge() {
     try {
-      const { reviewApi } = require('./utils/api')
-      const res = await reviewApi.getLearningStatus()
+      const dataSource = require('./utils/fsrs/dataSource')
+      const res = await dataSource.getLearningStatus()
       if (res.code === 200 && res.data.dueCount > 0) {
         wx.setTabBarBadge({
           index: 2,
