@@ -1,0 +1,181 @@
+/* pages/review-forecast/review-forecast.wxss */
+.forecast-page {
+  padding: 16px;
+  min-height: 100vh;
+  background: #F5F7FA;
+}
+
+.chart-card {
+  padding: 24px 16px 16px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* 图表容器：纵坐标 + 可横向滚动柱状图 */
+.chart-wrap {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 16px;
+}
+
+.y-axis {
+  width: 48rpx;
+  height: 720rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-right: 12rpx;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.y-tick {
+  font-size: 18rpx;
+  color: #C0C4CC;
+  line-height: 1;
+}
+
+/* 柱状图滚动区域 */
+.chart-scroll {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 柱状图区域 */
+.chart {
+  display: flex;
+  align-items: flex-start;
+}
+
+.bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* 绘图区：顶部/底部边框 + 中间 8 条横线（间隔 80rpx）+ 列间竖线 */
+.bar-area {
+  width: 100%;
+  height: 720rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  box-sizing: border-box;
+  border-top: 1rpx solid #F0F2F5;
+  border-bottom: 1rpx solid #F0F2F5;
+  border-left: 1rpx solid #F0F2F5;
+  background-image: linear-gradient(to bottom, #F0F2F5 1rpx, transparent 1rpx);
+  background-size: 100% 80rpx;
+  background-repeat: repeat-y;
+}
+
+.bar-seg {
+  width: 70%;
+  min-width: 4rpx;
+}
+
+/* 段色：自下而上 新学(绿) / 复习(绿) / 模糊(黄) / 待学(浅黄) / 忘记(红) */
+.seg-new {
+  background: #A8C7BD;
+  border-radius: 4rpx 4rpx 0 0;
+}
+
+.seg-review {
+  background: #5B8C7D;
+}
+
+.seg-hard {
+  background: #E6A23C;
+}
+
+.seg-due {
+  background: #C0C4CC;
+}
+
+.seg-forgot {
+  background: #E15A5A;
+}
+
+/* 横坐标竖排标签 */
+.bar-label {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rpx;
+}
+
+.bar-label-char {
+  font-size: 16rpx;
+  color: #909399;
+  line-height: 1.2;
+}
+
+.label-today .bar-label-char {
+  color: #5B8C7D;
+  font-weight: 600;
+}
+
+/* 图例 */
+.legend {
+  margin-top: 32rpx;
+  padding: 0 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32rpx;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.legend-dot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 4rpx;
+  flex-shrink: 0;
+}
+
+.dot-new {
+  background: #A8C7BD;
+}
+
+.dot-review {
+  background: #5B8C7D;
+}
+
+.dot-hard {
+  background: #E6A23C;
+}
+
+.dot-due {
+  background: #C0C4CC;
+}
+
+.dot-forgot {
+  background: #E15A5A;
+}
+
+.legend-text {
+  font-size: 22rpx;
+  color: #606266;
+}
+
+.chart-empty {
+  padding: 48px 0;
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
+}

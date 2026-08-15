@@ -1,0 +1,59 @@
+<!-- pages/review-forecast/review-forecast.wxml -->
+<view class="forecast-page">
+  <view class="chart-card card">
+    <view wx:if="{{loading}}" class="chart-empty">加载中...</view>
+    <view wx:elif="{{bars.length === 0}}" class="chart-empty">暂无学习记录</view>
+    <view wx:else>
+      <!-- 图表：左侧纵坐标 + 可横向滚动的柱状图 -->
+      <view class="chart-wrap">
+        <view class="y-axis">
+          <text class="y-tick" wx:for="{{yTicks}}" wx:key="*this">{{item}}</text>
+        </view>
+        <scroll-view class="chart-scroll" scroll-x enhanced show-scrollbar="{{false}}" scroll-left="{{scrollLeft}}">
+          <view class="chart" style="width: {{chartWidth}}rpx;">
+            <view class="bar-col" wx:for="{{bars}}" wx:key="date" style="width: {{barWidth}}rpx;">
+              <view class="bar-area">
+                <view class="bar-seg seg-forgot" wx:if="{{item.forgotH > 0}}" style="height: {{item.forgotH}}rpx;"></view>
+                <view class="bar-seg seg-due" wx:if="{{item.dueH > 0}}" style="height: {{item.dueH}}rpx;"></view>
+                <view class="bar-seg seg-hard" wx:if="{{item.hardH > 0}}" style="height: {{item.hardH}}rpx;"></view>
+                <view class="bar-seg seg-review" wx:if="{{item.reviewH > 0}}" style="height: {{item.reviewH}}rpx;"></view>
+                <view class="bar-seg seg-new" wx:if="{{item.newH > 0}}" style="height: {{item.newH}}rpx;"></view>
+              </view>
+              <view class="bar-label {{item.isToday ? 'label-today' : ''}}">
+                <text class="bar-label-char" wx:for="{{item.labelChars}}" wx:for-item="ch" wx:key="*this">{{ch}}</text>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- 图例 -->
+      <view class="legend">
+        <view class="legend-row">
+          <view class="legend-item">
+            <view class="legend-dot dot-new"></view>
+            <text class="legend-text">今日简单：{{todayStats.easy}}</text>
+          </view>
+          <view class="legend-item">
+            <view class="legend-dot dot-review"></view>
+            <text class="legend-text">今日认识：{{todayStats.good}}</text>
+          </view>
+          <view class="legend-item">
+            <view class="legend-dot dot-hard"></view>
+            <text class="legend-text">今日模糊：{{todayStats.hard}}</text>
+          </view>
+        </view>
+        <view class="legend-row">
+          <view class="legend-item">
+            <view class="legend-dot dot-forgot"></view>
+            <text class="legend-text">今日忘记：{{todayStats.forgot}}</text>
+          </view>
+          <view class="legend-item">
+            <view class="legend-dot dot-due"></view>
+            <text class="legend-text">今日待学：{{todayStats.due}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

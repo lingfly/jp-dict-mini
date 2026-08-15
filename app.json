@@ -10,6 +10,7 @@
     "pages/new-learn/new-learn",
     "pages/select-words/select-words",
     "pages/profile/profile",
+    "pages/review-forecast/review-forecast",
     "pages/settings/settings",
     "pages/login/login",
     "pages/reset-password/reset-password",

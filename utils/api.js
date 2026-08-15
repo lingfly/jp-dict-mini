@@ -101,6 +101,12 @@ const fsrsApi = {
   // 查询当天需要复习的单词总数
   getDueCount(endTs) {
     return get('/api/fsrs/due-count', { endTs }) // 需要 token
+  },
+
+  // 查询未来 15 天（含今天）每天需要复习的单词数
+  // 返回 List<{ date: "yyyy-MM-dd", count: int }>
+  getDueForecast() {
+    return get('/api/fsrs/due-forecast') // 需要 token
   }
 }
 

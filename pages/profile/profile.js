@@ -8,10 +8,9 @@ Page({
     isAdmin: false,
     userInfo: null,
     learningStats: {
-      totalWords: 0,
       learnedWords: 0,
       masteredWords: 0,
-      reviewWords: 0
+      dailyNewWords: 0
     },
     loading: true
   },
@@ -66,10 +65,9 @@ Page({
       if (res.code === 200) {
         this.setData({
           learningStats: {
-            totalWords: res.data.totalWords || 0,
             learnedWords: res.data.learnedCount || 0,
             masteredWords: res.data.masteredCount || 0,
-            reviewWords: res.data.dueCount || 0
+            dailyNewWords: res.data.dailyNewWords || 0
           }
         })
       }
@@ -81,6 +79,12 @@ Page({
   goToSettings() {
     wx.navigateTo({
       url: '/pages/settings/settings'
+    })
+  },
+
+  goToReviewForecast() {
+    wx.navigateTo({
+      url: '/pages/review-forecast/review-forecast'
     })
   },
 
@@ -113,10 +117,9 @@ Page({
             isLoggedIn: false,
             userInfo: null,
             learningStats: {
-              totalWords: 0,
               learnedWords: 0,
               masteredWords: 0,
-              reviewWords: 0
+              dailyNewWords: 0
             }
           })
           wx.showToast({

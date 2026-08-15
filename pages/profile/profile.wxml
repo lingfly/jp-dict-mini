@@ -23,13 +23,12 @@
     </view>
 
     <!-- 学习统计 -->
-    <view class="stats-card card">
-      <text class="card-title">学习统计</text>
+    <view class="stats-card card" bindtap="goToReviewForecast">
+      <view class="stats-header">
+        <text class="card-title">学习统计</text>
+        <text class="stats-arrow">›</text>
+      </view>
       <view class="stats-grid">
-        <view class="stat-item">
-          <text class="stat-value">{{learningStats.totalWords}}</text>
-          <text class="stat-label">总单词</text>
-        </view>
         <view class="stat-item">
           <text class="stat-value">{{learningStats.learnedWords}}</text>
           <text class="stat-label">已学习</text>
@@ -39,8 +38,8 @@
           <text class="stat-label">已掌握</text>
         </view>
         <view class="stat-item">
-          <text class="stat-value">{{learningStats.reviewWords}}</text>
-          <text class="stat-label">待复习</text>
+          <text class="stat-value">{{learningStats.dailyNewWords}}</text>
+          <text class="stat-label">每日目标</text>
         </view>
       </view>
     </view>

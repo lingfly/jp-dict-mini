@@ -89,9 +89,25 @@
   display: block;
 }
 
+.stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.stats-header .card-title {
+  margin-bottom: 0;
+}
+
+.stats-arrow {
+  font-size: 24px;
+  color: #C0C4CC;
+}
+
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 
