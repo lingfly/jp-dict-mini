@@ -2,6 +2,7 @@
 const { wordApi, userApi } = require('../../utils/api')
 const fsrs = require('../../utils/fsrs/fsrs')
 const dataSource = require('../../utils/fsrs/dataSource')
+const { formatBadgeText } = require('../../utils/badge')
 
 Page({
   data: {
@@ -164,7 +165,7 @@ Page({
         if (dueCount > 0) {
           wx.setTabBarBadge({
             index: 2, // 复习 tab 是第3个（0-based index: 2）
-            text: String(dueCount),
+            text: formatBadgeText(dueCount),
             fail: (err) => console.error('[fetchLearningStatus] setTabBarBadge 失败:', err)
           })
         } else {
@@ -226,7 +227,7 @@ Page({
     if (remaining > 0) {
       wx.setTabBarBadge({
         index: 2,
-        text: String(remaining),
+        text: formatBadgeText(remaining),
         fail: (err) => console.error('[updateBadgeLocally] setTabBarBadge 失败:', err)
       })
     } else {

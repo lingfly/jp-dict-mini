@@ -30,11 +30,12 @@ App({
   async updateReviewBadge() {
     try {
       const dataSource = require('./utils/fsrs/dataSource')
+      const { formatBadgeText } = require('./utils/badge')
       const res = await dataSource.getLearningStatus()
       if (res.code === 200 && res.data.dueCount > 0) {
         wx.setTabBarBadge({
           index: 2,
-          text: String(res.data.dueCount)
+          text: formatBadgeText(res.data.dueCount)
         })
       } else {
         wx.removeTabBarBadge({ index: 2 })
