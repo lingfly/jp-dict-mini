@@ -20,6 +20,8 @@ Page({
 
   onShow() {
     this.loadCurrentWordList()
+    // 退出词单详情页后回到 tabBar 页面，刷新复习角标（加词后角标在此可靠更新）
+    getApp().updateReviewBadge()
   },
 
   /** 加载正在学习的词单 */

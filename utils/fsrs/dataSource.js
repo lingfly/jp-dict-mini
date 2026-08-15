@@ -199,13 +199,28 @@ async function getLearningStatus() {
   }
   try {
     const res = await fsrsApi.getDueCount(endOfToday())
+    console.log('[getLearningStatus] due-count 原始返回:', JSON.stringify(res))
     if (res.code === 200) {
-      return { code: 200, data: { dueCount: Number(res.data) || 0 } }
+      // 兼容后端返回：data 可能是数字、字符串或 { dueCount } 对象
+      const raw = res.data
+      let dueCount = 0
+      if (typeof raw === 'number') {
+        dueCount = raw
+      } else if (typeof raw === 'string') {
+        dueCount = Number(raw) || 0
+      } else if (raw && typeof raw === 'object') {
+        dueCount = Number(raw.dueCount) || 0
+      }
+      return { code: 200, data: { dueCount } }
     }
     return { code: 200, data: { dueCount: 0 } }
   } catch (e) {
-    console.error('获取学习状态失败，使用临时数据:', e)
-    return mockStore.getLearningStatus()
+    console.error('获取学习状态失败:', e)
+    wx.showToast({
+      title: '获取复习数量失败，请检查网络',
+      icon: 'none'
+    })
+    return { code: 200, data: { dueCount: 0 } }
   }
 }
 

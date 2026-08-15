@@ -37,7 +37,10 @@ Page({
   },
 
   onShow() {
-    // 每次显示时刷新今日复习数量
+    // 每次显示时刷新今日复习数量（去重：与上次请求间隔 < 3s 则跳过）
+    const now = Date.now()
+    if (this._lastFetchAt && now - this._lastFetchAt < 3000) return
+    this._lastFetchAt = now
     this.fetchLearningStatus()
   },
 
@@ -78,9 +81,7 @@ Page({
       } else {
         await this.showCurrentCard()
       }
-
-      // 刷新角标
-      this.fetchLearningStatus()
+      // 角标由 onShow 统一刷新一次，避免 due-count 重复请求
     } catch (error) {
       console.error('初始化复习失败:', error)
       wx.showToast({
@@ -155,19 +156,21 @@ Page({
 
       if (res.code === 200) {
         const data = res.data
-        this.setData({
-          dueCount: data.dueCount || 0
-        })
+        const dueCount = data.dueCount || 0
+        this.setData({ dueCount })
+        console.log('[fetchLearningStatus] 刷新角标:', dueCount)
 
         // 更新 tabBar 角标
-        if (data.dueCount > 0) {
+        if (dueCount > 0) {
           wx.setTabBarBadge({
             index: 2, // 复习 tab 是第3个（0-based index: 2）
-            text: String(data.dueCount)
+            text: String(dueCount),
+            fail: (err) => console.error('[fetchLearningStatus] setTabBarBadge 失败:', err)
           })
         } else {
           wx.removeTabBarBadge({
-            index: 2
+            index: 2,
+            fail: (err) => console.error('[fetchLearningStatus] removeTabBarBadge 失败:', err)
           })
         }
       }
@@ -209,6 +212,29 @@ Page({
       },
       progressPercent: percent
     })
+  },
+
+  /**
+   * 用本地队列剩余数更新 tabBar 角标（评分成功后调用，不请求后端）
+   * remaining = 队列中尚未处理的卡片数（含今天还会再次出现的短间隔卡）
+   */
+  updateBadgeLocally() {
+    const remaining = Math.max(0, this.queue.length - this.queueIndex)
+    this.setData({ dueCount: remaining })
+    console.log('[updateBadgeLocally] 本地剩余复习数:', remaining)
+
+    if (remaining > 0) {
+      wx.setTabBarBadge({
+        index: 2,
+        text: String(remaining),
+        fail: (err) => console.error('[updateBadgeLocally] setTabBarBadge 失败:', err)
+      })
+    } else {
+      wx.removeTabBarBadge({
+        index: 2,
+        fail: (err) => console.error('[updateBadgeLocally] removeTabBarBadge 失败:', err)
+      })
+    }
   },
 
   /**
@@ -329,13 +355,15 @@ Page({
 
       // 4. 展示下一张卡片
       const hasNext = await this.showCurrentCard()
+
+      // 评分成功：用本地队列剩余数更新角标（不请求后端 due-count）
+      this.updateBadgeLocally()
+
       if (!hasNext) {
         wx.showToast({
           title: '今日复习完成',
           icon: 'success'
         })
-        // 刷新角标
-        this.fetchLearningStatus()
       }
     } catch (error) {
       console.error('提交评分失败:', error)

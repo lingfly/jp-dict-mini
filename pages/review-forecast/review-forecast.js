@@ -193,7 +193,7 @@ Page({
       // rpx -> px 换算
       let rpx2px = 1
       try {
-        rpx2px = wx.getSystemInfoSync().windowWidth / 750
+        rpx2px = wx.getWindowInfo().windowWidth / 750
       } catch (e) {
         rpx2px = 1
       }

@@ -16,9 +16,6 @@ Page({
     displayLearnedCount: 0  // 显示用的 n = 接口n + 当前勾选数
   },
 
-  /** 已加载的页码集合，用于随机选词时避免与顺序翻页冲突 */
-  loadedPages: new Set(),
-
   onLoad(options) {
     const wordListId = options.wordListId || ''
     this.loadedPages = new Set()  // 每次进入页面重置已加载页码
