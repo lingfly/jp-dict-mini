@@ -28,7 +28,7 @@ let _scheduler = null
 function getScheduler() {
   if (!_scheduler) {
     _scheduler = fsrs({
-      enable_fuzz: false,
+      enable_fuzz: true,
       enable_short_term: true,
       request_retention: 0.9,
       maximum_interval: 36500,
