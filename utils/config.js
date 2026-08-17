@@ -1,29 +1,43 @@
 /**
  * 全局配置
  *
- * apiBaseUrl 取值优先级：
- * 1. 本地调试配置 utils/config.local.js（已加入 .gitignore，不会提交到仓库）
- * 2. 默认生产地址
+ * apiBaseUrl 取值规则：
+ * - 开发版（开发者工具本地编译/预览，envVersion = develop）: 优先用 utils/config.local.js 里的 localhost
+ * - 体验版 / 正式版（上传后，envVersion = trial / release）: 强制使用生产地址 https://jp-cika.cn
  *
- * 本地调试步骤：
- * 1. 复制 utils/config.local.example.js 并重命名为 config.local.js
- * 2. 将 apiBaseUrl 改成你本地的后端地址（默认 http://localhost:8080）
- * 3. 微信开发者工具 → 详情 → 本地设置 → 勾选「不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书」
+ * 这样本地调试走 localhost，上传后自动切回生产地址，无需手动改代码。
  */
 
 const DEFAULT_API_BASE_URL = 'https://jp-cika.cn'
 
+// 获取小程序运行环境：develop（开发版）/ trial（体验版）/ release（正式版）
+function getEnvVersion() {
+  try {
+    return wx.getAccountInfoSync().miniProgram.envVersion
+  } catch (e) {
+    return 'develop'
+  }
+}
+
+// 加载本地配置（不存在时返回 null）
 function loadLocalConfig() {
   try {
     return require('./config.local.js')
   } catch (e) {
-    // 本地配置文件不存在时，使用默认生产地址
     return null
   }
 }
 
+const envVersion = getEnvVersion()
 const localConfig = loadLocalConfig()
 
+// 只有开发版才使用 localhost；体验版/正式版即使误打包了 config.local.js 也会强制走生产地址
+const apiBaseUrl =
+  envVersion === 'develop' && localConfig && localConfig.apiBaseUrl
+    ? localConfig.apiBaseUrl
+    : DEFAULT_API_BASE_URL
+
 module.exports = {
-  apiBaseUrl: (localConfig && localConfig.apiBaseUrl) || DEFAULT_API_BASE_URL
+  envVersion,
+  apiBaseUrl
 }
