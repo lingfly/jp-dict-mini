@@ -41,9 +41,13 @@ const wordlistApi = {
     return get('/api/wordlist/detail', { wordListId }) // 需要 token
   },
 
-  // 获取词单单词列表
-  getWords(wordListId, page, size) {
-    return get('/api/wordlist/words', { wordListId, page, size }) // 需要 token
+  // 获取词单单词列表（支持指定排序）
+  // sort: addedAt（添加时间）/ kana（假名），order: asc / desc
+  getWords(wordListId, page, size, sort, order) {
+    const params = { wordListId, page, size }
+    if (sort) params.sort = sort
+    if (order) params.order = order
+    return get('/api/wordlist/words', params) // 需要 token
   },
 
   // 获取默认词单（收藏夹）
@@ -163,6 +167,12 @@ const wordApi = {
   // 获取单词详情
   getDetail(wordId) {
     return get(`/api/word/${wordId}`) // 需要 token
+  },
+
+  // 批量获取单词详情（POST /api/word/batch，最多100个）
+  // wordIds 保持字符串传参：wordId 可能超 JS 安全整数（后端 ToStringSerializer），Jackson 字符串→Long 无损
+  getDetailBatch(wordIds) {
+    return post('/api/word/batch', wordIds) // 需要 token
   }
 }
 

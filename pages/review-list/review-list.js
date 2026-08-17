@@ -4,6 +4,9 @@ const fsrs = require('../../utils/fsrs/fsrs')
 const dataSource = require('../../utils/fsrs/dataSource')
 const { formatBadgeText } = require('../../utils/badge')
 
+// 单词详情批量预取大小：避免复习时逐词查询详情，按批一次拉取
+const WORD_DETAIL_BATCH_SIZE = 3
+
 Page({
   data: {
     loading: false,
@@ -31,6 +34,7 @@ Page({
   queueIndex: 0, // 当前指针
   initialTotal: 0, // 初始队列长度（当天应复习卡片数）
   completedCount: 0, // 已毕业（移出队列）卡片数
+  wordDetailCache: {}, // 单词详情缓存 { wordId: WordDetailResponse }，按批预取复用
 
   onLoad() {
     this.loadCollapseConfig()
@@ -80,6 +84,7 @@ Page({
       this.queueIndex = 0
       this.initialTotal = this.queue.length
       this.completedCount = 0
+      this.wordDetailCache = {} // 重新拉取队列时清空详情缓存，避免脏数据
 
       this.updateStats()
 
@@ -188,19 +193,45 @@ Page({
   },
 
   /**
-   * 获取单词详情
+   * 批量预取单词详情：以当前队列指针为起点，收集最多 WORD_DETAIL_BATCH_SIZE 个
+   * 未缓存的 wordId，通过 POST /api/word/batch 一次拉取并写入缓存
+   */
+  async prefetchWordDetails() {
+    const ids = []
+    const seen = new Set()
+    for (let i = this.queueIndex; i < this.queue.length && ids.length < WORD_DETAIL_BATCH_SIZE; i++) {
+      const id = String(this.queue[i].wordId)
+      if (id && !this.wordDetailCache[id] && !seen.has(id)) {
+        seen.add(id)
+        ids.push(id)
+      }
+    }
+    if (ids.length === 0) return
+
+    try {
+      const res = await wordApi.getDetailBatch(ids)
+      if (res.code === 200 && Array.isArray(res.data)) {
+        res.data.forEach(detail => {
+          if (detail && detail.word) {
+            this.wordDetailCache[String(detail.word.id)] = detail
+          }
+        })
+      }
+    } catch (error) {
+      console.error('批量获取单词详情失败:', error)
+    }
+  },
+
+  /**
+   * 获取单词详情：优先读缓存，未命中则按批预取后再取（避免逐词请求）
    */
   async fetchWordDetail(wordId) {
-    try {
-      const res = await wordApi.getDetail(wordId)
-      if (res.code === 200) {
-        return res.data
-      }
-      return null
-    } catch (error) {
-      console.error('获取单词详情失败:', error)
-      return null
+    const key = String(wordId)
+    if (this.wordDetailCache[key]) {
+      return this.wordDetailCache[key]
     }
+    await this.prefetchWordDetails()
+    return this.wordDetailCache[key] || null
   },
 
   /**

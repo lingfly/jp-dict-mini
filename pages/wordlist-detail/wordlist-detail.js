@@ -22,10 +22,46 @@ Page({
     this.loadedPages = new Set()  // 每次进入页面重置已加载页码
     this.setData({ wordListId })
     if (wordListId) {
-      this.loadDetail()
-      this.loadWords()
-      this.loadLearningStatus()
+      this.initAndLoad()
     }
+  },
+
+  /** 确定排序方式后加载数据：收藏夹按添加时间降序，其他词单按假名升序 */
+  async initAndLoad() {
+    const isFavorite = await this.isDefaultWordList()
+    this.sortParams = isFavorite
+      ? { sort: 'addedAt', order: 'desc' }
+      : { sort: 'kana', order: 'asc' }
+    this.loadDetail()
+    this.loadWords()
+    this.loadLearningStatus()
+  },
+
+  /** 判断当前词单是否为默认收藏夹 */
+  async isDefaultWordList() {
+    const defaultId = await this.getDefaultWordListId()
+    return defaultId != null && String(defaultId) === String(this.data.wordListId)
+  },
+
+  /** 获取默认收藏夹 ID（优先缓存，否则调用接口） */
+  getDefaultWordListId() {
+    return new Promise((resolve) => {
+      const cached = wx.getStorageSync('defaultWordListId')
+      if (cached) {
+        resolve(cached)
+        return
+      }
+      wordlistApi.getDefault()
+        .then(res => {
+          if (res.code === 200 && res.data && res.data.id) {
+            wx.setStorageSync('defaultWordListId', res.data.id)
+            resolve(res.data.id)
+          } else {
+            resolve(null)
+          }
+        })
+        .catch(() => resolve(null))
+    })
   },
 
   onShow() {
@@ -86,7 +122,7 @@ Page({
     }
     this.setData({ loading: true })
     try {
-      const res = await wordlistApi.getWords(this.data.wordListId, page, this.data.size)
+      const res = await wordlistApi.getWords(this.data.wordListId, page, this.data.size, this.sortParams.sort, this.sortParams.order)
       if (res.code === 200 && res.data) {
         const records = (res.data.records || []).map(w => ({ ...w, wordId: String(w.id || w.wordId) }))
         const newWords = isLoadMore ? [...this.data.words, ...records] : records
@@ -187,7 +223,7 @@ Page({
         const pageResults = await Promise.all(
           targetPages.map(async (p) => {
             try {
-              const res = await wordlistApi.getWords(this.data.wordListId, p, this.data.size)
+              const res = await wordlistApi.getWords(this.data.wordListId, p, this.data.size, this.sortParams.sort, this.sortParams.order)
               if (res.code === 200 && res.data) {
                 const records = (res.data.records || []).map(w => ({ ...w, wordId: String(w.id || w.wordId) }))
                 return { page: p, records }
@@ -224,7 +260,7 @@ Page({
           continue
         }
         try {
-          const res = await wordlistApi.getWords(this.data.wordListId, p, this.data.size)
+          const res = await wordlistApi.getWords(this.data.wordListId, p, this.data.size, this.sortParams.sort, this.sortParams.order)
           if (res.code === 200 && res.data) {
             const records = (res.data.records || []).map(w => ({ ...w, wordId: String(w.id || w.wordId) }))
             words = [...words, ...records]
