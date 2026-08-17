@@ -5,7 +5,7 @@ const dataSource = require('../../utils/fsrs/dataSource')
 const { formatBadgeText } = require('../../utils/badge')
 
 // 单词详情批量预取大小：避免复习时逐词查询详情，按批一次拉取
-const WORD_DETAIL_BATCH_SIZE = 3
+const WORD_DETAIL_BATCH_SIZE = 20
 
 Page({
   data: {
