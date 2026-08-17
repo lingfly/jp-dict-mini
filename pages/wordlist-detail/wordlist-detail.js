@@ -352,6 +352,8 @@ Page({
         const batch = res.data || {}
         const skipped = batch.skipped || 0
         console.log('[submitSelection] 批量加卡成功:', JSON.stringify(batch))
+        // 标记复习列表已变化（有新词加入复习），review-list 页 onShow 时据此重新向后端拉取
+        getApp().globalData.reviewListChangedAt = Date.now()
         wx.showToast({
           title: skipped > 0 ? `已加入学习（${skipped}个已在学习中）` : '已加入学习',
           icon: 'none'

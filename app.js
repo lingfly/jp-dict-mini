@@ -1,9 +1,12 @@
 // app.js
+const config = require('./utils/config')
+
 App({
   globalData: {
     token: null,
     userInfo: null,
-    apiBaseUrl: 'https://jp-cika.cn' // API 基础地址
+    apiBaseUrl: config.apiBaseUrl, // API 基础地址（本地调试见 utils/config.local.js）
+    reviewListChangedAt: 0 // 复习列表最近一次变更时间（有新词加入复习时更新），review-list 页据此判断是否需要重新拉取
   },
 
   // 登录去重锁：缓存在进行的登录 Promise，避免并发重复登录

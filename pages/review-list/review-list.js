@@ -38,6 +38,12 @@ Page({
   },
 
   onShow() {
+    // 有新词加入复习 → 复习列表已变化，重新向后端拉取队列
+    const app = getApp()
+    if (app.globalData.reviewListChangedAt > (this._lastQueueRefreshAt || 0)) {
+      this.initReview()
+    }
+
     // 每次显示时刷新今日复习数量（去重：与上次请求间隔 < 3s 则跳过）
     const now = Date.now()
     if (this._lastFetchAt && now - this._lastFetchAt < 3000) return
@@ -61,6 +67,7 @@ Page({
    * 初始化复习流程：批量拉取当天卡片，构建本地 FSRS 队列
    */
   async initReview() {
+    this._lastQueueRefreshAt = Date.now()
     this.setData({ loading: true })
 
     try {

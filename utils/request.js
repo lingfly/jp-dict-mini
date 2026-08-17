@@ -3,7 +3,8 @@
  */
 
 // 用缓存存储 apiBaseUrl 和 token，避免依赖 getApp() 的模块加载时序问题
-let _cachedApiBaseUrl = 'https://jp-cika.cn'
+const config = require('./config')
+let _cachedApiBaseUrl = config.apiBaseUrl
 let _cachedToken = wx.getStorageSync('token') || null
 
 /**

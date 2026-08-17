@@ -1,7 +1,12 @@
 {
   "description": "日语背单词小程序",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "file",
+        "value": "utils/config.local.js"
+      }
+    ],
     "include": []
   },
   "compileType": "miniprogram",

@@ -8,3 +8,6 @@ node_modules/
 
 # 项目配置（包含个人信息）
 project.private.config.json
+
+# 本地调试配置（不提交 localhost）
+utils/config.local.js
