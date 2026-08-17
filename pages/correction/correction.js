@@ -203,6 +203,8 @@ Page({
 
   /** 提交单词纠错 */
   async submitWord() {
+    // 防重复点击：提交过程中直接忽略后续点击
+    if (this.data.submitting) return
     const { wordId, wordForm } = this.data
     if (!wordForm.kanji.trim()) {
       wx.showToast({ title: '请输入汉字', icon: 'none' })
@@ -214,7 +216,7 @@ Page({
     }
 
     this.setData({ submitting: true })
-    wx.showLoading({ title: '提交中...' })
+    wx.showLoading({ title: '提交中...', mask: true })
     try {
       const data = {
         wordId: wordId,
@@ -228,15 +230,16 @@ Page({
       wx.hideLoading()
       if (res.code === 200) {
         wx.showToast({ title: '纠错提交成功', icon: 'success' })
+        // 成功后保持 submitting=true，禁止在返回前的 1.5s 内再次点击
         setTimeout(() => wx.navigateBack(), 1500)
       } else {
         wx.showToast({ title: res.message || '提交失败', icon: 'none' })
+        this.setData({ submitting: false })
       }
     } catch (e) {
       wx.hideLoading()
       console.error('提交单词纠错失败:', e)
       wx.showToast({ title: '提交失败', icon: 'none' })
-    } finally {
       this.setData({ submitting: false })
     }
   }

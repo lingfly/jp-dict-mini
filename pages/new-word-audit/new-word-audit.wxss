@@ -419,6 +419,10 @@
   background: white;
 }
 
+.btn[disabled] {
+  opacity: 0.6;
+}
+
 /* ========== 加载更多 ========== */
 .load-more {
   text-align: center;

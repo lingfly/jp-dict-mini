@@ -13,7 +13,8 @@ Page({
     hasMore: true,
     learningStatus: null,
     selectedWordIds: [],
-    displayLearnedCount: 0  // 显示用的 n = 接口n + 当前勾选数
+    displayLearnedCount: 0,  // 显示用的 n = 接口n + 当前勾选数
+    submitting: false
   },
 
   onLoad(options) {
@@ -334,17 +335,19 @@ Page({
   },
 
   async submitSelection() {
+    if (this.data.submitting) return
     if (this.data.selectedWordIds.length === 0) {
       wx.showToast({ title: '请至少选择1个单词', icon: 'none' })
       return
     }
-    wx.showLoading({ title: '提交中...' })
+    this.setData({ submitting: true })
+    wx.showLoading({ title: '提交中...', mask: true })
     try {
       // 批量创建 FSRS 学习卡：POST /api/fsrs/cards（幂等，已存在的跳过）
       // 保持字符串传参：wordId 可能超 JS 安全整数（后端 ToStringSerializer），Jackson 字符串→Long 无损
       const res = await fsrsApi.addCards(this.data.selectedWordIds)
+      wx.hideLoading()
       if (res.code === 200) {
-        wx.hideLoading()
         // FsrsBatchAddCardResponse：{ total, created, skipped, cards }
         const batch = res.data || {}
         const skipped = batch.skipped || 0
@@ -360,13 +363,14 @@ Page({
         this.loadDetail()
         this.loadWords()
       } else {
-        wx.hideLoading()
         wx.showToast({ title: res.message || '提交失败', icon: 'none' })
       }
     } catch (error) {
       wx.hideLoading()
       console.error('提交选词失败:', error)
       wx.showToast({ title: '提交失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
     }
   },
 

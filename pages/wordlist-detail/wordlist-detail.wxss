@@ -234,6 +234,11 @@
   color: #fff;
 }
 
+.bottom-btn.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 .btn-label {
   font-size: 14px;
 }

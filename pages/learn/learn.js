@@ -127,6 +127,8 @@ Page({
    * 处理评分
    */
   async handleScore(e) {
+    // 防重复点击：提交过程中 loading 为 true，忽略后续评分点击
+    if (this.data.loading) return
     const score = parseInt(e.currentTarget.dataset.score)
     if (!this.data.currentWord) return
 

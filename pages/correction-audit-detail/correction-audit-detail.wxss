@@ -194,3 +194,8 @@
   background: #F56C6C;
   color: #fff;
 }
+
+.btn.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}

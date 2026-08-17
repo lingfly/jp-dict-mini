@@ -60,7 +60,7 @@
       <view class="bottom-btn random" bindtap="startRandomLearn">
         <text class="btn-label">随机</text>
       </view>
-      <view class="bottom-btn select-words" bindtap="onThirdBtnTap">
+      <view class="bottom-btn select-words {{submitting ? 'disabled' : ''}}" bindtap="onThirdBtnTap">
         <text class="btn-label">
           <text wx:if="{{selectedWordIds.length > 0}}">加入学习 {{displayLearnedCount}}/{{learningStatus.dailyNewWords || 20}}</text>
           <text wx:else>今日待选 {{displayLearnedCount}}/{{learningStatus.dailyNewWords || 20}}</text>

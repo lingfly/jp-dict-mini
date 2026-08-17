@@ -21,6 +21,8 @@ Page({
     // 第三层：单词详情
     currentWord: null,
     expandedSense: [0],
+    // 防重复点击
+    submitting: false,
     // 状态映射
     statusMap: {
       'pending': '待审核',
@@ -147,33 +149,49 @@ Page({
 
   /** 采纳 */
   async approve(e) {
+    if (this.data.submitting) return
     const logId = this.data.currentRecord.logId
+    if (!logId) return
+    this.setData({ submitting: true })
+    wx.showLoading({ title: '处理中...', mask: true })
     try {
       const res = await post('/api/ai-dict/audit/approve', { logId })
+      wx.hideLoading()
       if (res.code === 200) {
         wx.showToast({ title: '已采纳', icon: 'success' })
         this.removeFromList(logId)
         this.setData({ currentRecord: null, currentWord: null })
       }
     } catch (error) {
+      wx.hideLoading()
       console.error('采纳失败:', error)
       wx.showToast({ title: '操作失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
     }
   },
 
   /** 驳回 */
   async reject(e) {
+    if (this.data.submitting) return
     const logId = this.data.currentRecord.logId
+    if (!logId) return
+    this.setData({ submitting: true })
+    wx.showLoading({ title: '处理中...', mask: true })
     try {
       const res = await post('/api/ai-dict/audit/reject', { logId })
+      wx.hideLoading()
       if (res.code === 200) {
         wx.showToast({ title: '已驳回', icon: 'success' })
         this.removeFromList(logId)
         this.setData({ currentRecord: null, currentWord: null })
       }
     } catch (error) {
+      wx.hideLoading()
       console.error('驳回失败:', error)
       wx.showToast({ title: '操作失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
     }
   },
 

@@ -745,6 +745,11 @@
   border-bottom: 1px solid #F5F7FA;
 }
 
+.popup-item.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .popup-item-info {
   display: flex;
   align-items: baseline;

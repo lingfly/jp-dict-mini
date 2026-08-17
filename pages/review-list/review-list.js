@@ -279,6 +279,8 @@ Page({
    * 处理评分（FSRS 核心调度）
    */
   async handleScore(e) {
+    // 防重复点击：提交过程中 loading 为 true，忽略后续评分点击
+    if (this.data.loading) return
     const rating = parseInt(e.currentTarget.dataset.score) // 0=忘记 1=模糊 2=认识 3=简单
     if (this.queueIndex >= this.queue.length) return
 

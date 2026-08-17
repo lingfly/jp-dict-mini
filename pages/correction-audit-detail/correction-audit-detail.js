@@ -57,9 +57,10 @@ Page({
   async approve() {
     const { item, editForm } = this.data
     if (!item) return
+    if (this.data.submitting) return
 
     this.setData({ submitting: true })
-    wx.showLoading({ title: '提交中...' })
+    wx.showLoading({ title: '提交中...', mask: true })
     try {
       const data = {
         kanji: editForm.kanji.trim() || undefined,
@@ -72,15 +73,16 @@ Page({
       wx.hideLoading()
       if (res.code === 200) {
         wx.showToast({ title: '已通过', icon: 'success' })
+        // 成功后保持 submitting=true，禁止在返回前的 1.5s 内再次点击
         setTimeout(() => wx.navigateBack(), 1500)
       } else {
         wx.showToast({ title: res.message || '操作失败', icon: 'none' })
+        this.setData({ submitting: false })
       }
     } catch (e) {
       wx.hideLoading()
       console.error('审核通过失败:', e)
       wx.showToast({ title: '操作失败', icon: 'none' })
-    } finally {
       this.setData({ submitting: false })
     }
   },
@@ -89,6 +91,7 @@ Page({
   reject() {
     const { item } = this.data
     if (!item) return
+    if (this.data.submitting) return
 
     wx.showModal({
       title: '驳回纠错',
@@ -96,21 +99,22 @@ Page({
       success: async (modalRes) => {
         if (!modalRes.confirm) return
         this.setData({ submitting: true })
-        wx.showLoading({ title: '处理中...' })
+        wx.showLoading({ title: '处理中...', mask: true })
         try {
           const res = await correctionApi.reject(item.id, '')
           wx.hideLoading()
           if (res.code === 200) {
             wx.showToast({ title: '已驳回', icon: 'success' })
+            // 成功后保持 submitting=true，禁止在返回前的 1.5s 内再次点击
             setTimeout(() => wx.navigateBack(), 1500)
           } else {
             wx.showToast({ title: res.message || '操作失败', icon: 'none' })
+            this.setData({ submitting: false })
           }
         } catch (e) {
           wx.hideLoading()
           console.error('拒绝失败:', e)
           wx.showToast({ title: '操作失败', icon: 'none' })
-        } finally {
           this.setData({ submitting: false })
         }
       }

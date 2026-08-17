@@ -185,8 +185,8 @@
   </view>
   <!-- 普通搜索结果：加入词单/收藏按钮 -->
   <view wx:elif="{{wordDetail}}" class="word-actions">
-    <view class="action-btn" bindtap="addToWordlist">加入词单</view>
-    <view class="action-btn {{wordDetail.isFavorited ? 'favorited' : ''}}" bindtap="addToReview">
+    <view class="action-btn {{addingToWordlist ? 'disabled' : ''}}" bindtap="addToWordlist">加入词单</view>
+    <view class="action-btn {{wordDetail.isFavorited ? 'favorited' : ''}} {{favoriting ? 'disabled' : ''}}" bindtap="addToReview">
       {{wordDetail.isFavorited ? '已收藏' : '收藏'}}
     </view>
   </view>
@@ -208,7 +208,7 @@
         <view
           wx:for="{{myWordLists}}"
           wx:key="id"
-          class="popup-item {{item.containsWord ? 'checked' : ''}}"
+          class="popup-item {{item.containsWord ? 'checked' : ''}} {{togglingWordList ? 'disabled' : ''}}"
           data-index="{{index}}"
           bindtap="toggleWordListSelect"
         >

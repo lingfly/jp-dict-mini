@@ -22,7 +22,11 @@ Page({
     // 释义折叠配置
     collapseDefinitionOnQuery: false,
     // 更多菜单
-    showMenu: false
+    showMenu: false,
+    // 防重复点击状态
+    addingToWordlist: false,
+    togglingWordList: false,
+    favoriting: false
   },
 
   async onLoad() {
@@ -282,9 +286,11 @@ Page({
   /** 打开加入词单弹窗，加载我的词单列表 */
   async addToWordlist() {
     if (!this.data.wordDetail) return
+    if (this.data.addingToWordlist) return
     const wordId = this.data.wordDetail.word.id
 
-    wx.showLoading({ title: '加载中...' })
+    this.setData({ addingToWordlist: true })
+    wx.showLoading({ title: '加载中...', mask: true })
     try {
       const res = await wordlistApi.list({ mineOnly: true, wordId })
       if (res.code === 200) {
@@ -298,6 +304,7 @@ Page({
       wx.showToast({ title: '加载失败', icon: 'none' })
     } finally {
       wx.hideLoading()
+      this.setData({ addingToWordlist: false })
     }
   },
 
@@ -308,6 +315,7 @@ Page({
 
   /** 切换词单勾选 */
   async toggleWordListSelect(e) {
+    if (this.data.togglingWordList) return
     const index = e.currentTarget.dataset.index
     const item = this.data.myWordLists[index]
     if (!item) return
@@ -316,7 +324,8 @@ Page({
     const wordListId = item.id
     const isAdding = !item.containsWord
 
-    wx.showLoading({ title: isAdding ? '添加中...' : '移除中...' })
+    this.setData({ togglingWordList: true })
+    wx.showLoading({ title: isAdding ? '添加中...' : '移除中...', mask: true })
     try {
       const res = isAdding
         ? await wordlistApi.favorite(wordId, wordListId)
@@ -335,6 +344,7 @@ Page({
       wx.showToast({ title: '操作失败', icon: 'none' })
     } finally {
       wx.hideLoading()
+      this.setData({ togglingWordList: false })
     }
   },
 
@@ -383,44 +393,48 @@ Page({
 
   async addToReview() {
     if (!this.data.wordDetail) return
+    if (this.data.favoriting) return
     const wordId = this.data.wordDetail.word.id
     if (!wordId) {
       wx.showToast({ title: '单词信息异常', icon: 'none' })
       return
     }
 
-    // 使用缓存的默认词单 ID
-    if (!this._defaultWordListId) {
-      await this.loadDefaultWordListId()
-    }
-    const wordListId = this._defaultWordListId
-    if (!wordListId) {
-      wx.showToast({ title: '操作失败，请重试', icon: 'none' })
-      return
-    }
+    this.setData({ favoriting: true })
 
-    const isFavorited = this.data.wordDetail.isFavorited
-    const apiCall = isFavorited
-      ? wordlistApi.unfavorite(wordId, wordListId)
-      : wordlistApi.favorite(wordId, wordListId)
-
-    wx.showLoading({ title: isFavorited ? '取消收藏中...' : '收藏中...' })
     try {
+      // 使用缓存的默认词单 ID
+      if (!this._defaultWordListId) {
+        await this.loadDefaultWordListId()
+      }
+      const wordListId = this._defaultWordListId
+      if (!wordListId) {
+        wx.showToast({ title: '操作失败，请重试', icon: 'none' })
+        return
+      }
+
+      const isFavorited = this.data.wordDetail.isFavorited
+      const apiCall = isFavorited
+        ? wordlistApi.unfavorite(wordId, wordListId)
+        : wordlistApi.favorite(wordId, wordListId)
+
+      wx.showLoading({ title: isFavorited ? '取消收藏中...' : '收藏中...', mask: true })
       const res = await apiCall
+      wx.hideLoading()
       if (res.code === 200) {
-        wx.hideLoading()
         wx.showToast({ title: isFavorited ? '已取消收藏' : '收藏成功', icon: 'success' })
         this.setData({
           'wordDetail.isFavorited': !isFavorited
         })
       } else {
-        wx.hideLoading()
         wx.showToast({ title: res.message || '操作失败', icon: 'none' })
       }
     } catch (error) {
       wx.hideLoading()
       console.error('操作失败:', error)
       wx.showToast({ title: '操作失败', icon: 'none' })
+    } finally {
+      this.setData({ favoriting: false })
     }
   },
 
