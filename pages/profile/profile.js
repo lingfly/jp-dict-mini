@@ -100,6 +100,12 @@ Page({
     })
   },
 
+  goToDefinitionCorrectionAudit() {
+    wx.navigateTo({
+      url: '/pages/correction-definition-audit/correction-definition-audit'
+    })
+  },
+
   goToFeedback() {
     wx.navigateTo({
       url: '/pages/feedback-menu/feedback-menu'

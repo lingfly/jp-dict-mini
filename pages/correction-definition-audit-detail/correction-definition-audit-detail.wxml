@@ -1,0 +1,223 @@
+<!--pages/correction-definition-audit-detail/correction-definition-audit-detail.wxml-->
+<view wx:if="{{loading}}" class="loading-state">
+  <text>加载中...</text>
+</view>
+
+<view wx:elif="{{item}}" class="detail-page">
+  <!-- 单词标题 -->
+  <view class="detail-header">
+    <text class="header-kanji">{{item.wordKanji}}</text>
+    <text wx:if="{{item.wordKana}}" class="header-kana">{{item.wordKana}}</text>
+  </view>
+
+  <!-- 提交人信息 -->
+  <view class="meta-section card">
+    <text class="section-title">纠错信息</text>
+    <view class="meta-row">
+      <text class="meta-label">提交人</text>
+      <text class="meta-value">{{item.submitterName || '未知'}}</text>
+    </view>
+    <view wx:if="{{item.createdAt}}" class="meta-row">
+      <text class="meta-label">提交时间</text>
+      <text class="meta-value">{{item.createdAt}}</text>
+    </view>
+  </view>
+
+  <!-- 用户提交的纠错内容 -->
+  <view class="compare-section card">
+    <text class="section-title">用户提交的纠错内容</text>
+
+    <view wx:if="{{correctionItems.length > 0}}">
+      <view
+        wx:for="{{correctionItems}}"
+        wx:key="index"
+        wx:for-item="ci"
+        wx:for-index="idx"
+        class="ci-card"
+      >
+        <!-- 操作类型标题 -->
+        <view class="ci-header">
+          <text class="op-tag {{ci.operationType === 'ADD' ? 'op-add' : (ci.operationType === 'DELETE' ? 'op-delete' : 'op-update')}}">
+            {{ci.operationType === 'ADD' ? '新增' : (ci.operationType === 'DELETE' ? '删除' : '修改')}}
+          </text>
+          <text class="ci-title">
+            {{ci.operationType === 'ADD' ? '新增释义' : (ci.operationType === 'DELETE' ? '删除释义' : '修改原释义内容')}}
+          </text>
+        </view>
+
+        <!-- DELETE 操作 -->
+        <view wx:if="{{ci.operationType === 'DELETE'}}" class="ci-body">
+          <view class="def-block delete-block">
+            <text class="def-label">{{ci.definitionCn}}</text>
+            <view class="def-content">
+              <view wx:if="{{ci.definitionCn}}" class="field-row">
+                <text class="field-label">释义：</text>
+                <text class="field-value">{{ci.definitionCn}}</text>
+              </view>
+              <view wx:if="{{ci.usage}}" class="field-row">
+                <text class="field-label">用法：</text>
+                <text class="field-value">{{ci.usage}}</text>
+              </view>
+              <view wx:if="{{ci.note}}" class="field-row">
+                <text class="field-label">注：</text>
+                <text class="field-value">{{ci.note}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- UPDATE 操作 -->
+        <view wx:elif="{{ci.operationType === 'UPDATE'}}" class="ci-body">
+          <!-- 修改释义内容：只有当任一字段有变化时才展示 -->
+          <view wx:if="{{ci.originalDefinitionCn && (ci.definitionCn !== ci.originalDefinitionCn || ci.usage !== ci.originalUsage || ci.note !== ci.originalNote)}}" class="compare-block">
+            <text class="def-label">{{ci.originalDefinitionCn}}</text>
+
+            <!-- 原内容 -->
+            <view class="compare-item original">
+              <view class="compare-marker">● 原内容</view>
+              <view class="compare-content">
+                <view wx:if="{{ci.originalDefinitionCn}}" class="field-row">
+                  <text class="field-label">释义：</text>
+                  <text class="field-value">{{ci.originalDefinitionCn}}</text>
+                </view>
+                <view wx:if="{{ci.originalUsage}}" class="field-row">
+                  <text class="field-label">用法：</text>
+                  <text class="field-value">{{ci.originalUsage}}</text>
+                </view>
+                <view wx:if="{{ci.originalNote}}" class="field-row">
+                  <text class="field-label">注：</text>
+                  <text class="field-value">{{ci.originalNote}}</text>
+                </view>
+              </view>
+            </view>
+
+            <!-- 修改为 -->
+            <view class="compare-item modified">
+              <view class="compare-marker">● 修改为</view>
+              <view class="compare-content">
+                <view wx:if="{{ci.definitionCn}}" class="field-row">
+                  <text class="field-label">释义：</text>
+                  <text class="field-value">{{ci.definitionCn}}</text>
+                </view>
+                <view wx:if="{{ci.usage}}" class="field-row">
+                  <text class="field-label">用法：</text>
+                  <text class="field-value">{{ci.usage}}</text>
+                </view>
+                <view wx:if="{{ci.note}}" class="field-row">
+                  <text class="field-label">注：</text>
+                  <text class="field-value">{{ci.note}}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <!-- 修改释义例句 -->
+          <view wx:if="{{ci.examples && ci.examples.length > 0}}">
+            <view
+              wx:for="{{ci.examples}}"
+              wx:key="index"
+              wx:for-item="ex"
+              wx:for-index="exIdx"
+            >
+              <!-- 修改例句：只有当有原内容且有变化时才展示 -->
+              <view wx:if="{{ex.operationType === 'UPDATE' && ex.originalSentenceJp && (ex.sentenceJp !== ex.originalSentenceJp || ex.sentenceKana !== ex.originalSentenceKana || ex.sentenceCn !== ex.originalSentenceCn)}}" class="compare-block">
+                <text class="def-label">{{ci.definitionCn}} - 例句{{ex.sortOrder + 1}}</text>
+
+                <view class="compare-item original">
+                  <view class="compare-marker">● 原内容</view>
+                  <view class="compare-content">
+                    <text class="example-jp">{{ex.originalSentenceJp}}</text>
+                    <text wx:if="{{ex.originalSentenceKana}}" class="example-kana">{{ex.originalSentenceKana}}</text>
+                    <text wx:if="{{ex.originalSentenceCn}}" class="example-cn">{{ex.originalSentenceCn}}</text>
+                  </view>
+                </view>
+
+                <view class="compare-item modified">
+                  <view class="compare-marker">● 修改为</view>
+                  <view class="compare-content">
+                    <text class="example-jp">{{ex.sentenceJp}}</text>
+                    <text wx:if="{{ex.sentenceKana}}" class="example-kana">{{ex.sentenceKana}}</text>
+                    <text wx:if="{{ex.sentenceCn}}" class="example-cn">{{ex.sentenceCn}}</text>
+                  </view>
+                </view>
+              </view>
+
+              <!-- 删除例句 -->
+              <view wx:elif="{{ex.operationType === 'DELETE'}}" class="def-block delete-block">
+                <text class="def-label">{{ci.definitionCn}} - 删除例句{{ex.sortOrder + 1}}</text>
+                <view class="def-content">
+                  <text class="example-jp">{{ex.sentenceJp}}</text>
+                  <text wx:if="{{ex.sentenceKana}}" class="example-kana">{{ex.sentenceKana}}</text>
+                  <text wx:if="{{ex.sentenceCn}}" class="example-cn">{{ex.sentenceCn}}</text>
+                </view>
+              </view>
+
+              <!-- 新增例句 -->
+              <view wx:elif="{{ex.operationType === 'ADD'}}" class="def-block add-block">
+                <text class="def-label">{{ci.definitionCn}} - 新增例句{{ex.sortOrder + 1}}</text>
+                <view class="def-content">
+                  <text class="example-jp">{{ex.sentenceJp}}</text>
+                  <text wx:if="{{ex.sentenceKana}}" class="example-kana">{{ex.sentenceKana}}</text>
+                  <text wx:if="{{ex.sentenceCn}}" class="example-cn">{{ex.sentenceCn}}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- ADD 操作 -->
+        <view wx:elif="{{ci.operationType === 'ADD'}}" class="ci-body">
+          <view class="def-block add-block">
+            <text class="def-label">{{ci.definitionCn}}</text>
+            <view class="def-content">
+              <view wx:if="{{ci.definitionCn}}" class="field-row">
+                <text class="field-label">释义：</text>
+                <text class="field-value">{{ci.definitionCn}}</text>
+              </view>
+              <view wx:if="{{ci.usage}}" class="field-row">
+                <text class="field-label">用法：</text>
+                <text class="field-value">{{ci.usage}}</text>
+              </view>
+              <view wx:if="{{ci.note}}" class="field-row">
+                <text class="field-label">注：</text>
+                <text class="field-value">{{ci.note}}</text>
+              </view>
+            </view>
+
+            <!-- 新增释义的例句 -->
+            <view wx:if="{{ci.examples && ci.examples.length > 0}}" class="examples-list">
+              <text class="examples-title">例句</text>
+              <view
+                wx:for="{{ci.examples}}"
+                wx:key="index"
+                wx:for-item="ex"
+                wx:for-index="exIdx"
+                class="example-item"
+              >
+                <text class="example-index">例句{{ex.sortOrder + 1}}</text>
+                <text class="example-jp">{{ex.sentenceJp}}</text>
+                <text wx:if="{{ex.sentenceKana}}" class="example-kana">{{ex.sentenceKana}}</text>
+                <text wx:if="{{ex.sentenceCn}}" class="example-cn">{{ex.sentenceCn}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty-mini">暂无纠错内容</view>
+  </view>
+
+  <!-- 拒绝原因输入 -->
+  <view wx:if="{{showReject}}" class="reject-section card">
+    <text class="section-title">拒绝原因</text>
+    <textarea class="reject-textarea" value="{{rejectComment}}" bindinput="onRejectCommentInput" placeholder="请输入拒绝原因（必填）" auto-height maxlength="500" />
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-bar">
+    <view wx:if="{{!showReject}}" class="action-btn btn-danger {{submitting ? 'disabled' : ''}}" bindtap="openReject">拒绝</view>
+    <view wx:if="{{!showReject}}" class="action-btn btn-success {{submitting ? 'disabled' : ''}}" bindtap="approve">采纳</view>
+    <view wx:if="{{showReject}}" class="action-btn btn-cancel {{submitting ? 'disabled' : ''}}" bindtap="cancelReject">取消</view>
+    <view wx:if="{{showReject}}" class="action-btn btn-danger {{submitting ? 'disabled' : ''}}" bindtap="confirmReject">确认拒绝</view>
+  </view>
+</view>

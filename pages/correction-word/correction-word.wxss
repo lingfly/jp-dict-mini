@@ -1,4 +1,4 @@
-/* pages/correction/correction.wxss */
+/* pages/correction-word/correction-word.wxss */
 .correction-page {
   min-height: 100vh;
   background: #F5F7FA;
@@ -22,32 +22,6 @@
   color: #909399;
   margin-top: 4px;
   display: block;
-}
-
-/* 类型切换 */
-.type-tabs {
-  display: flex;
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.type-tab {
-  flex: 1;
-  text-align: center;
-  padding: 12px 0;
-  font-size: 14px;
-  color: #909399;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
-}
-
-.type-tab.active {
-  color: #5B8C7D;
-  border-bottom-color: #5B8C7D;
-  font-weight: 600;
 }
 
 /* 表单 */
@@ -87,66 +61,6 @@
   background: #F5F7FA;
   border-radius: 6px;
   font-size: 14px;
-  box-sizing: border-box;
-}
-
-/* 释义纠错卡片 */
-.def-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.def-card {
-  border: 1px solid #E4E7ED;
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.def-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.def-index {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(91, 140, 125, 0.1);
-  color: #5B8C7D;
-  font-size: 12px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.def-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  flex: 1;
-}
-
-.def-usage {
-  font-size: 13px;
-  color: #909399;
-  margin-bottom: 8px;
-  padding-left: 30px;
-}
-
-.def-textarea {
-  width: 100%;
-  min-height: 60px;
-  padding: 8px 10px;
-  background: #F5F7FA;
-  border-radius: 6px;
-  font-size: 13px;
   box-sizing: border-box;
 }
 
@@ -262,13 +176,4 @@
   color: #5B8C7D;
   flex-shrink: 0;
   margin-left: 8px;
-}
-
-/* 空状态 */
-.empty-state {
-  display: flex;
-  justify-content: center;
-  padding: 40px 0;
-  color: #909399;
-  font-size: 14px;
 }

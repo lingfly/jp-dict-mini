@@ -1,0 +1,34 @@
+<!--pages/correction-definition-audit/correction-definition-audit.wxml-->
+<view class="audit-page">
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading-state">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 释义纠错审核列表 -->
+  <view wx:else class="audit-content">
+    <view wx:if="{{list.length === 0}}" class="empty-state card">
+      <text class="empty-text">暂无待审核的释义纠错</text>
+    </view>
+
+    <view
+      wx:for="{{list}}"
+      wx:key="id"
+      wx:for-item="item"
+      wx:for-index="idx"
+      class="audit-card card"
+      data-index="{{idx}}"
+      bindtap="goDetail"
+    >
+      <view class="audit-word">
+        <text class="word-kanji">{{item.wordKanji}}</text>
+        <text wx:if="{{item.wordKana}}" class="word-kana">{{item.wordKana}}</text>
+      </view>
+      <view class="audit-summary">
+        <text class="change-tag">释义纠错</text>
+        <text wx:if="{{item.correctionItems && item.correctionItems.length > 0}}" class="count-tag">{{item.correctionItems.length}} 项</text>
+      </view>
+      <view class="audit-arrow">›</view>
+    </view>
+  </view>
+</view>

@@ -108,6 +108,9 @@
           <view class="popup-menu-item" bindtap="goCorrection">
             <text>单词纠错</text>
           </view>
+          <view class="popup-menu-item" bindtap="goDefinitionCorrection">
+            <text>释义纠错</text>
+          </view>
         </view>
       </view>
 

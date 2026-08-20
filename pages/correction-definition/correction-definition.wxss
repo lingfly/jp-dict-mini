@@ -1,0 +1,329 @@
+/* pages/correction-definition/correction-definition.wxss */
+.correction-page {
+  min-height: 100vh;
+  background: #F5F7FA;
+  padding: 16px;
+  padding-bottom: 32px;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #303133;
+  display: block;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: #909399;
+  margin-top: 4px;
+  display: block;
+}
+
+/* 释义纠错表单容器 */
+.def-form {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.form-item {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.form-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  background: #F5F7FA;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 12px;
+  background: #F5F7FA;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+/* 释义纠错卡片 */
+.def-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.def-card {
+  border: 1px solid #E4E7ED;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.def-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.def-index {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(91, 140, 125, 0.1);
+  color: #5B8C7D;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.def-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  flex: 1;
+}
+
+/* 可编辑标题输入框 */
+.def-title-input {
+  flex: 1;
+  min-height: 24px;
+  line-height: 24px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  padding: 0 4px;
+  background: #F5F7FA;
+  border-radius: 4px;
+}
+
+/* 展开/折叠箭头 */
+.def-toggle {
+  font-size: 12px;
+  color: #909399;
+  flex-shrink: 0;
+  margin-left: 4px;
+  margin-top: 4px;
+  transition: transform 0.2s;
+}
+
+.def-toggle.expanded {
+  transform: rotate(180deg);
+}
+
+/* 释义展开内容 */
+.def-body {
+  margin-top: 4px;
+}
+
+.def-usage {
+  font-size: 13px;
+  color: #909399;
+  margin-bottom: 8px;
+  padding-left: 30px;
+}
+
+/* 释义纠错删除按钮 */
+.def-delete-btn {
+  font-size: 13px;
+  color: #E6A23C;
+  flex-shrink: 0;
+  margin-left: 8px;
+  padding: 2px 6px;
+}
+
+.def-card.deleted .def-header,
+.def-card.deleted .def-title,
+.def-card.deleted .def-title-input {
+  color: #C0C4CC;
+}
+
+.def-card.deleted .def-textarea,
+.def-card.deleted .form-input {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* 释义字段 */
+.def-field {
+  margin-bottom: 12px;
+}
+
+.def-field:last-child {
+  margin-bottom: 0;
+}
+
+.def-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #606266;
+  margin-bottom: 6px;
+  display: block;
+}
+
+/* 例句区块 */
+.examples-block {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #F2F3F5;
+}
+
+.examples-block > .def-field-label {
+  margin-bottom: 10px;
+}
+
+/* 例句卡片 */
+.example-card {
+  border: 1px solid #E4E7ED;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #FAFBFC;
+}
+
+.example-card.example-new-card {
+  border-style: dashed;
+  border-color: #C0C4CC;
+  background: #FDFDFD;
+}
+
+.example-card.deleted {
+  opacity: 0.6;
+}
+
+.example-card.deleted .def-textarea,
+.example-card.deleted .form-input {
+  text-decoration: line-through;
+}
+
+.example-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.example-index {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(91, 140, 125, 0.1);
+  color: #5B8C7D;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* 新增例句按钮 */
+.add-example-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 0;
+  border: 1px dashed #C0C4CC;
+  border-radius: 6px;
+  color: #909399;
+  font-size: 13px;
+}
+
+.add-example-btn:active {
+  background: #F5F7FA;
+}
+
+/* 新增释义卡片 */
+.def-new-card {
+  border-style: dashed;
+  border-color: #5B8C7D;
+  background: rgba(91, 140, 125, 0.03);
+}
+
+/* 新增释义按钮 */
+.add-def-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 0;
+  margin-bottom: 16px;
+  border: 1px dashed #5B8C7D;
+  border-radius: 8px;
+  color: #5B8C7D;
+  font-size: 14px;
+  background: rgba(91, 140, 125, 0.04);
+}
+
+.add-def-btn:active {
+  background: rgba(91, 140, 125, 0.1);
+}
+
+.add-def-icon {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.def-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 10px;
+  background: #F5F7FA;
+  border-radius: 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+/* 提交按钮 */
+.submit-btn {
+  width: 100%;
+  height: 44px;
+  line-height: 1;
+  background: #5B8C7D;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.submit-btn[disabled] {
+  opacity: 0.6;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+  color: #909399;
+  font-size: 14px;
+}

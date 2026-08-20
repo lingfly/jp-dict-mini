@@ -1,4 +1,4 @@
-// pages/correction/correction.js
+// pages/correction-word/correction-word.js
 const { correctionApi } = require('../../utils/api')
 
 Page({
@@ -85,8 +85,6 @@ Page({
         ]
       }
     ],
-    // 释义纠错表单
-    defFormItems: [],     // [{ definitionId, remark }]
     submitting: false
   },
 

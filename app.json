@@ -17,7 +17,10 @@
     "pages/new-word-audit/new-word-audit",
     "pages/correction-audit/correction-audit",
     "pages/correction-audit-detail/correction-audit-detail",
-    "pages/correction/correction",
+    "pages/correction-word/correction-word",
+    "pages/correction-definition/correction-definition",
+    "pages/correction-definition-audit/correction-definition-audit",
+    "pages/correction-definition-audit-detail/correction-definition-audit-detail",
     "pages/feedback-menu/feedback-menu",
     "pages/feedback/feedback"
   ],

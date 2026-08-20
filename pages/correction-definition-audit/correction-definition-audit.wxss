@@ -1,0 +1,76 @@
+/* pages/correction-definition-audit/correction-definition-audit.wxss */
+.audit-page {
+  min-height: 100vh;
+  background: #F5F7FA;
+  padding: 16px;
+}
+
+.loading-state,
+.empty-state {
+  display: flex;
+  justify-content: center;
+  padding: 80px 0;
+  color: #909399;
+  font-size: 14px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.audit-card {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+}
+
+.audit-word {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.word-kanji {
+  font-size: 17px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.word-kana {
+  font-size: 13px;
+  color: #909399;
+}
+
+.audit-summary {
+  display: flex;
+  gap: 4px;
+  margin-right: 8px;
+  align-items: center;
+}
+
+.change-tag {
+  padding: 2px 6px;
+  background: rgba(91, 140, 125, 0.1);
+  color: #5B8C7D;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.count-tag {
+  padding: 2px 6px;
+  background: rgba(245, 108, 108, 0.1);
+  color: #F56C6C;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.audit-arrow {
+  font-size: 20px;
+  color: #C0C4CC;
+  flex-shrink: 0;
+}

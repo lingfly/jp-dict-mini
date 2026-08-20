@@ -457,13 +457,23 @@ Page({
     this.setData({ showMenu: !this.data.showMenu })
   },
 
-  /** 进入纠错页面 */
+  /** 进入单词纠错页面 */
   goCorrection() {
     this.setData({ showMenu: false })
     const wordId = this.data.currentWord && this.data.currentWord.id
     if (!wordId) return
     wx.navigateTo({
-      url: `/pages/correction/correction?wordId=${wordId}`
+      url: `/pages/correction-word/correction-word?wordId=${wordId}`
+    })
+  },
+
+  /** 进入释义纠错页面 */
+  goDefinitionCorrection() {
+    this.setData({ showMenu: false })
+    const wordId = this.data.currentWord && this.data.currentWord.id
+    if (!wordId) return
+    wx.navigateTo({
+      url: `/pages/correction-definition/correction-definition?wordId=${wordId}`
     })
   }
 })

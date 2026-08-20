@@ -347,6 +347,36 @@ const correctionApi = {
   }
 }
 
+/**
+ * 管理员相关 API（需要认证 + 管理员权限）
+ */
+const adminApi = {
+  // 待审核释义纠错列表
+  listPendingDefinitionCorrections() {
+    return get('/api/admin/correction/definition/pending')
+  },
+
+  // 查看释义纠错详情（含原始释义对比）
+  getDefinitionCorrection(correctionId) {
+    return get(`/api/admin/correction/definition/${correctionId}`)
+  },
+
+  // 管理员修改纠错明细（增删改 items）
+  updateDefinitionCorrection(correctionId, data) {
+    return put(`/api/admin/correction/definition/${correctionId}`, data)
+  },
+
+  // 采纳释义纠错（真正修改 word_definition）
+  approveDefinitionCorrection(correctionId, data) {
+    return post(`/api/admin/correction/definition/${correctionId}/approve`, data)
+  },
+
+  // 拒绝释义纠错
+  rejectDefinitionCorrection(correctionId, data) {
+    return post(`/api/admin/correction/definition/${correctionId}/reject`, data)
+  }
+}
+
 module.exports = {
   wordlistApi,
   fsrsApi,
@@ -357,5 +387,6 @@ module.exports = {
   userApi,
   aiDictApi,
   feedbackApi,
-  correctionApi
+  correctionApi,
+  adminApi
 }

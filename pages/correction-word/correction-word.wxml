@@ -1,4 +1,4 @@
-<!--pages/correction/correction.wxml-->
+<!--pages/correction-word/correction-word.wxml-->
 <view class="correction-page">
   <view class="page-header">
     <text class="page-title">单词纠错</text>
