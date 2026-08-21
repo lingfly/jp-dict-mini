@@ -26,7 +26,15 @@ Page({
     // 防重复点击状态
     addingToWordlist: false,
     togglingWordList: false,
-    favoriting: false
+    favoriting: false,
+    // 保存结果列表的滚动位置
+    savedScrollTop: 0,
+    // 分页相关
+    currentPage: 1,
+    pageSize: 20,
+    totalResults: 0,
+    hasMoreResults: false,
+    loadingMore: false
   },
 
   async onLoad() {
@@ -88,15 +96,27 @@ Page({
       return
     }
 
-    this.setData({ loading: true, wordDetail: null, searchResults: [], showAiSearch: false, isAiResult: false })
+    this.setData({
+      loading: true,
+      wordDetail: null,
+      searchResults: [],
+      showAiSearch: false,
+      isAiResult: false,
+      currentPage: 1,
+      totalResults: 0,
+      hasMoreResults: false
+    })
 
     try {
-      const res = await wordApi.search(keyword)
-      if (res.code === 200 && res.data.length > 0) {
-        // 预处理搜索结果：高亮 + 释义排序
-        const processed = this.processSearchResults(res.data, keyword)
+      const res = await wordApi.search(keyword, 1, this.data.pageSize)
+      if (res.code === 200 && res.data && res.data.data && res.data.data.length > 0) {
+        // 预处理搜索结果：使用后端返回的 matchType 和 matchContent 进行高亮
+        const processed = this.processSearchResults(res.data.data)
         this.setData({
-          searchResults: processed
+          searchResults: processed,
+          currentPage: res.data.page || 1,
+          totalResults: res.data.total || 0,
+          hasMoreResults: res.data.hasNext || false
         })
 
         // 添加到最近搜索
@@ -130,6 +150,15 @@ Page({
     const index = e.currentTarget.dataset.index
     const word = this.data.searchResults[index]
 
+    // 保存当前滚动位置
+    const query = wx.createSelectorQuery()
+    query.selectViewport().scrollOffset()
+    query.exec((res) => {
+      if (res && res[0]) {
+        this.setData({ savedScrollTop: res[0].scrollTop })
+      }
+    })
+
     // 深拷贝避免引用问题，并确保数据结构完整
     const wordDetail = JSON.parse(JSON.stringify(word))
     // 保存 AI 查词结果中的索引位置，用于反馈接口的 selectedIndex
@@ -144,11 +173,26 @@ Page({
       wordDetail: wordDetail,
       expandedSense: initialExpanded,
       aiFeedbackDone: false // 重置反馈状态
+    }, () => {
+      // 进入单词详情，滚动到顶部
+      wx.pageScrollTo({
+        scrollTop: 0,
+        duration: 0
+      })
     })
   },
 
   backToResults() {
-    this.setData({ wordDetail: null })
+    this.setData({ wordDetail: null }, () => {
+      // 返回结果列表，恢复之前保存的滚动位置
+      const savedScrollTop = this.data.savedScrollTop
+      if (savedScrollTop > 0) {
+        wx.pageScrollTo({
+          scrollTop: savedScrollTop,
+          duration: 0
+        })
+      }
+    })
   },
 
   /** 切换更多菜单 */
@@ -187,7 +231,10 @@ Page({
       searchResults: [],
       wordDetail: null,
       showAiSearch: false,
-      isAiResult: false
+      isAiResult: false,
+      currentPage: 1,
+      totalResults: 0,
+      hasMoreResults: false
     })
   },
 
@@ -371,7 +418,7 @@ Page({
       if (res.code === 200 && res.data && res.data.results && res.data.results.length > 0) {
         const logId = res.data.logId
         // 复用搜索结果的处理和展示逻辑，并注入 logId 和来源标记
-        const processed = this.processSearchResults(res.data.results, keyword)
+        const processed = this.processSearchResults(res.data.results)
         processed.forEach(item => {
           item._logId = logId
           item._fromAi = true
@@ -501,39 +548,58 @@ Page({
   },
 
   /**
-   * 预处理搜索结果：分词高亮 + 释义排序
+   * 预处理搜索结果：根据后端返回的 matchType 和 matchContent 进行高亮显示
+   * matchType: exact/prefix/contain/conjugation/definition
+   * matchContent: 匹配的具体内容
    */
-  processSearchResults(data, keyword) {
-    const lowerKw = keyword.toLowerCase()
+  processSearchResults(data) {
     return data.map(item => {
       const word = item.word
-      const kanji = word.kanji || ''
-      const kana = word.kana || ''
+      const matchType = item.matchType
+      const matchContent = item.matchContent || ''
 
-      // 生成高亮分段：kanji
-      const kanjiSegments = this.buildHighlightSegments(kanji, lowerKw)
-
-      // 生成高亮分段：kana
-      const kanaSegments = this.buildHighlightSegments(kana, lowerKw)
-
-      // 释义排序：包含关键字的排前面
+      let kanjiSegments = [{ text: word.kanji || '', highlight: false }]
+      let kanaSegments = [{ text: word.kana || '', highlight: false }]
       let definitions = [...(item.definitions || [])]
-      const matchDefs = definitions.filter(d =>
-        d.definitionCn && d.definitionCn.toLowerCase().includes(lowerKw)
-      )
-      const otherDefs = definitions.filter(d =>
-        !d.definitionCn || !d.definitionCn.toLowerCase().includes(lowerKw)
-      )
-      definitions = [...matchDefs, ...otherDefs]
+      let summaryDef = definitions[0]
 
-      // 给每个释义生成高亮分段
-      definitions = definitions.map(d => ({
-        ...d,
-        _highlightedCn: this.buildHighlightSegments(d.definitionCn || '', lowerKw)
-      }))
+      // 根据匹配类型进行不同的高亮处理
+      if (matchType === 'definition') {
+        // 释义匹配：找到匹配的释义作为预览，并高亮匹配内容
+        const matchedDef = definitions.find(d =>
+          d.definitionCn && d.definitionCn.includes(matchContent)
+        )
+        if (matchedDef) {
+          summaryDef = {
+            ...matchedDef,
+            _highlightedCn: this.buildPrefixHighlightSegments(matchedDef.definitionCn || '', matchContent)
+          }
+        }
+        // 保留所有释义用于详情页展示
+        definitions = definitions.map(d => ({
+          ...d,
+          _highlightedCn: [{ text: d.definitionCn || '', highlight: false }]
+        }))
+      } else {
+        // 汉字/假名匹配：前缀高亮（从左到右逐字符匹配）
+        if (matchContent) {
+          const kanji = word.kanji || ''
+          const kana = word.kana || ''
 
-      // 取第一条释义作为摘要（优先匹配的）
-      const summaryDef = definitions[0]
+          // 高亮 kanji 中从左边开始匹配的部分
+          kanjiSegments = this.buildPrefixHighlightSegments(kanji, matchContent)
+
+          // 高亮 kana 中从左边开始匹配的部分
+          kanaSegments = this.buildPrefixHighlightSegments(kana, matchContent)
+        }
+
+        // 给所有释义生成普通分段（不高亮）
+        definitions = definitions.map(d => ({
+          ...d,
+          _highlightedCn: [{ text: d.definitionCn || '', highlight: false }]
+        }))
+        summaryDef = definitions[0]
+      }
 
       return {
         ...item,
@@ -547,29 +613,127 @@ Page({
   },
 
   /**
-   * 将文本按关键字拆分为高亮/非高亮分段
+   * 前缀匹配高亮：在文本中查找匹配位置，从左边开始逐字符比对，匹配的部分高亮
+   * 例如："移り変わる" 匹配 "変わって"，高亮 "変わ"
+   * 返回 [{ text, highlight }]
+   */
+  buildPrefixHighlightSegments(text, matchContent) {
+    if (!text || !matchContent) return [{ text: text || '', highlight: false }]
+
+    // 在文本中查找能匹配的最佳位置
+    let bestMatchPos = -1
+    let bestMatchLength = 0
+
+    for (let startPos = 0; startPos < text.length; startPos++) {
+      let matchedLength = 0
+      const remainingTextLength = text.length - startPos
+      const minLength = Math.min(remainingTextLength, matchContent.length)
+
+      // 从当前位置开始逐字符比对
+      for (let i = 0; i < minLength; i++) {
+        if (text[startPos + i] === matchContent[i]) {
+          matchedLength++
+        } else {
+          break
+        }
+      }
+
+      // 记录最长的匹配
+      if (matchedLength > bestMatchLength) {
+        bestMatchLength = matchedLength
+        bestMatchPos = startPos
+      }
+    }
+
+    // 如果找到匹配的部分，构建分段
+    if (bestMatchLength > 0 && bestMatchPos >= 0) {
+      const segments = []
+
+      // 前面未匹配的部分
+      if (bestMatchPos > 0) {
+        segments.push({ text: text.substring(0, bestMatchPos), highlight: false })
+      }
+
+      // 匹配的部分（高亮）
+      segments.push({
+        text: text.substring(bestMatchPos, bestMatchPos + bestMatchLength),
+        highlight: true
+      })
+
+      // 后面未匹配的部分
+      if (bestMatchPos + bestMatchLength < text.length) {
+        segments.push({
+          text: text.substring(bestMatchPos + bestMatchLength),
+          highlight: false
+        })
+      }
+
+      return segments
+    }
+
+    return [{ text, highlight: false }]
+  },
+
+  /**
+   * 将文本按关键字拆分为高亮/非高亮分段（精确匹配，区分大小写）
    * 返回 [{ text, highlight }]
    */
   buildHighlightSegments(text, keyword) {
     if (!text || !keyword) return [{ text: text || '', highlight: false }]
-    const lower = text.toLowerCase()
-    const kw = keyword.toLowerCase()
     const segments = []
     let lastIdx = 0
 
-    let idx = lower.indexOf(kw, lastIdx)
+    let idx = text.indexOf(keyword, lastIdx)
     while (idx !== -1) {
       if (idx > lastIdx) {
         segments.push({ text: text.substring(lastIdx, idx), highlight: false })
       }
-      segments.push({ text: text.substring(idx, idx + kw.length), highlight: true })
-      lastIdx = idx + kw.length
-      idx = lower.indexOf(kw, lastIdx)
+      segments.push({ text: text.substring(idx, idx + keyword.length), highlight: true })
+      lastIdx = idx + keyword.length
+      idx = text.indexOf(keyword, lastIdx)
     }
     if (lastIdx < text.length) {
       segments.push({ text: text.substring(lastIdx), highlight: false })
     }
     return segments.length > 0 ? segments : [{ text, highlight: false }]
+  },
+
+  /** 加载更多搜索结果 */
+  async loadMoreResults() {
+    if (this.data.loadingMore || !this.data.hasMoreResults) {
+      return
+    }
+
+    const keyword = this.data.searchKeyword.trim()
+    if (!keyword) return
+
+    const nextPage = this.data.currentPage + 1
+
+    this.setData({ loadingMore: true })
+
+    try {
+      const res = await wordApi.search(keyword, nextPage, this.data.pageSize)
+      if (res.code === 200 && res.data && res.data.data && res.data.data.length > 0) {
+        // 预处理新数据
+        const processed = this.processSearchResults(res.data.data)
+        // 追加到现有结果
+        this.setData({
+          searchResults: [...this.data.searchResults, ...processed],
+          currentPage: res.data.page || nextPage,
+          hasMoreResults: res.data.hasNext || false
+        })
+      } else {
+        this.setData({ hasMoreResults: false })
+      }
+    } catch (error) {
+      console.error('加载更多失败:', error)
+      wx.showToast({
+        title: '加载失败',
+        icon: 'none'
+      })
+    } finally {
+      this.setData({ loadingMore: false })
+    }
   },
 
   onUnload() {

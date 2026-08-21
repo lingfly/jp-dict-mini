@@ -159,9 +159,9 @@ const reviewApi = {
  * 单词相关 API（需要认证）
  */
 const wordApi = {
-  // 搜索单词
-  search(keyword) {
-    return get('/api/word/search', { key: keyword }) // 参数名是 key
+  // 搜索单词（支持分页）
+  search(keyword, page = 1, pageSize = 50) {
+    return get('/api/word/search', { key: keyword, page, pageSize })
   },
 
   // 获取单词详情

@@ -210,6 +210,31 @@
   font-weight: 600;
 }
 
+/* 加载更多按钮 */
+.load-more-btn {
+  margin-top: 12px;
+  padding: 12px;
+  text-align: center;
+  background: white;
+  border-radius: 8px;
+  color: #5B8C7D;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.load-more-btn.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.no-more-hint {
+  text-align: center;
+  padding: 16px 0;
+  font-size: 13px;
+  color: #C0C4CC;
+}
+
 /* 单词详情 */
 .word-detail {
   margin-top: 12px;

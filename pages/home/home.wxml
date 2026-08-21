@@ -46,7 +46,7 @@
   <!-- 搜索结果列表 -->
   <view wx:elif="{{searchResults.length > 0 && !wordDetail}}" class="search-results">
     <view class="results-header">
-      <text class="results-title">{{isAiResult ? 'AI 查词结果' : '找到 ' + searchResults.length + ' 个结果'}}</text>
+      <text class="results-title">{{isAiResult ? 'AI 查词结果' : '找到 ' + totalResults + ' 个结果'}}</text>
       <view class="clear-btn" bindtap="clearSearch">✕</view>
     </view>
     <view class="results-list">
@@ -72,6 +72,14 @@
           <text wx:for="{{item._summaryDef._highlightedCn}}" wx:key="index" class="{{item.highlight ? 'highlight-text' : ''}}">{{item.text}}</text>
         </view>
       </view>
+    </view>
+    <!-- 加载更多按钮 -->
+    <view wx:if="{{hasMoreResults}}" class="load-more-btn {{loadingMore ? 'loading' : ''}}" bindtap="loadMoreResults">
+      <text wx:if="{{loadingMore}}">加载中...</text>
+      <text wx:else>加载更多</text>
+    </view>
+    <view wx:elif="{{searchResults.length > 0}}" class="no-more-hint">
+      <text>没有更多结果了</text>
     </view>
     <!-- AI 查词入口（仅普通搜索结果下方显示） -->
     <view wx:if="{{!isAiResult}}" class="ai-search-entry ai-search-inline {{aiStreaming ? 'ai-disabled' : ''}}" bindtap="startAiSearch">
