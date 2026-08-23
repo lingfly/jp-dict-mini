@@ -82,10 +82,10 @@
       <text>没有更多结果了</text>
     </view>
     <!-- AI 查词入口（普通结果与 AI 结果下方均显示） -->
-    <view class="ai-search-entry ai-search-inline {{aiStreaming ? 'ai-disabled' : ''}}" bindtap="startAiSearch">
+    <view class="ai-search-entry ai-search-inline {{aiStreaming || aiQueryExhausted ? 'ai-disabled' : ''}}" bindtap="startAiSearch">
       <text wx:if="{{!aiStreaming}}" class="ai-search-icon">✨</text>
       <text wx:else class="ai-search-loading"></text>
-      <text class="ai-search-text">{{aiStreaming ? 'AI 查询中...' : (aiQueryLimit > 0 ? 'AI 查词 · 今日已用 ' + aiQueryUsedToday + ' / ' + aiQueryLimit + ' 次' : 'AI 查词')}}</text>
+      <text class="ai-search-text">{{aiStreaming ? 'AI 查询中...' : (aiQueryExhausted ? 'AI 查词 · 今日次数已用完' : (aiQueryLimit > 0 ? 'AI 查词 · 今日已用 ' + aiQueryUsedToday + ' / ' + aiQueryLimit + ' 次' : 'AI 查词'))}}</text>
     </view>
   </view>
 
@@ -94,10 +94,10 @@
     <view class="ai-search-header">
       <text class="ai-no-result">未找到匹配单词</text>
     </view>
-    <view class="ai-search-entry {{aiStreaming ? 'ai-disabled' : ''}}" bindtap="startAiSearch">
+    <view class="ai-search-entry {{aiStreaming || aiQueryExhausted ? 'ai-disabled' : ''}}" bindtap="startAiSearch">
       <text wx:if="{{!aiStreaming}}" class="ai-search-icon">✨</text>
       <text wx:else class="ai-search-loading"></text>
-      <text class="ai-search-text">{{aiStreaming ? 'AI 查询中...' : (aiQueryLimit > 0 ? 'AI 查词 · 今日已用 ' + aiQueryUsedToday + ' / ' + aiQueryLimit + ' 次' : 'AI 查词')}}</text>
+      <text class="ai-search-text">{{aiStreaming ? 'AI 查询中...' : (aiQueryExhausted ? 'AI 查词 · 今日次数已用完' : (aiQueryLimit > 0 ? 'AI 查词 · 今日已用 ' + aiQueryUsedToday + ' / ' + aiQueryLimit + ' 次' : 'AI 查词'))}}</text>
     </view>
   </view>
 

@@ -23,6 +23,7 @@ Page({
     aiQueryLimit: 0,        // 每日 AI 查词限制次数
     aiQueryUsedToday: 0,    // 当日已使用的 AI 查词次数
     aiQueryRemain: 0,       // 剩余 AI 查词次数（limit - used）
+    aiQueryExhausted: false, // 是否已达 AI 查词次数上限
     // 释义折叠配置
     collapseDefinitionOnQuery: false,
     // 更多菜单
@@ -87,11 +88,15 @@ Page({
     }
   },
 
-  /** 根据 limit 与已用次数计算剩余次数 */
+  /** 根据 limit 与已用次数计算剩余次数及是否达上限 */
   _updateAiQueryRemain() {
     const { aiQueryLimit, aiQueryUsedToday } = this.data
     const remain = aiQueryLimit > 0 ? Math.max(0, aiQueryLimit - aiQueryUsedToday) : 0
-    this.setData({ aiQueryRemain: remain })
+    const exhausted = aiQueryLimit > 0 && aiQueryUsedToday >= aiQueryLimit
+    this.setData({
+      aiQueryRemain: remain,
+      aiQueryExhausted: exhausted
+    })
   },
 
   /** 加载并缓存默认词单（收藏夹）ID */
@@ -441,6 +446,12 @@ Page({
   async startAiSearch() {
     const keyword = this.data.searchKeyword.trim()
     if (!keyword) return
+
+    // 次数限制：已达上限则不允许继续查询
+    if (this.data.aiQueryExhausted) {
+      wx.showToast({ title: '今日 AI 查词次数已用完', icon: 'none' })
+      return
+    }
 
     this.setData({ aiStreaming: true })
 
