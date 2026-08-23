@@ -112,6 +112,12 @@ Page({
     })
   },
 
+  goToMyCorrection() {
+    wx.navigateTo({
+      url: '/pages/correction-my/correction-my'
+    })
+  },
+
   handleLogout() {
     wx.showModal({
       title: '提示',

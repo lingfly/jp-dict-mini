@@ -1,0 +1,120 @@
+<!-- pages/correction-my/correction-my.wxml -->
+<view class="correction-my-page">
+  <!-- Tab 切换 -->
+  <view class="tab-bar">
+    <view class="tab-item {{currentTab === 'word' ? 'active' : ''}}" bindtap="switchTab" data-tab="word">
+      <text>单词纠错</text>
+    </view>
+    <view class="tab-item {{currentTab === 'definition' ? 'active' : ''}}" bindtap="switchTab" data-tab="definition">
+      <text>释义纠错</text>
+    </view>
+  </view>
+
+  <!-- 单词纠错列表 -->
+  <view wx:if="{{currentTab === 'word'}}" class="list-section">
+    <view wx:if="{{wordLoading && wordList.length === 0}}" class="loading-state">
+      <text>加载中...</text>
+    </view>
+
+    <view wx:elif="{{wordList.length === 0}}" class="empty-state card">
+      <view class="empty-icon">📝</view>
+      <text class="empty-text">暂无单词纠错记录</text>
+      <text class="empty-hint">发现单词信息有误？去单词详情页提交纠错吧</text>
+    </view>
+
+    <view wx:else class="word-list">
+      <view
+        wx:for="{{wordList}}"
+        wx:key="id"
+        wx:for-item="item"
+        wx:for-index="idx"
+        class="word-card card"
+        data-index="{{idx}}"
+        bindtap="goWordDetail"
+      >
+        <view class="card-header">
+          <view class="card-word">
+            <text class="word-kanji">{{item.wordKanji}}</text>
+            <text wx:if="{{item.wordKana}}" class="word-kana">{{item.wordKana}}</text>
+          </view>
+          <text class="status-tag status-{{item.status}}">{{item.status === 'pending' ? '待处理' : item.status === 'approved' ? '已采纳' : '已拒绝'}}</text>
+        </view>
+
+        <view wx:if="{{item.correctionKanji || item.correctionKana || item.correctionAccent != null || item.correctionWordType}}" class="correction-row">
+          <text class="correction-label">纠错内容</text>
+          <view class="correction-tags">
+            <text wx:if="{{item.correctionKanji && item.correctionKanji !== item.wordKanji}}" class="change-tag">汉字: {{item.correctionKanji}}</text>
+            <text wx:if="{{item.correctionKana && item.correctionKana !== item.wordKana}}" class="change-tag">假名: {{item.correctionKana}}</text>
+            <text wx:if="{{item.correctionAccent != null && item.correctionAccent !== item.wordAccent}}" class="change-tag">音调: {{item.correctionAccent}}</text>
+            <text wx:if="{{item.correctionWordType && item.correctionWordType !== item.wordWordType}}" class="change-tag">词性: {{item.correctionWordTypeCn}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{item.remark}}" class="remark-row">
+          <text class="remark-label">说明</text>
+          <text class="remark-text">{{item.remark}}</text>
+        </view>
+
+        <view wx:if="{{item.createdAt}}" class="card-footer">
+          <text class="time-text">{{item.createdAt}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 释义纠错列表 -->
+  <view wx:if="{{currentTab === 'definition'}}" class="list-section">
+    <view wx:if="{{definitionLoading && definitionList.length === 0}}" class="loading-state">
+      <text>加载中...</text>
+    </view>
+
+    <view wx:elif="{{definitionList.length === 0}}" class="empty-state card">
+      <view class="empty-icon">📖</view>
+      <text class="empty-text">暂无释义纠错记录</text>
+      <text class="empty-hint">发现释义有误？去单词详情页提交释义纠错吧</text>
+    </view>
+
+    <view wx:else class="definition-list">
+      <view
+        wx:for="{{definitionList}}"
+        wx:key="id"
+        wx:for-item="item"
+        wx:for-index="idx"
+        class="def-card card"
+        data-index="{{idx}}"
+        bindtap="goDefinitionDetail"
+      >
+        <view class="card-header">
+          <view class="card-word">
+            <text class="word-kanji">{{item.wordKanji}}</text>
+            <text wx:if="{{item.wordKana}}" class="word-kana">{{item.wordKana}}</text>
+          </view>
+          <text class="status-tag status-{{item.status}}">{{item.status === 'pending' ? '待处理' : item.status === 'approved' ? '已采纳' : '已拒绝'}}</text>
+        </view>
+
+        <view wx:if="{{item.correctionItems && item.correctionItems.length > 0}}" class="correction-row">
+          <text class="correction-label">纠错项</text>
+          <view class="correction-tags">
+            <text wx:for="{{item.correctionItems}}" wx:key="index" wx:for-item="ci" class="change-tag change-tag-def">
+              {{ci.operationType === 'ADD' ? '新增' : ci.operationType === 'DELETE' ? '删除' : '修改'}}
+            </text>
+          </view>
+        </view>
+
+        <view wx:if="{{item.remark}}" class="remark-row">
+          <text class="remark-label">说明</text>
+          <text class="remark-text">{{item.remark}}</text>
+        </view>
+
+        <view wx:if="{{item.reviewComment}}" class="remark-row review-row">
+          <text class="remark-label">审核意见</text>
+          <text class="remark-text">{{item.reviewComment}}</text>
+        </view>
+
+        <view wx:if="{{item.createdAt}}" class="card-footer">
+          <text class="time-text">{{item.createdAt}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

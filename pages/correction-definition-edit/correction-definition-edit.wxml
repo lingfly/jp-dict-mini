@@ -1,0 +1,208 @@
+<!--pages/correction-definition-edit/correction-definition-edit.wxml-->
+<view class="correction-page">
+  <view wx:if="{{loading}}" class="loading-state">
+    <text>加载中...</text>
+  </view>
+
+  <block wx:else>
+    <view class="page-header">
+      <text class="page-title">修改释义纠错</text>
+      <text class="page-subtitle">纠错单词：{{wordInfo.kanji || wordInfo.kana}}</text>
+    </view>
+
+    <!-- 释义纠错 -->
+    <view class="def-form">
+      <view wx:if="{{defItems.length > 0}}" class="def-list">
+        <view
+          wx:for="{{defItems}}"
+          wx:key="definitionId"
+          wx:for-item="item"
+          wx:for-index="idx"
+          class="def-card {{item.deleted ? 'deleted' : ''}}"
+        >
+          <view class="def-header" data-index="{{idx}}" bindtap="toggleDefExpand">
+            <text class="def-index">{{idx + 1}}</text>
+            <input
+              class="def-title-input"
+              value="{{item.definitionCn}}"
+              data-index="{{idx}}"
+              data-field="definitionCn"
+              bindinput="onDefFieldInput"
+              catchtap=""
+              placeholder="请输入中文释义"
+              disabled="{{item.deleted}}"
+            />
+            <text class="def-delete-btn" data-index="{{idx}}" catchtap="toggleDeleteDef">{{item.deleted ? '撤销删除' : '删除'}}</text>
+            <text class="def-toggle {{item.expanded ? 'expanded' : ''}}">▼</text>
+          </view>
+
+          <view wx:if="{{item.expanded}}" class="def-body">
+            <view class="def-field">
+              <text class="def-field-label">用法说明</text>
+              <textarea
+                class="def-textarea"
+                value="{{item.usage}}"
+                data-index="{{idx}}"
+                data-field="usage"
+                bindinput="onDefFieldInput"
+                placeholder="请输入用法说明（可选）"
+                auto-height
+                maxlength="500"
+                disabled="{{item.deleted}}"
+              />
+            </view>
+
+            <view class="def-field">
+              <text class="def-field-label">注</text>
+              <textarea
+                class="def-textarea"
+                value="{{item.note}}"
+                data-index="{{idx}}"
+                data-field="note"
+                bindinput="onDefFieldInput"
+                placeholder="请输入注意事项（可选）"
+                auto-height
+                maxlength="500"
+                disabled="{{item.deleted}}"
+              />
+            </view>
+
+            <!-- 例句 -->
+            <view class="examples-block">
+              <text class="def-field-label">例句</text>
+
+              <!-- 现有例句 -->
+              <view
+                wx:for="{{item.examples}}"
+                wx:key="id"
+                wx:for-item="ex"
+                wx:for-index="exIdx"
+                class="example-card {{ex.deleted ? 'deleted' : ''}}"
+              >
+                <view class="example-header">
+                  <text class="example-index">{{exIdx + 1}}</text>
+                  <text class="def-delete-btn" data-def-index="{{idx}}" data-ex-index="{{exIdx}}" bindtap="toggleDeleteExample">{{ex.deleted ? '撤销删除' : '删除'}}</text>
+                </view>
+
+                <view class="def-field">
+                  <text class="def-field-label">日语例句 *</text>
+                  <textarea class="def-textarea" value="{{ex.sentenceJp}}" data-def-index="{{idx}}" data-ex-index="{{exIdx}}" data-field="sentenceJp" bindinput="onExampleFieldInput" placeholder="请输入日语例句" auto-height maxlength="500" disabled="{{ex.deleted || item.deleted}}" />
+                </view>
+                <view class="def-field">
+                  <text class="def-field-label">假名标注</text>
+                  <textarea class="def-textarea" value="{{ex.sentenceKana}}" data-def-index="{{idx}}" data-ex-index="{{exIdx}}" data-field="sentenceKana" bindinput="onExampleFieldInput" placeholder="例句全文假名（可选）" auto-height maxlength="500" disabled="{{ex.deleted || item.deleted}}" />
+                </view>
+                <view class="def-field">
+                  <text class="def-field-label">中文翻译</text>
+                  <textarea class="def-textarea" value="{{ex.sentenceCn}}" data-def-index="{{idx}}" data-ex-index="{{exIdx}}" data-field="sentenceCn" bindinput="onExampleFieldInput" placeholder="请输入中文翻译（可选）" auto-height maxlength="500" disabled="{{ex.deleted || item.deleted}}" />
+                </view>
+              </view>
+
+              <!-- 新增例句 -->
+              <view
+                wx:for="{{item.newExamples}}"
+                wx:key="index"
+                wx:for-item="ex"
+                wx:for-index="newExIdx"
+                class="example-card example-new-card"
+              >
+                <view class="example-header">
+                  <text class="example-index">+</text>
+                  <text class="def-delete-btn" data-def-index="{{idx}}" data-new-ex-index="{{newExIdx}}" bindtap="removeNewExample">移除</text>
+                </view>
+
+                <view class="def-field">
+                  <text class="def-field-label">日语例句 *</text>
+                  <textarea class="def-textarea" value="{{ex.sentenceJp}}" data-def-index="{{idx}}" data-new-ex-index="{{newExIdx}}" data-field="sentenceJp" bindinput="onNewExampleFieldInput" placeholder="请输入日语例句" auto-height maxlength="500" />
+                </view>
+                <view class="def-field">
+                  <text class="def-field-label">假名标注</text>
+                  <textarea class="def-textarea" value="{{ex.sentenceKana}}" data-def-index="{{idx}}" data-new-ex-index="{{newExIdx}}" data-field="sentenceKana" bindinput="onNewExampleFieldInput" placeholder="例句全文假名（可选）" auto-height maxlength="500" />
+                </view>
+                <view class="def-field">
+                  <text class="def-field-label">中文翻译</text>
+                  <textarea class="def-textarea" value="{{ex.sentenceCn}}" data-def-index="{{idx}}" data-new-ex-index="{{newExIdx}}" data-field="sentenceCn" bindinput="onNewExampleFieldInput" placeholder="请输入中文翻译（可选）" auto-height maxlength="500" />
+                </view>
+              </view>
+
+              <view class="add-example-btn" data-def-index="{{idx}}" bindtap="addExample">
+                <text class="add-def-icon">＋</text>
+                <text class="add-def-text">新增例句</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="empty-state">该单词暂无释义</view>
+
+      <!-- 新增释义 -->
+      <view wx:for="{{defNewItems}}" wx:key="index" wx:for-item="item" wx:for-index="idx" class="def-card def-new-card">
+        <view class="def-header">
+          <text class="def-index">+</text>
+          <text class="def-title">新增释义 {{idx + 1}}</text>
+          <text class="def-delete-btn" data-index="{{idx}}" bindtap="removeNewDef">移除</text>
+        </view>
+
+        <view class="def-field">
+          <text class="def-field-label">中文释义 *</text>
+          <textarea class="def-textarea" value="{{item.definitionCn}}" data-index="{{idx}}" data-field="definitionCn" bindinput="onNewDefFieldInput" placeholder="请输入中文释义" auto-height maxlength="500" />
+        </view>
+        <view class="def-field">
+          <text class="def-field-label">用法说明</text>
+          <textarea class="def-textarea" value="{{item.usage}}" data-index="{{idx}}" data-field="usage" bindinput="onNewDefFieldInput" placeholder="请输入用法说明（可选）" auto-height maxlength="500" />
+        </view>
+        <view class="def-field">
+          <text class="def-field-label">注</text>
+          <textarea class="def-textarea" value="{{item.note}}" data-index="{{idx}}" data-field="note" bindinput="onNewDefFieldInput" placeholder="请输入注意事项（可选）" auto-height maxlength="500" />
+        </view>
+
+        <!-- 新增释义的例句 -->
+        <view class="examples-block">
+          <text class="def-field-label">例句</text>
+          <view
+            wx:for="{{item.newExamples}}"
+            wx:key="index"
+            wx:for-item="ex"
+            wx:for-index="newExIdx"
+            class="example-card example-new-card"
+          >
+            <view class="example-header">
+              <text class="example-index">+</text>
+              <text class="def-delete-btn" data-new-def-index="{{idx}}" data-new-ex-index="{{newExIdx}}" bindtap="removeNewExample">移除</text>
+            </view>
+
+            <view class="def-field">
+              <text class="def-field-label">日语例句 *</text>
+              <textarea class="def-textarea" value="{{ex.sentenceJp}}" data-new-def-index="{{idx}}" data-new-ex-index="{{newExIdx}}" data-field="sentenceJp" bindinput="onNewExampleFieldInput" placeholder="请输入日语例句" auto-height maxlength="500" />
+            </view>
+            <view class="def-field">
+              <text class="def-field-label">假名标注</text>
+              <textarea class="def-textarea" value="{{ex.sentenceKana}}" data-new-def-index="{{idx}}" data-new-ex-index="{{newExIdx}}" data-field="sentenceKana" bindinput="onNewExampleFieldInput" placeholder="例句全文假名（可选）" auto-height maxlength="500" />
+            </view>
+            <view class="def-field">
+              <text class="def-field-label">中文翻译</text>
+              <textarea class="def-textarea" value="{{ex.sentenceCn}}" data-new-def-index="{{idx}}" data-new-ex-index="{{newExIdx}}" data-field="sentenceCn" bindinput="onNewExampleFieldInput" placeholder="请输入中文翻译（可选）" auto-height maxlength="500" />
+            </view>
+          </view>
+
+          <view class="add-example-btn" data-new-def-index="{{idx}}" bindtap="addNewDefExample">
+            <text class="add-def-icon">＋</text>
+            <text class="add-def-text">新增例句</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="add-def-btn" bindtap="addNewDef">
+        <text class="add-def-icon">＋</text>
+        <text class="add-def-text">新增释义</text>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">补充说明</text>
+        <textarea class="form-textarea" value="{{defRemark}}" bindinput="onDefRemarkInput" placeholder="请说明需要纠正的内容及原因" auto-height maxlength="500" />
+      </view>
+
+      <button class="submit-btn" bindtap="submitUpdate" disabled="{{submitting}}" loading="{{submitting}}">提交修改</button>
+    </view>
+  </block>
+</view>

@@ -1,10 +1,10 @@
-// pages/correction-word/correction-word.js
+// pages/correction-word-edit/correction-word-edit.js
 const { correctionApi } = require('../../utils/api')
 
 Page({
   data: {
-    wordId: '',
-    wordInfo: null,       // { kanji, kana, accent, wordType }
+    correctionId: '',
+    wordInfo: null,       // { kanji, kana }
     // 单词纠错表单
     wordForm: {
       kanji: '',
@@ -14,8 +14,8 @@ Page({
       remark: ''
     },
     // 词性多选
-    selectedWordTypes: [],        // 选中 value 列表（用于提交）
-    selectedWordTypeLabels: [],   // 选中 label 列表（用于显示）
+    selectedWordTypes: [],
+    selectedWordTypeLabels: [],
     showWordTypeDropdown: false,
     wordTypeGroups: [
       {
@@ -89,56 +89,36 @@ Page({
   },
 
   onLoad(options) {
-    const wordId = options.wordId || ''
-    if (!wordId) {
+    const correctionId = options.correctionId || ''
+    if (!correctionId) {
       wx.showToast({ title: '参数错误', icon: 'none' })
       setTimeout(() => wx.navigateBack(), 1500)
       return
     }
 
-    // 从上一页传递的单词数据
-    const pages = getCurrentPages()
-    const prevPage = pages[pages.length - 2]
-    let wordInfo = null
-
-    if (prevPage && prevPage.data) {
-      // 从 home 页进入（wordDetail 结构）
-      if (prevPage.data.wordDetail && prevPage.data.wordDetail.word) {
-        const wd = prevPage.data.wordDetail
-        wordInfo = {
-          kanji: wd.word.kanji || '',
-          kana: wd.word.kana || '',
-          accent: wd.word.accent,
-          wordType: wd.word.wordType || ''
-        }
-      }
-      // 从 word-detail 页进入
-      if (!wordInfo && prevPage.data.wordDetail && prevPage.data.wordDetail.word) {
-        const wd = prevPage.data.wordDetail
-        wordInfo = {
-          kanji: wd.word.kanji || '',
-          kana: wd.word.kana || '',
-          accent: wd.word.accent,
-          wordType: wd.word.wordType || ''
-        }
-      }
-      // 从 review-list 页进入（wordDetail + currentWord）
-      if (!wordInfo && prevPage.data.currentWord) {
-        wordInfo = {
-          kanji: prevPage.data.currentWord.kanji || '',
-          kana: prevPage.data.currentWord.kana || '',
-          accent: prevPage.data.currentWord.accent,
-          wordType: prevPage.data.currentWord.wordType || ''
-        }
+    // 从上一页传递的纠错数据
+    let item = null
+    if (options.data) {
+      try {
+        item = JSON.parse(decodeURIComponent(options.data))
+      } catch (e) {
+        console.error('解析纠错数据失败:', e)
       }
     }
+    if (!item) {
+      wx.showToast({ title: '数据错误', icon: 'none' })
+      setTimeout(() => wx.navigateBack(), 1500)
+      return
+    }
 
-    // 解析已有词性（可能是逗号分隔的 value 或 label，兼容处理）
-    const rawWordTypes = wordInfo && wordInfo.wordType
-      ? wordInfo.wordType.split(',').map(s => s.trim()).filter(Boolean)
-      : []
+    // 保存原始纠错数据，用于修改成功后同步回详情页
+    this._originalItem = item
+    this.initForm(correctionId, item)
+  },
 
-    // 构建双向映射
+  /** 初始化表单（纠错内容优先，回退原单词信息） */
+  initForm(correctionId, item) {
+    // 构建 value/label 双向映射
     const valueLabelMap = {}
     const labelValueMap = {}
     this.data.wordTypeGroups.forEach(group => {
@@ -148,21 +128,22 @@ Page({
       })
     })
 
-    // 统一转为 value（兼容用户未手动选择时可能是 label 的情况）
-    const existingWordTypes = rawWordTypes.map(v => labelValueMap[v] || v)
-    const existingLabels = existingWordTypes.map(v => valueLabelMap[v] || v)
+    const rawWordType = item.correctionWordType || item.wordWordType || ''
+    const rawTypes = rawWordType ? rawWordType.split(',').map(s => s.trim()).filter(Boolean) : []
+    const existingValues = rawTypes.map(v => labelValueMap[v] || v)
+    const existingLabels = existingValues.map(v => valueLabelMap[v] || v)
 
     this.setData({
-      wordId,
-      wordInfo,
-      selectedWordTypes: existingWordTypes,
+      correctionId,
+      wordInfo: { kanji: item.wordKanji || '', kana: item.wordKana || '' },
+      selectedWordTypes: existingValues,
       selectedWordTypeLabels: existingLabels,
       wordForm: {
-        kanji: wordInfo ? wordInfo.kanji : '',
-        kana: wordInfo ? wordInfo.kana : '',
-        accent: wordInfo && wordInfo.accent != null ? String(wordInfo.accent) : '',
-        wordType: existingWordTypes.join(','),
-        remark: ''
+        kanji: item.correctionKanji || item.wordKanji || '',
+        kana: item.correctionKana || item.wordKana || '',
+        accent: item.correctionAccent != null ? String(item.correctionAccent) : (item.wordAccent != null ? String(item.wordAccent) : ''),
+        wordType: existingValues.join(','),
+        remark: item.remark || ''
       }
     })
     this.syncSelectedFlags()
@@ -214,11 +195,10 @@ Page({
     this.syncSelectedFlags()
   },
 
-  /** 提交单词纠错 */
-  async submitWord() {
-    // 防重复点击：提交过程中直接忽略后续点击
+  /** 提交修改 */
+  async submitUpdate() {
     if (this.data.submitting) return
-    const { wordId, wordForm } = this.data
+    const { correctionId, wordForm } = this.data
     if (!wordForm.kanji.trim()) {
       wx.showToast({ title: '请输入汉字', icon: 'none' })
       return
@@ -232,27 +212,41 @@ Page({
     wx.showLoading({ title: '提交中...', mask: true })
     try {
       const data = {
-        wordId: wordId,
         kanji: wordForm.kanji.trim(),
         kana: wordForm.kana.trim(),
         accent: wordForm.accent ? parseInt(wordForm.accent) : undefined,
         wordType: wordForm.wordType || undefined,
         remark: wordForm.remark || undefined
       }
-      const res = await correctionApi.submitWord(data)
+      const res = await correctionApi.updateWord(correctionId, data)
       wx.hideLoading()
       if (res.code === 200) {
-        wx.showToast({ title: '纠错提交成功', icon: 'success' })
-        // 成功后保持 submitting=true，禁止在返回前的 1.5s 内再次点击
+        // 构造更新后的纠错数据，同步回详情页
+        const original = this._originalItem || {}
+        const updatedItem = {
+          ...original,
+          correctionKanji: wordForm.kanji.trim(),
+          correctionKana: wordForm.kana.trim(),
+          correctionAccent: wordForm.accent ? parseInt(wordForm.accent) : null,
+          correctionWordType: wordForm.wordType || '',
+          remark: wordForm.remark || ''
+        }
+        const pages = getCurrentPages()
+        const detailPage = pages[pages.length - 2]
+        if (detailPage && typeof detailPage.updateItem === 'function') {
+          detailPage.updateItem(updatedItem)
+        }
+
+        wx.showToast({ title: '修改成功', icon: 'success' })
         setTimeout(() => wx.navigateBack(), 1500)
       } else {
-        wx.showToast({ title: res.message || '提交失败', icon: 'none' })
+        wx.showToast({ title: res.message || '修改失败', icon: 'none' })
         this.setData({ submitting: false })
       }
     } catch (e) {
       wx.hideLoading()
-      console.error('提交单词纠错失败:', e)
-      wx.showToast({ title: '提交失败', icon: 'none' })
+      console.error('修改单词纠错失败:', e)
+      wx.showToast({ title: '修改失败', icon: 'none' })
       this.setData({ submitting: false })
     }
   }

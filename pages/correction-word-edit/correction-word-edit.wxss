@@ -1,4 +1,4 @@
-/* pages/correction-word/correction-word.wxss */
+/* pages/correction-word-edit/correction-word-edit.wxss */
 .correction-page {
   min-height: 100vh;
   background: #F5F7FA;

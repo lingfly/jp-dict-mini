@@ -1,0 +1,186 @@
+/* pages/correction-my-word-detail/correction-my-word-detail.wxss */
+.detail-page {
+  min-height: 100vh;
+  background: #F5F7FA;
+  padding: 16px;
+  padding-bottom: 100px;
+}
+
+/* 头部 */
+.detail-header {
+  margin-bottom: 16px;
+  padding: 20px 0 8px;
+}
+
+.header-kanji {
+  font-size: 28px;
+  font-weight: 700;
+  color: #303133;
+  display: block;
+}
+
+.header-kana {
+  font-size: 16px;
+  color: #909399;
+  margin-top: 4px;
+  display: block;
+}
+
+.header-status {
+  margin-top: 12px;
+}
+
+.status-tag {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+.status-pending {
+  background: rgba(230, 162, 60, 0.1);
+  color: #E6A23C;
+}
+
+.status-approved {
+  background: rgba(103, 194, 58, 0.1);
+  color: #67C23A;
+}
+
+.status-rejected {
+  background: rgba(245, 108, 108, 0.1);
+  color: #F56C6C;
+}
+
+/* 卡片 */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* 对比区域 */
+.compare-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #F5F7FA;
+}
+
+.compare-row:last-child {
+  border-bottom: none;
+}
+
+.compare-label {
+  width: 56px;
+  font-size: 13px;
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.compare-original {
+  flex: 1;
+  font-size: 14px;
+  color: #909399;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.compare-arrow {
+  margin: 0 10px;
+  color: #C0C4CC;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.compare-correction {
+  flex: 1;
+  font-size: 14px;
+  color: #606266;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.compare-correction.changed {
+  color: #67C23A;
+  font-weight: 600;
+}
+
+/* 纠错说明 */
+.remark-text {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+/* 提交信息 */
+.meta-row {
+  display: flex;
+  margin-bottom: 6px;
+}
+
+.meta-row:last-child {
+  margin-bottom: 0;
+}
+
+.meta-label {
+  font-size: 13px;
+  color: #909399;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.meta-value {
+  font-size: 13px;
+  color: #303133;
+}
+
+/* 底部悬浮操作栏 */
+.action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+  z-index: 100;
+}
+
+.action-btn {
+  flex: 1;
+  height: 44px;
+  line-height: 44px;
+  text-align: center;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.btn-withdraw {
+  background: #F56C6C;
+  color: #fff;
+}
+
+.btn-edit {
+  background: #5B8C7D;
+  color: #fff;
+}
+
+.action-btn.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}

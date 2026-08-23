@@ -1,0 +1,85 @@
+<!--pages/correction-my-word-detail/correction-my-word-detail.wxml-->
+<view wx:if="{{item}}" class="detail-page">
+  <!-- 单词标题 -->
+  <view class="detail-header">
+    <text class="header-kanji">{{item.wordKanji}}</text>
+    <text wx:if="{{item.wordKana}}" class="header-kana">{{item.wordKana}}</text>
+    <view class="header-status">
+      <text class="status-tag status-{{item.status}}">{{item.status === 'pending' ? '待处理' : item.status === 'approved' ? '已采纳' : '已拒绝'}}</text>
+    </view>
+  </view>
+
+  <!-- 原单词信息 vs 纠错信息 对比 -->
+  <view class="compare-section card">
+    <view class="section-title">基本信息对比</view>
+
+    <!-- 汉字 -->
+    <view class="compare-row">
+      <text class="compare-label">汉字</text>
+      <text class="compare-original">{{item.wordKanji}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction {{item.correctionKanji !== item.wordKanji ? 'changed' : ''}}">{{item.correctionKanji || item.wordKanji}}</text>
+    </view>
+
+    <!-- 假名 -->
+    <view class="compare-row">
+      <text class="compare-label">假名</text>
+      <text class="compare-original">{{item.wordKana}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction {{item.correctionKana !== item.wordKana ? 'changed' : ''}}">{{item.correctionKana || item.wordKana}}</text>
+    </view>
+
+    <!-- 罗马字 -->
+    <view wx:if="{{item.wordRomaji}}" class="compare-row">
+      <text class="compare-label">罗马字</text>
+      <text class="compare-original">{{item.wordRomaji}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction">-</text>
+    </view>
+
+    <!-- 音调 -->
+    <view class="compare-row">
+      <text class="compare-label">音调</text>
+      <text class="compare-original">{{item.wordAccent}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction {{item.correctionAccent !== item.wordAccent ? 'changed' : ''}}">{{item.correctionAccent != null ? item.correctionAccent : item.wordAccent}}</text>
+    </view>
+
+    <!-- 词性 -->
+    <view class="compare-row">
+      <text class="compare-label">词性</text>
+      <text class="compare-original">{{item.wordWordTypeCn || '-'}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction {{item.correctionWordType !== item.wordWordType ? 'changed' : ''}}">{{item.correctionWordTypeCn || item.wordWordTypeCn || '-'}}</text>
+    </view>
+
+    <!-- JLPT -->
+    <view wx:if="{{item.wordJlptLevel}}" class="compare-row">
+      <text class="compare-label">JLPT</text>
+      <text class="compare-original">{{item.wordJlptLevel}}</text>
+      <text class="compare-arrow">→</text>
+      <text class="compare-correction">-</text>
+    </view>
+  </view>
+
+  <!-- 纠错说明 -->
+  <view wx:if="{{item.remark}}" class="remark-section card">
+    <text class="section-title">纠错说明</text>
+    <text class="remark-text">{{item.remark}}</text>
+  </view>
+
+  <!-- 提交信息 -->
+  <view class="meta-section card">
+    <text class="section-title">提交信息</text>
+    <view class="meta-row">
+      <text class="meta-label">提交时间</text>
+      <text class="meta-value">{{item.createdAt}}</text>
+    </view>
+  </view>
+
+  <!-- 底部悬浮操作栏 -->
+  <view wx:if="{{canOperate}}" class="action-bar">
+    <view class="action-btn btn-withdraw {{deleting ? 'disabled' : ''}}" bindtap="withdraw">撤销</view>
+    <view class="action-btn btn-edit" bindtap="goEdit">修改</view>
+  </view>
+</view>

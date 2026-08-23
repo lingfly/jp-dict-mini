@@ -1,0 +1,204 @@
+/* pages/correction-my/correction-my.wxss */
+.correction-my-page {
+  min-height: 100vh;
+  background: #F5F7FA;
+}
+
+/* Tab 切换 */
+.tab-bar {
+  display: flex;
+  background: #FFFFFF;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  font-size: 15px;
+  color: #606266;
+  position: relative;
+}
+
+.tab-item.active {
+  color: #5B8C7D;
+  font-weight: 600;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 3px;
+  border-radius: 2px;
+  background: #5B8C7D;
+}
+
+/* 列表区域 */
+.list-section {
+  padding: 12px 16px;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 80px 0;
+  color: #909399;
+  font-size: 14px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 16px;
+  color: #606266;
+  margin-bottom: 8px;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: #909399;
+}
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.card:active {
+  background: #F5F7FA;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.card-word {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.word-kanji {
+  font-size: 17px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.word-kana {
+  font-size: 13px;
+  color: #909399;
+}
+
+/* 状态标签 */
+.status-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.status-pending {
+  background: rgba(230, 162, 60, 0.1);
+  color: #E6A23C;
+}
+
+.status-approved {
+  background: rgba(103, 194, 58, 0.1);
+  color: #67C23A;
+}
+
+.status-rejected {
+  background: rgba(245, 108, 108, 0.1);
+  color: #F56C6C;
+}
+
+/* 纠错内容 */
+.correction-row {
+  margin-bottom: 8px;
+}
+
+.correction-label {
+  font-size: 12px;
+  color: #909399;
+  margin-right: 8px;
+}
+
+.correction-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.change-tag {
+  padding: 3px 8px;
+  background: rgba(245, 108, 108, 0.1);
+  color: #F56C6C;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.change-tag-def {
+  background: rgba(91, 140, 125, 0.1);
+  color: #5B8C7D;
+}
+
+/* 备注说明 */
+.remark-row {
+  margin-bottom: 8px;
+}
+
+.remark-label {
+  font-size: 12px;
+  color: #909399;
+  margin-right: 8px;
+}
+
+.remark-text {
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.review-row .remark-text {
+  color: #909399;
+}
+
+/* 底部时间 */
+.card-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.time-text {
+  font-size: 12px;
+  color: #C0C4CC;
+}

@@ -22,7 +22,12 @@
     "pages/correction-definition-audit/correction-definition-audit",
     "pages/correction-definition-audit-detail/correction-definition-audit-detail",
     "pages/feedback-menu/feedback-menu",
-    "pages/feedback/feedback"
+    "pages/feedback/feedback",
+    "pages/correction-my/correction-my",
+    "pages/correction-my-word-detail/correction-my-word-detail",
+    "pages/correction-my-definition-detail/correction-my-definition-detail",
+    "pages/correction-word-edit/correction-word-edit",
+    "pages/correction-definition-edit/correction-definition-edit"
   ],
   "tabBar": {
     "color": "#909399",

@@ -5,7 +5,7 @@
  * - true（默认）: 需要 token 认证
  * - false: 不需要 token（如登录接口）
  */
-const { get, post, put, formPost } = require('./request')
+const { get, post, put, formPost, request } = require('./request')
 
 /**
  * 词单相关 API（需要认证）
@@ -331,9 +331,44 @@ const correctionApi = {
     return post('/api/correction/definition', data)
   },
 
+  // 获取我提交的单词纠错列表
+  listMy() {
+    return get('/api/correction/word/my')
+  },
+
+  // 修改自己提交的单词纠错（仅 pending 状态）
+  updateWord(correctionId, data) {
+    return put(`/api/correction/word/${correctionId}`, data)
+  },
+
+  // 删除自己提交的单词纠错（仅 pending/rejected 状态）
+  deleteWord(correctionId) {
+    return request(`/api/correction/word/${correctionId}`, 'DELETE', {})
+  },
+
+  // 获取我提交的释义纠错列表
+  listMyDefinitions() {
+    return get('/api/correction/definition/my')
+  },
+
+  // 查看释义纠错详情（含原始释义对比）
+  getDefinitionDetail(correctionId) {
+    return get(`/api/correction/definition/${correctionId}`)
+  },
+
+  // 修改自己提交的释义纠错（仅 pending/rejected 状态）
+  updateDefinition(correctionId, items) {
+    return put(`/api/correction/definition/${correctionId}`, { items })
+  },
+
+  // 删除自己提交的释义纠错（仅 pending/rejected 状态）
+  deleteDefinition(correctionId) {
+    return request(`/api/correction/definition/${correctionId}`, 'DELETE', {})
+  },
+
   // 获取待审核纠错列表
   listPending() {
-    return get('/api/correction/pending')
+    return get('/api/correction/word/pending')
   },
 
   // 审核通过纠错（form-data，可修改字段）

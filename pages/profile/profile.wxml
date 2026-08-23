@@ -55,6 +55,17 @@
       </view>
     </view>
 
+    <!-- 我的纠错 -->
+    <view class="menu-card card">
+      <view class="menu-item" bindtap="goToMyCorrection">
+        <view class="menu-left">
+          <text class="menu-icon">✏️</text>
+          <text class="menu-text">我的纠错</text>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+
     <!-- 问题反馈 -->
     <view class="menu-card card">
       <view class="menu-item" bindtap="goToFeedback">
