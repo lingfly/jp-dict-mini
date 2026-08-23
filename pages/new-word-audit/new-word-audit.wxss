@@ -159,6 +159,24 @@
   flex-shrink: 0;
 }
 
+.approved-tag {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  background-color: #67C23A;
+  color: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.rejected-tag {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  background-color: #F56C6C;
+  color: #FFFFFF;
+  flex-shrink: 0;
+}
+
 .result-meta {
   font-size: 24rpx;
   color: #909399;
@@ -217,6 +235,24 @@
   border-radius: 4px;
   background-color: rgba(103, 194, 58, 0.1);
   color: #67C23A;
+  flex-shrink: 0;
+}
+
+.approved-badge {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background-color: #67C23A;
+  color: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.rejected-badge {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background-color: #F56C6C;
+  color: #FFFFFF;
   flex-shrink: 0;
 }
 

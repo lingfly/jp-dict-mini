@@ -71,14 +71,18 @@
         wx:for="{{currentRecord.results}}"
         wx:key="index"
         wx:for-item="result"
+        wx:for-index="index"
         class="result-card card"
         bindtap="enterWordDetail"
         data-word="{{result}}"
+        data-index="{{index}}"
       >
         <view class="result-header">
           <text class="word-kanji">{{result.word.kanji || result.word.kana}}</text>
           <text wx:if="{{result.word.kana && result.word.kana !== result.word.kanji}}" class="word-kana">{{result.word.kana}}</text>
-          <view wx:if="{{result.submitted}}" class="submitted-tag">已提交</view>
+          <view wx:if="{{result.auditStatus === 'submitted'}}" class="submitted-tag">已提交</view>
+          <view wx:elif="{{result.auditStatus === 'approved'}}" class="approved-tag">已采纳</view>
+          <view wx:elif="{{result.auditStatus === 'rejected'}}" class="rejected-tag">已驳回</view>
           <text class="arrow">›</text>
         </view>
         <view class="result-meta">
@@ -113,7 +117,9 @@
             <text class="word-main jp-text">{{currentWord.word.kanji || currentWord.word.kana}}</text>
             <text wx:if="{{currentWord.word.accent !== null && currentWord.word.accent !== undefined}}" class="word-accent">{{helper.toCircle(currentWord.word.accent)}}</text>
           </view>
-          <view wx:if="{{currentWord.submitted}}" class="submitted-badge">已提交</view>
+          <view wx:if="{{currentWord.auditStatus === 'submitted'}}" class="submitted-badge">已提交</view>
+          <view wx:elif="{{currentWord.auditStatus === 'approved'}}" class="approved-badge">已采纳</view>
+          <view wx:elif="{{currentWord.auditStatus === 'rejected'}}" class="rejected-badge">已驳回</view>
         </view>
         <text wx:if="{{currentWord.word.kanji && currentWord.word.kanji !== currentWord.word.kana}}" class="word-kana-detail jp-text">{{currentWord.word.kana}}</text>
         <view class="word-tags">

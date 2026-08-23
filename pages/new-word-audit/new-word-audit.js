@@ -20,6 +20,8 @@ Page({
     currentRecord: null,
     // 第三层：单词详情
     currentWord: null,
+    // 当前查看单词在 results 数组中的索引
+    currentWordIndex: -1,
     expandedSense: [0],
     // 防重复点击
     submitting: false,
@@ -115,23 +117,49 @@ Page({
   /** 进入第二层 */
   enterResults(e) {
     const record = e.currentTarget.dataset.record
-    this.setData({ currentRecord: record, currentWord: null })
+    this.setData({ currentRecord: this.decorateRecord(record), currentWord: null, currentWordIndex: -1 })
+  },
+
+  /** 为 record 的每个 result 附加 auditStatus 字段（数据驱动，便于渲染同步） */
+  decorateRecord(record) {
+    if (!record || !record.results) return record
+    const approved = this.parseIndexes(record.approvedIndexes)
+    const rejected = this.parseIndexes(record.rejectedIndexes)
+    const results = record.results.map((r, i) => {
+      let auditStatus = ''
+      if (approved.indexOf(i) > -1) {
+        auditStatus = 'approved'
+      } else if (rejected.indexOf(i) > -1) {
+        auditStatus = 'rejected'
+      } else if (r.submitted) {
+        auditStatus = 'submitted'
+      }
+      return { ...r, auditStatus }
+    })
+    return { ...record, results }
+  },
+
+  /** 解析逗号分隔的索引字符串为数字数组 */
+  parseIndexes(str) {
+    if (!str) return []
+    return String(str).split(',').map(s => Number(s.trim())).filter(n => !isNaN(n))
   },
 
   /** 返回第一层 */
   backToList() {
-    this.setData({ currentRecord: null, currentWord: null })
+    this.setData({ currentRecord: null, currentWord: null, currentWordIndex: -1 })
   },
 
   /** 进入第三层：查看单词详情 */
   enterWordDetail(e) {
+    const index = Number(e.currentTarget.dataset.index)
     const word = e.currentTarget.dataset.word
-    this.setData({ currentWord: word, expandedSense: [0] })
+    this.setData({ currentWord: word, currentWordIndex: index, expandedSense: [0] })
   },
 
   /** 返回第二层 */
   backToResults() {
-    this.setData({ currentWord: null })
+    this.setData({ currentWord: null, currentWordIndex: -1 })
   },
 
   /** 展开/折叠义项 */
@@ -149,57 +177,70 @@ Page({
 
   /** 采纳 */
   async approve(e) {
-    if (this.data.submitting) return
-    const logId = this.data.currentRecord.logId
-    if (!logId) return
-    this.setData({ submitting: true })
-    wx.showLoading({ title: '处理中...', mask: true })
-    try {
-      const res = await post('/api/ai-dict/audit/approve', { logId })
-      wx.hideLoading()
-      if (res.code === 200) {
-        wx.showToast({ title: '已采纳', icon: 'success' })
-        this.removeFromList(logId)
-        this.setData({ currentRecord: null, currentWord: null })
-      }
-    } catch (error) {
-      wx.hideLoading()
-      console.error('采纳失败:', error)
-      wx.showToast({ title: '操作失败', icon: 'none' })
-    } finally {
-      this.setData({ submitting: false })
-    }
+    this.doAudit('approve')
   },
 
   /** 驳回 */
   async reject(e) {
+    this.doAudit('reject')
+  },
+
+  /** 执行审核操作（采纳/驳回），指定 selectedIndex */
+  async doAudit(type) {
     if (this.data.submitting) return
-    const logId = this.data.currentRecord.logId
-    if (!logId) return
+    const { currentRecord, currentWordIndex } = this.data
+    const logId = currentRecord && currentRecord.logId
+    if (!logId || currentWordIndex < 0) return
     this.setData({ submitting: true })
     wx.showLoading({ title: '处理中...', mask: true })
+    const url = type === 'approve' ? '/api/ai-dict/audit/approve' : '/api/ai-dict/audit/reject'
+    const successTitle = type === 'approve' ? '已采纳' : '已驳回'
     try {
-      const res = await post('/api/ai-dict/audit/reject', { logId })
+      const res = await post(url, { logId, selectedIndex: currentWordIndex })
       wx.hideLoading()
       if (res.code === 200) {
-        wx.showToast({ title: '已驳回', icon: 'success' })
-        this.removeFromList(logId)
-        this.setData({ currentRecord: null, currentWord: null })
+        wx.showToast({ title: successTitle, icon: 'success' })
+        this.afterAudit(type)
       }
     } catch (error) {
       wx.hideLoading()
-      console.error('驳回失败:', error)
+      console.error('审核失败:', error)
       wx.showToast({ title: '操作失败', icon: 'none' })
     } finally {
       this.setData({ submitting: false })
     }
   },
 
-  /** 从列表中移除并更新缓存 */
-  removeFromList(logId) {
-    const { activeTab, list } = this.data
-    const newList = list.filter(item => item.logId !== logId)
-    this.setData({ list: newList })
+  /** 审核成功后的本地状态更新：标记该索引的审核状态，并同步到各层级 */
+  afterAudit(type) {
+    const { currentRecord, currentWordIndex, activeTab, list } = this.data
+    const idxKey = type === 'approve' ? 'approvedIndexes' : 'rejectedIndexes'
+    const status = type === 'approve' ? 'approved' : 'rejected'
+
+    // 1. 更新 results 中对应单词的 auditStatus
+    const results = currentRecord.results.map((r, i) => {
+      if (i === currentWordIndex) {
+        return { ...r, auditStatus: status }
+      }
+      return r
+    })
+
+    // 2. 更新审核索引字段（逗号分隔字符串）
+    const record = { ...currentRecord, results }
+    const existing = this.parseIndexes(record[idxKey])
+    if (existing.indexOf(currentWordIndex) === -1) {
+      existing.push(currentWordIndex)
+    }
+    record[idxKey] = existing.join(',')
+
+    // 3. 同步更新第一层列表里的对应记录
+    const newList = list.map(item => item.logId === record.logId ? record : item)
+    this.setData({
+      list: newList,
+      currentRecord: record,
+      currentWord: null,
+      currentWordIndex: -1
+    })
     const tabCache = this.data.tabCache
     if (tabCache[activeTab]) {
       tabCache[activeTab].list = newList
