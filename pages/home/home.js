@@ -18,6 +18,7 @@ Page({
     showAiSearch: false,
     aiStreaming: false,
     aiFeedbackDone: false,  // 防止重复提交反馈
+    aiFeedbackType: '',     // 反馈类型：'correct' 符合预期 / 'incorrect' 不符合预期 / '' 未反馈
     isAiResult: false,      // 当前搜索结果是否来自 AI 查词
     // AI 查词次数限制
     aiQueryLimit: 0,        // 每日 AI 查词限制次数
@@ -206,10 +207,14 @@ Page({
     const definitions = wordDetail.definitions || []
     const initialExpanded = expandAll ? definitions.map((_, i) => i) : []
 
+    // 从本地缓存恢复该单词的 AI 反馈状态，返回后再进入仍保留
+    const feedback = this.getCachedAiFeedback(wordDetail._logId, index)
+
     this.setData({
       wordDetail: wordDetail,
       expandedSense: initialExpanded,
-      aiFeedbackDone: false // 重置反馈状态
+      aiFeedbackDone: !!feedback,
+      aiFeedbackType: feedback || ''
     }, () => {
       // 进入单词详情，滚动到顶部
       wx.pageScrollTo({
@@ -269,6 +274,8 @@ Page({
       wordDetail: null,
       showAiSearch: false,
       isAiResult: false,
+      aiFeedbackDone: false,
+      aiFeedbackType: '',
       currentPage: 1,
       totalResults: 0,
       hasMoreResults: false
@@ -544,10 +551,38 @@ Page({
     }
   },
 
+  /** 构建 AI 反馈本地缓存 key */
+  _aiFeedbackKey(logId, index) {
+    return `ai_feedback_${logId}_${index}`
+  },
+
+  /** 读取缓存的 AI 反馈类型（'correct' / 'incorrect' / ''） */
+  getCachedAiFeedback(logId, index) {
+    if (!logId) return ''
+    try {
+      return wx.getStorageSync(this._aiFeedbackKey(logId, index)) || ''
+    } catch (e) {
+      console.error('读取 AI 反馈缓存失败:', e)
+      return ''
+    }
+  },
+
+  /** 写入 AI 反馈类型到本地缓存 */
+  setCachedAiFeedback(logId, index, type) {
+    if (!logId) return
+    try {
+      wx.setStorageSync(this._aiFeedbackKey(logId, index), type)
+    } catch (e) {
+      console.error('写入 AI 反馈缓存失败:', e)
+    }
+  },
+
   /** AI 反馈：不符合预期 */
   async aiMarkIncorrect() {
     if (this.data.aiFeedbackDone) return
-    const logId = this.data.wordDetail._logId
+    const wordDetail = this.data.wordDetail
+    const logId = wordDetail._logId
+    const selectedIndex = wordDetail._resultIndex
     if (!logId) return
 
     this.setData({ aiFeedbackDone: true })
@@ -556,6 +591,8 @@ Page({
       const res = await aiDictApi.markIncorrect(logId)
       wx.hideLoading()
       if (res.code === 200) {
+        this.setData({ aiFeedbackType: 'incorrect' })
+        this.setCachedAiFeedback(logId, selectedIndex, 'incorrect')
         wx.showToast({ title: '已反馈', icon: 'success' })
       } else {
         this.setData({ aiFeedbackDone: false })
@@ -583,7 +620,9 @@ Page({
       const res = await aiDictApi.markCorrect(logId, selectedIndex)
       wx.hideLoading()
       if (res.code === 200) {
-        wx.showToast({ title: '已加入词库', icon: 'success' })
+        this.setData({ aiFeedbackType: 'correct' })
+        this.setCachedAiFeedback(logId, selectedIndex, 'correct')
+        wx.showToast({ title: '已加入审核，审核完成后会加入词库并添加到您的默认收藏夹', icon: 'none' })
       } else {
         this.setData({ aiFeedbackDone: false })
         wx.showToast({ title: res.message || '操作失败', icon: 'none' })

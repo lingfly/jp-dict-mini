@@ -14,7 +14,6 @@ Page({
     ],
     title: '',
     content: '',
-    contact: '',
     submitting: false,
     // 反馈列表
     feedbackList: [],
@@ -56,14 +55,9 @@ Page({
     this.setData({ content: e.detail.value })
   },
 
-  // 输入联系方式
-  onContactInput(e) {
-    this.setData({ contact: e.detail.value })
-  },
-
   // 提交反馈
   async submitFeedback() {
-    const { title, content, feedbackType, contact, submitting } = this.data
+    const { title, content, feedbackType, submitting } = this.data
 
     if (submitting) return
 
@@ -88,8 +82,7 @@ Page({
       const res = await feedbackApi.create({
         feedbackType: feedbackType,
         title: title.trim(),
-        content: content.trim(),
-        contact: contact.trim()
+        content: content.trim()
       })
 
       if (res.code === 200) {
@@ -97,7 +90,6 @@ Page({
         this.setData({
           title: '',
           content: '',
-          contact: '',
           feedbackType: 'bug'
         })
         // 切换到反馈列表
