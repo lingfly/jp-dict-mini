@@ -136,6 +136,19 @@
 .empty-text {
   font-size: 14px;
   color: #909399;
+  line-height: 1.8;
+  text-align: center;
+}
+
+.empty-highlight {
+  color: #5B8C7D;
+  font-weight: 600;
+}
+
+.empty-sub-text {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #C0C4CC;
 }
 
 /* 搜索结果 */

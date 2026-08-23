@@ -19,6 +19,10 @@ Page({
     aiStreaming: false,
     aiFeedbackDone: false,  // 防止重复提交反馈
     isAiResult: false,      // 当前搜索结果是否来自 AI 查词
+    // AI 查词次数限制
+    aiQueryLimit: 0,        // 每日 AI 查词限制次数
+    aiQueryUsedToday: 0,    // 当日已使用的 AI 查词次数
+    aiQueryRemain: 0,       // 剩余 AI 查词次数（limit - used）
     // 释义折叠配置
     collapseDefinitionOnQuery: false,
     // 更多菜单
@@ -49,17 +53,45 @@ Page({
     this.loadCollapseConfig()
   },
 
-  /** 加载释义折叠配置 */
+  /** 加载释义折叠配置及 AI 查词次数限制 */
   async loadCollapseConfig() {
     try {
       const res = await userApi.getLearningConfig()
       if (res.code === 200 && res.data) {
         const collapse = res.data.collapseDefinitionOnQuery === 1
-        this.setData({ collapseDefinitionOnQuery: collapse })
+        this.setData({
+          collapseDefinitionOnQuery: collapse,
+          aiQueryLimit: res.data.aiQueryLimit != null ? res.data.aiQueryLimit : 0,
+          aiQueryUsedToday: res.data.aiQueryUsedToday != null ? res.data.aiQueryUsedToday : 0
+        })
+        this._updateAiQueryRemain()
       }
     } catch (e) {
       console.error('加载释义折叠配置失败:', e)
     }
+  },
+
+  /** 刷新 AI 查词已用次数 */
+  async refreshAiQueryUsage() {
+    try {
+      const res = await userApi.getLearningConfig()
+      if (res.code === 200 && res.data) {
+        this.setData({
+          aiQueryLimit: res.data.aiQueryLimit != null ? res.data.aiQueryLimit : 0,
+          aiQueryUsedToday: res.data.aiQueryUsedToday != null ? res.data.aiQueryUsedToday : 0
+        })
+        this._updateAiQueryRemain()
+      }
+    } catch (e) {
+      console.error('刷新 AI 查词次数失败:', e)
+    }
+  },
+
+  /** 根据 limit 与已用次数计算剩余次数 */
+  _updateAiQueryRemain() {
+    const { aiQueryLimit, aiQueryUsedToday } = this.data
+    const remain = aiQueryLimit > 0 ? Math.max(0, aiQueryLimit - aiQueryUsedToday) : 0
+    this.setData({ aiQueryRemain: remain })
   },
 
   /** 加载并缓存默认词单（收藏夹）ID */
@@ -427,8 +459,14 @@ Page({
           searchResults: processed,
           showAiSearch: false,
           aiStreaming: false,
-          isAiResult: true
+          isAiResult: true,
+          hasMoreResults: false,
+          currentPage: 1,
+          totalResults: processed.length
         })
+
+        // AI 查词成功后刷新已用次数
+        this.refreshAiQueryUsage()
 
         // 添加到最近搜索
         const recent = [...this.data.recentSearches]
