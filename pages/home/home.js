@@ -27,6 +27,11 @@ Page({
     aiQueryExhausted: false, // 是否已达 AI 查词次数上限
     // 释义折叠配置
     collapseDefinitionOnQuery: false,
+    // AI 查词配置
+    aiDictModel: null,
+    aiDictTemperature: null,
+    aiDictThinking: false,
+    aiDictReasoningEffort: null,
     // 更多菜单
     showMenu: false,
     // 防重复点击状态
@@ -55,6 +60,11 @@ Page({
     this.loadCollapseConfig()
   },
 
+  onShow() {
+    // 返回首页时重新加载配置，确保设置修改后能及时生效
+    this.loadCollapseConfig()
+  },
+
   /** 加载释义折叠配置及 AI 查词次数限制 */
   async loadCollapseConfig() {
     try {
@@ -64,7 +74,11 @@ Page({
         this.setData({
           collapseDefinitionOnQuery: collapse,
           aiQueryLimit: res.data.aiQueryLimit != null ? res.data.aiQueryLimit : 0,
-          aiQueryUsedToday: res.data.aiQueryUsedToday != null ? res.data.aiQueryUsedToday : 0
+          aiQueryUsedToday: res.data.aiQueryUsedToday != null ? res.data.aiQueryUsedToday : 0,
+          aiDictModel: res.data.aiDictModel || null,
+          aiDictTemperature: res.data.aiDictTemperature != null ? parseFloat(res.data.aiDictTemperature) : null,
+          aiDictThinking: res.data.aiDictThinking === 1,
+          aiDictReasoningEffort: res.data.aiDictReasoningEffort || null
         })
         this._updateAiQueryRemain()
       }
@@ -80,7 +94,11 @@ Page({
       if (res.code === 200 && res.data) {
         this.setData({
           aiQueryLimit: res.data.aiQueryLimit != null ? res.data.aiQueryLimit : 0,
-          aiQueryUsedToday: res.data.aiQueryUsedToday != null ? res.data.aiQueryUsedToday : 0
+          aiQueryUsedToday: res.data.aiQueryUsedToday != null ? res.data.aiQueryUsedToday : 0,
+          aiDictModel: res.data.aiDictModel || null,
+          aiDictTemperature: res.data.aiDictTemperature != null ? parseFloat(res.data.aiDictTemperature) : null,
+          aiDictThinking: res.data.aiDictThinking === 1,
+          aiDictReasoningEffort: res.data.aiDictReasoningEffort || null
         })
         this._updateAiQueryRemain()
       }
@@ -462,8 +480,15 @@ Page({
 
     this.setData({ aiStreaming: true })
 
+    wx.showLoading({ title: 'AI 查询中...', mask: true })
+
     try {
-      const res = await aiDictApi.query(keyword, false, 'medium')
+      const { aiDictModel, aiDictTemperature, aiDictThinking, aiDictReasoningEffort } = this.data
+      // 只有开启思维模式时才传递 thinking 和 reasoningEffort
+      const thinking = aiDictThinking ? true : false
+      const reasoningEffort = aiDictThinking ? (aiDictReasoningEffort || 'medium') : null
+      const res = await aiDictApi.query(keyword, thinking, reasoningEffort, aiDictModel, aiDictTemperature)
+      wx.hideLoading()
       // res.data 结构: { logId, results: [...] }
       if (res.code === 200 && res.data && res.data.results && res.data.results.length > 0) {
         const logId = res.data.logId

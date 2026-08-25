@@ -185,6 +185,45 @@ Page({
     this.doAudit('reject')
   },
 
+  /** 覆盖 */
+  async approveOverride(e) {
+    if (this.data.submitting) return
+    const { currentRecord, currentWordIndex } = this.data
+    const logId = currentRecord && currentRecord.logId
+    if (!logId || currentWordIndex < 0) return
+
+    // 二次确认
+    wx.showModal({
+      title: '确认覆盖',
+      content: '此操作将删除已存在单词的所有释义和例句，并用当前AI生成的数据替换。确定要继续吗？',
+      confirmText: '确定覆盖',
+      cancelText: '取消',
+      success: async (res) => {
+        if (res.confirm) {
+          this.setData({ submitting: true })
+          wx.showLoading({ title: '处理中...', mask: true })
+          try {
+            const result = await post('/api/ai-dict/audit/approve-override', {
+              logId,
+              selectedIndex: currentWordIndex
+            })
+            wx.hideLoading()
+            if (result.code === 200) {
+              wx.showToast({ title: '已覆盖', icon: 'success' })
+              this.afterAudit('approve')
+            }
+          } catch (error) {
+            wx.hideLoading()
+            console.error('覆盖失败:', error)
+            wx.showToast({ title: '操作失败', icon: 'none' })
+          } finally {
+            this.setData({ submitting: false })
+          }
+        }
+      }
+    })
+  },
+
   /** 执行审核操作（采纳/驳回），指定 selectedIndex */
   async doAudit(type) {
     if (this.data.submitting) return

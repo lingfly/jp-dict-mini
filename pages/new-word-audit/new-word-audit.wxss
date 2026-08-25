@@ -420,39 +420,44 @@
   display: block;
 }
 
-/* ========== 审核按钮（固定底部，和查词页面一致） ========== */
+/* ========== 审核按钮（固定底部） ========== */
 .audit-actions {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   display: flex;
-  gap: 8px;
-  padding: 6px 12px;
-  background: #F5F7FA;
-  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.06);
+  gap: 12px;
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
   z-index: 100;
 }
 
 .btn {
   flex: 1;
-  height: 36px;
-  line-height: 36px;
+  height: 44px;
+  line-height: 44px;
   text-align: center;
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .btn-success {
-  border: 1px solid #5B8C7D;
   background: #5B8C7D;
   color: #fff;
 }
 
 .btn-danger {
-  border: 1px solid #E74C3C;
-  color: #E74C3C;
-  background: white;
+  background: #F56C6C;
+  color: #fff;
+}
+
+.btn-warning {
+  background: #E6A23C;
+  color: #fff;
 }
 
 .btn[disabled] {

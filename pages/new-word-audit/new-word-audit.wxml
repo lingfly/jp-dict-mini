@@ -177,6 +177,7 @@
       <!-- 审核操作 -->
       <view class="audit-actions">
         <button class="btn btn-danger" disabled="{{submitting}}" bindtap="reject">驳回</button>
+        <button class="btn btn-warning" disabled="{{submitting}}" bindtap="approveOverride">覆盖</button>
         <button class="btn btn-success" disabled="{{submitting}}" bindtap="approve">采纳</button>
       </view>
     </view>

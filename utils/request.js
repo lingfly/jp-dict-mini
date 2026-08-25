@@ -59,9 +59,10 @@ function getApiBaseUrl() {
  * @param {String} method - 请求方法
  * @param {Object} data - 请求数据
  * @param {Boolean} needAuth - 是否需要认证（默认 true）
+ * @param {Number} timeout - 超时时间（毫秒，默认 60000）
  * @returns {Promise}
  */
-function request(url, method = 'GET', data = {}, needAuth = true) {
+function request(url, method = 'GET', data = {}, needAuth = true, timeout = 60000) {
   const app = getAppInstance()
 
   return new Promise((resolve, reject) => {
@@ -82,8 +83,18 @@ function request(url, method = 'GET', data = {}, needAuth = true) {
       method: method,
       data: data,
       header: header,
+      timeout: timeout,
       success: (res) => {
         if (res.statusCode === 200) {
+          // 检查业务状态码
+          if (res.data && res.data.code !== undefined && res.data.code !== 200) {
+            // 业务错误，显示后端返回的错误信息
+            wx.showToast({
+              title: res.data.message || '操作失败',
+              icon: 'none'
+            })
+          }
+          // 无论业务状态码是什么，都返回完整数据，让调用方自行判断
           resolve(res.data)
         } else if (res.statusCode === 401) {
           // token 失效，清除登录信息并尝试重新登录
@@ -151,9 +162,10 @@ function get(url, data = {}, needAuth = true) {
  * @param {String} url - 请求路径
  * @param {Object} data - 请求数据
  * @param {Boolean} needAuth - 是否需要认证（默认 true）
+ * @param {Number} timeout - 超时时间（毫秒，默认 60000）
  */
-function post(url, data = {}, needAuth = true) {
-  return request(url, 'POST', data, needAuth)
+function post(url, data = {}, needAuth = true, timeout = 60000) {
+  return request(url, 'POST', data, needAuth, timeout)
 }
 
 /**
@@ -189,6 +201,15 @@ function formPost(url, data = {}, needAuth = true) {
       header: header,
       success: (res) => {
         if (res.statusCode === 200) {
+          // 检查业务状态码
+          if (res.data && res.data.code !== undefined && res.data.code !== 200) {
+            // 业务错误，显示后端返回的错误信息
+            wx.showToast({
+              title: res.data.message || '操作失败',
+              icon: 'none'
+            })
+          }
+          // 无论业务状态码是什么，都返回完整数据，让调用方自行判断
           resolve(res.data)
         } else if (res.statusCode === 401) {
           _cachedToken = null

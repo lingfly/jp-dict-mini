@@ -191,8 +191,19 @@ const audioApi = {
  */
 const aiDictApi = {
   // 同步查词（返回 AiDictQueryResult: { logId, words: [...] }）
-  query(word, thinking, reasoningEffort) {
-    return post('/api/ai-dict/query', { word, thinking, reasoningEffort })
+  query(word, thinking, reasoningEffort, model, temperature) {
+    const data = { word }
+    // 如果 thinking 为 true，才传递 thinking 和 reasoningEffort
+    if (thinking) {
+      data.thinking = true
+      if (reasoningEffort) data.reasoningEffort = reasoningEffort
+    }
+    if (model) data.model = model
+    if (temperature !== null && temperature !== undefined) data.temperature = temperature
+
+    // 思维模式下增加超时时间（180秒），否则使用默认超时（60秒）
+    const timeout = thinking ? 180000 : 60000
+    return post('/api/ai-dict/query', data, true, timeout)
   },
 
   // 反馈：符合预期（将 AI 查词结果加入词库，需传入 selectedIndex）
@@ -294,6 +305,16 @@ const userApi = {
   // 更新复习时释义折叠配置
   updateCollapseDefinitionOnReview(collapseDefinitionOnReview) {
     return put('/api/user/learning-config/collapse-definition-on-review', { collapseDefinitionOnReview }) // 需要 token
+  },
+
+  // 更新 AI 查词配置
+  updateAiDictConfig(aiDictModel, aiDictTemperature, aiDictThinking, aiDictReasoningEffort) {
+    return put('/api/user/learning-config/ai-dict-config', {
+      aiDictModel,
+      aiDictTemperature,
+      aiDictThinking,
+      aiDictReasoningEffort
+    }) // 需要 token
   }
 }
 

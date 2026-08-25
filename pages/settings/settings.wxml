@@ -60,12 +60,111 @@
         <text class="setting-desc">复习单词时默认折叠释义</text>
       </view>
       <view class="setting-control">
-        <switch 
-          checked="{{learningConfig.collapseDefinitionOnReview}}" 
+        <switch
+          checked="{{learningConfig.collapseDefinitionOnReview}}"
           bindchange="onToggleCollapseOnReview"
           color="#5B8C7D"
         />
       </view>
+    </view>
+
+    <!-- 管理员专属：AI 查词配置 -->
+    <view wx:if="{{isAdmin}}" class="admin-section">
+      <view class="section-title">管理员配置</view>
+
+      <!-- AI 模型选择 -->
+      <view class="setting-item">
+        <view class="setting-label">
+          <text class="setting-title">AI 查词模型</text>
+          <text class="setting-desc">选择 AI 查词使用的模型</text>
+        </view>
+        <view class="setting-control">
+          <view class="model-selector" bindtap="showModelPicker">
+            <text class="model-value">{{learningConfig.aiDictModel || '默认'}}</text>
+            <text class="model-arrow">›</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- AI 温度参数 -->
+      <view class="setting-item">
+        <view class="setting-label">
+          <text class="setting-title">AI 温度参数</text>
+          <text class="setting-desc">控制输出随机性 (0.00-2.00)</text>
+        </view>
+        <view class="setting-control">
+          <input
+            class="number-input"
+            type="digit"
+            value="{{learningConfig.aiDictTemperature}}"
+            bindblur="onChangeTemperature"
+            placeholder="默认"
+          />
+        </view>
+      </view>
+
+      <!-- AI 思维模式 -->
+      <view class="setting-item">
+        <view class="setting-label">
+          <text class="setting-title">AI 思维模式</text>
+          <text class="setting-desc">开启深度推理（会增加查询时间）</text>
+        </view>
+        <view class="setting-control">
+          <switch
+            checked="{{learningConfig.aiDictThinking}}"
+            bindchange="onToggleThinking"
+            color="#5B8C7D"
+          />
+        </view>
+      </view>
+
+      <!-- AI 推理强度（仅在思维模式开启时显示） -->
+      <view wx:if="{{learningConfig.aiDictThinking}}" class="setting-item">
+        <view class="setting-label">
+          <text class="setting-title">AI 推理强度</text>
+          <text class="setting-desc">推理深度级别</text>
+        </view>
+        <view class="setting-control">
+          <view class="model-selector" bindtap="showReasoningPicker">
+            <text class="model-value">{{learningConfig.aiDictReasoningEffort || 'medium'}}</text>
+            <text class="model-arrow">›</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 模型选择器 -->
+  <view wx:if="{{showModelPicker}}" class="picker-modal">
+    <view class="picker-mask" bindtap="cancelModelPicker"></view>
+    <view class="picker-content">
+      <view class="picker-header">
+        <text class="picker-cancel" bindtap="cancelModelPicker">取消</text>
+        <text class="picker-title">选择模型</text>
+        <text class="picker-confirm" bindtap="confirmModelPicker">确定</text>
+      </view>
+      <picker-view value="{{[tempModelIndex]}}" class="picker-view" bindchange="onModelPickerChange">
+        <picker-view-column>
+          <view wx:for="{{modelOptions}}" wx:key="index" class="picker-item">{{item}}</view>
+        </picker-view-column>
+      </picker-view>
+    </view>
+  </view>
+
+  <!-- 推理强度选择器 -->
+  <view wx:if="{{showReasoningPicker}}" class="picker-modal">
+    <view class="picker-mask" bindtap="cancelReasoningPicker"></view>
+    <view class="picker-content">
+      <view class="picker-header">
+        <text class="picker-cancel" bindtap="cancelReasoningPicker">取消</text>
+        <text class="picker-title">选择推理强度</text>
+        <text class="picker-confirm" bindtap="confirmReasoningPicker">确定</text>
+      </view>
+      <picker-view value="{{[tempReasoningIndex]}}" class="picker-view" bindchange="onReasoningPickerChange">
+        <picker-view-column>
+          <view wx:for="{{reasoningEffortOptions}}" wx:key="index" class="picker-item">{{item}}</view>
+        </picker-view-column>
+      </picker-view>
     </view>
   </view>
 </view>
