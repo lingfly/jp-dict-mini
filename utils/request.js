@@ -8,6 +8,18 @@ let _cachedApiBaseUrl = config.apiBaseUrl
 let _cachedToken = wx.getStorageSync('token') || null
 
 /**
+ * 统一的错误提示（全局异常消息），集中控制停留时长
+ * icon: 'none' 时 duration 生效（默认 1500ms），这里延长到 3000ms 便于阅读
+ */
+function showErrorToast(title) {
+  wx.showToast({
+    title: title || '操作失败',
+    icon: 'none',
+    duration: 3000
+  })
+}
+
+/**
  * 设置基础 URL
  */
 function setApiBaseUrl(url) {
@@ -89,10 +101,7 @@ function request(url, method = 'GET', data = {}, needAuth = true, timeout = 6000
           // 检查业务状态码
           if (res.data && res.data.code !== undefined && res.data.code !== 200) {
             // 业务错误，显示后端返回的错误信息
-            wx.showToast({
-              title: res.data.message || '操作失败',
-              icon: 'none'
-            })
+            showErrorToast(res.data.message || '操作失败')
           }
           // 无论业务状态码是什么，都返回完整数据，让调用方自行判断
           resolve(res.data)
@@ -121,19 +130,13 @@ function request(url, method = 'GET', data = {}, needAuth = true, timeout = 6000
             reject(new Error('登录已过期，请重新打开小程序'))
           }
         } else {
-          wx.showToast({
-            title: res.data.message || '请求失败',
-            icon: 'none'
-          })
+          showErrorToast(res.data.message || '请求失败')
           reject(res)
         }
       },
       fail: (err) => {
         console.error('请求失败:', url, err)
-        wx.showToast({
-          title: '网络错误',
-          icon: 'none'
-        })
+        showErrorToast('网络错误')
         reject(err)
       }
     })
@@ -204,10 +207,7 @@ function formPost(url, data = {}, needAuth = true) {
           // 检查业务状态码
           if (res.data && res.data.code !== undefined && res.data.code !== 200) {
             // 业务错误，显示后端返回的错误信息
-            wx.showToast({
-              title: res.data.message || '操作失败',
-              icon: 'none'
-            })
+            showErrorToast(res.data.message || '操作失败')
           }
           // 无论业务状态码是什么，都返回完整数据，让调用方自行判断
           resolve(res.data)
@@ -227,19 +227,13 @@ function formPost(url, data = {}, needAuth = true) {
             reject(new Error('登录已过期，请重新打开小程序'))
           }
         } else {
-          wx.showToast({
-            title: res.data.message || '请求失败',
-            icon: 'none'
-          })
+          showErrorToast(res.data.message || '请求失败')
           reject(res)
         }
       },
       fail: (err) => {
         console.error('请求失败:', url, err)
-        wx.showToast({
-          title: '网络错误',
-          icon: 'none'
-        })
+        showErrorToast('网络错误')
         reject(err)
       }
     })

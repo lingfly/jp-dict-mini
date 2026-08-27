@@ -90,7 +90,7 @@
       <view class="setting-item">
         <view class="setting-label">
           <text class="setting-title">AI 温度参数</text>
-          <text class="setting-desc">控制输出随机性 (0.00-2.00)</text>
+          <text class="setting-desc">越小确定性越高 (0.00-2.00)</text>
         </view>
         <view class="setting-control">
           <input
@@ -107,7 +107,7 @@
       <view class="setting-item">
         <view class="setting-label">
           <text class="setting-title">AI 思维模式</text>
-          <text class="setting-desc">开启深度推理（会增加查询时间）</text>
+          <text class="setting-desc">开启深度推理（会显著增加查询时间）</text>
         </view>
         <view class="setting-control">
           <switch

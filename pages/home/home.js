@@ -480,15 +480,12 @@ Page({
 
     this.setData({ aiStreaming: true })
 
-    wx.showLoading({ title: 'AI 查询中...', mask: true })
-
     try {
       const { aiDictModel, aiDictTemperature, aiDictThinking, aiDictReasoningEffort } = this.data
       // 只有开启思维模式时才传递 thinking 和 reasoningEffort
       const thinking = aiDictThinking ? true : false
       const reasoningEffort = aiDictThinking ? (aiDictReasoningEffort || 'medium') : null
       const res = await aiDictApi.query(keyword, thinking, reasoningEffort, aiDictModel, aiDictTemperature)
-      wx.hideLoading()
       // res.data 结构: { logId, results: [...] }
       if (res.code === 200 && res.data && res.data.results && res.data.results.length > 0) {
         const logId = res.data.logId
@@ -647,7 +644,7 @@ Page({
       if (res.code === 200) {
         this.setData({ aiFeedbackType: 'correct' })
         this.setCachedAiFeedback(logId, selectedIndex, 'correct')
-        wx.showToast({ title: '已加入审核，审核完成后会加入词库并添加到您的默认收藏夹', icon: 'none' })
+        wx.showToast({ title: '已加入审核，审核通过后会加入词库及默认收藏夹', icon: 'none', duration: 2000 })
       } else {
         this.setData({ aiFeedbackDone: false })
         wx.showToast({ title: res.message || '操作失败', icon: 'none' })

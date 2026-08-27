@@ -186,7 +186,7 @@
 }
 
 .btn-success {
-  background: #67C23A;
+  background: #5B8C7D;
   color: #fff;
 }
 
@@ -195,7 +195,6 @@
   color: #fff;
 }
 
-.btn.disabled {
+.btn[disabled] {
   opacity: 0.6;
-  pointer-events: none;
 }

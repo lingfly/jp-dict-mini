@@ -72,7 +72,7 @@ Page({
       const res = await correctionApi.approve(item.id, data)
       wx.hideLoading()
       if (res.code === 200) {
-        wx.showToast({ title: '已通过', icon: 'success' })
+        wx.showToast({ title: '已采纳', icon: 'success' })
         // 成功后保持 submitting=true，禁止在返回前的 1.5s 内再次点击
         setTimeout(() => wx.navigateBack(), 1500)
       } else {

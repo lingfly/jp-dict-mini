@@ -97,7 +97,7 @@
 
   <!-- 操作按钮 -->
   <view class="action-bar">
-    <view class="btn btn-success {{submitting ? 'disabled' : ''}}" bindtap="approve">通过</view>
-    <view class="btn btn-danger {{submitting ? 'disabled' : ''}}" bindtap="reject">拒绝</view>
+    <button class="btn btn-danger" disabled="{{submitting}}" bindtap="reject">驳回</button>
+    <button class="btn btn-success" disabled="{{submitting}}" bindtap="approve">采纳</button>
   </view>
 </view>
