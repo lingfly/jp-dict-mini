@@ -14,7 +14,8 @@ Page({
     learningStatus: null,
     selectedWordIds: [],
     displayLearnedCount: 0,  // 显示用的 n = 接口n + 当前勾选数
-    submitting: false
+    submitting: false,
+    nameExpanded: false  // 词单名称是否展开（过长时点击切换完整显示）
   },
 
   onLoad(options) {
@@ -351,6 +352,11 @@ Page({
 
   goWordDetail(e) {
     wx.navigateTo({ url: `/pages/word-detail/word-detail?wordId=${e.currentTarget.dataset.wordId}` })
+  },
+
+  /** 切换词单名称展开/收起（过长时点击查看全称） */
+  toggleNameExpand() {
+    this.setData({ nameExpanded: !this.data.nameExpanded })
   },
 
   onCheckboxTap(e) {

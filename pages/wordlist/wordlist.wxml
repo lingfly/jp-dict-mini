@@ -26,7 +26,15 @@
           <text>我的</text>
         </view>
         <view
-          class="category-item {{!mineOnly && activeCategory === '' ? 'active' : ''}}"
+          class="category-item {{favoriteOnly ? 'active' : ''}}"
+          data-favorite="true"
+          data-mine="false"
+          bindtap="onCategoryTap"
+        >
+          <text>收藏</text>
+        </view>
+        <view
+          class="category-item {{!mineOnly && !favoriteOnly && activeCategory === '' ? 'active' : ''}}"
           data-category=""
           data-mine="false"
           bindtap="onCategoryTap"
@@ -36,7 +44,7 @@
         <view
           wx:for="{{categories}}"
           wx:key="code"
-          class="category-item {{!mineOnly && activeCategory === item.code ? 'active' : ''}}"
+          class="category-item {{!mineOnly && !favoriteOnly && activeCategory === item.code ? 'active' : ''}}"
           data-category="{{item.code}}"
           data-mine="false"
           bindtap="onCategoryTap"
@@ -49,20 +57,34 @@
 
   <!-- 词单列表 -->
   <view class="wordlist-container">
-    <!-- 正在学习词单（通过 /current 接口获取） -->
-    <view wx:if="{{currentWordList}}" class="current-section">
+    <!-- 正在学习词单（仅"我的"分类展示，通过 /current 接口获取） -->
+    <view wx:if="{{mineOnly && currentWordList}}" class="current-section">
       <text class="section-title">正在学习</text>
-      <view class="wordlist-card card current" data-id="{{currentWordList.id}}" bindtap="goWordListDetail">
-        <view class="wordlist-main">
+      <view class="wordlist-card card current {{activeMenuId === currentWordList.id ? 'menu-open' : ''}}">
+        <view class="wordlist-main" data-id="{{currentWordList.id}}" bindtap="goWordListDetail">
           <view class="wordlist-top">
             <text class="wordlist-name">{{currentWordList.name}}</text>
             <text wx:if="{{currentWordList.categoryLabel}}" class="wordlist-category">{{currentWordList.categoryLabel}}</text>
+            <view class="more-wrap">
+              <view class="more-btn" data-id="{{currentWordList.id}}" data-name="{{currentWordList.name}}" data-isMine="{{currentWordList.isMine}}" catchtap="onMoreTap">···</view>
+              <view wx:if="{{activeMenuId === currentWordList.id}}" class="pop-menu">
+                <view wx:if="{{!currentWordList.isMine}}" class="pop-item" data-action="favorite" catchtap="onMenuAction">{{currentWordList.isFavorite ? '取消收藏' : '收藏'}}</view>
+                <view wx:if="{{currentWordList.isMine && !currentWordList.isDefault}}" class="pop-item" data-action="edit" catchtap="onMenuAction">编辑</view>
+                <view wx:if="{{currentWordList.isMine && !currentWordList.isDefault}}" class="pop-item" data-action="delete" catchtap="onMenuAction">删除</view>
+                <view class="pop-item" data-action="clear" catchtap="onMenuAction">取消学习</view>
+              </view>
+            </view>
           </view>
           <text wx:if="{{currentWordList.description}}" class="wordlist-desc">{{currentWordList.description}}</text>
           <view class="wordlist-bottom">
             <text class="wordlist-count">{{currentWordList.wordCount || 0}} 个单词</text>
-            <view class="current-tag">
-              <text>当前使用</text>
+            <view class="bottom-right">
+              <view class="current-tag">
+                <text>当前使用</text>
+              </view>
+              <view wx:if="{{currentWordList.isFavorite}}" class="favorite-tag">
+                <text>已收藏</text>
+              </view>
             </view>
           </view>
         </view>
@@ -76,30 +98,86 @@
 
     <!-- 其他词单 -->
     <view wx:elif="{{wordLists.length > 0}}">
-      <text wx:if="{{currentWordList}}" class="section-title">其他词单</text>
+      <text wx:if="{{mineOnly && currentWordList}}" class="section-title">其他词单</text>
       <text wx:else class="section-title">词单列表</text>
-      <view wx:for="{{wordLists}}" wx:key="id" class="wordlist-card card">
+      <view wx:for="{{wordLists}}" wx:key="id" class="wordlist-card card {{activeMenuId === item.id ? 'menu-open' : ''}}">
         <view class="wordlist-main" data-id="{{item.id}}" bindtap="goWordListDetail">
           <view class="wordlist-top">
             <text class="wordlist-name">{{item.name}}</text>
             <text wx:if="{{item.categoryLabel}}" class="wordlist-category">{{item.categoryLabel}}</text>
+            <view class="more-wrap">
+              <view class="more-btn" data-id="{{item.id}}" data-name="{{item.name}}" data-isMine="{{item.isMine}}" catchtap="onMoreTap">···</view>
+              <view wx:if="{{activeMenuId === item.id}}" class="pop-menu">
+                <view wx:if="{{!item.isMine}}" class="pop-item" data-action="favorite" catchtap="onMenuAction">{{item.isFavorite ? '取消收藏' : '收藏'}}</view>
+                <view wx:if="{{item.isMine && !item.isDefault}}" class="pop-item" data-action="edit" catchtap="onMenuAction">编辑</view>
+                <view wx:if="{{item.isMine && !item.isDefault}}" class="pop-item" data-action="delete" catchtap="onMenuAction">删除</view>
+                <view class="pop-item" data-action="select" catchtap="onMenuAction">设为当前学习词单</view>
+              </view>
+            </view>
           </view>
           <text wx:if="{{item.description}}" class="wordlist-desc">{{item.description}}</text>
           <view class="wordlist-bottom">
             <text class="wordlist-count">{{item.wordCount || 0}} 个单词</text>
-          </view>
-        </view>
-        <view class="wordlist-action">
-          <view class="select-btn" data-id="{{item.id}}" bindtap="selectWordList">
-            设为当前
+            <view wx:if="{{item.isFavorite}}" class="favorite-tag">
+              <text>已收藏</text>
+            </view>
           </view>
         </view>
       </view>
     </view>
 
     <!-- 空状态 -->
-    <view wx:elif="{{!loading && !currentWordList}}" class="empty-state">
+    <view wx:elif="{{!loading && wordLists.length === 0}}" class="empty-state">
       <text class="empty-text">暂无词单</text>
+    </view>
+  </view>
+
+  <!-- 右下角浮动创建按钮 -->
+  <view class="fab-create" bindtap="onCreateTap">＋</view>
+
+  <!-- 点击空白处关闭弹出菜单 -->
+  <view wx:if="{{activeMenuId}}" class="menu-mask" bindtap="closeMenu"></view>
+
+  <!-- 创建词单弹窗 -->
+  <view wx:if="{{showCreateDialog}}" class="dialog-mask" bindtap="closeCreateDialog">
+    <view class="dialog" catchtap="noop">
+      <view class="dialog-title">{{dialogMode === 'edit' ? '编辑词单' : '创建词单'}}</view>
+      <input
+        class="dialog-input"
+        value="{{createName}}"
+        placeholder="请输入词单名称"
+        placeholder-class="dialog-placeholder"
+        maxlength="100"
+        bindinput="onCreateNameInput"
+      />
+      <textarea
+        class="dialog-textarea"
+        value="{{createDescription}}"
+        placeholder="请输入词单描述（选填）"
+        placeholder-class="dialog-placeholder"
+        maxlength="500"
+        bindinput="onCreateDescriptionInput"
+      />
+      <picker
+        class="dialog-picker"
+        mode="selector"
+        range="{{categoryLabels}}"
+        value="{{createCategoryIndex}}"
+        bindchange="onCreateCategoryChange"
+      >
+        <view class="dialog-picker-row">
+          <text class="dialog-picker-label">分类</text>
+          <text class="dialog-picker-value">{{categoryLabels[createCategoryIndex] || '请选择分类'}}</text>
+        </view>
+      </picker>
+      <view class="dialog-public-row" bindtap="togglePublic">
+        <text class="dialog-public-label">公开词单</text>
+        <switch class="dialog-switch" checked="{{createIsPublic}}" color="#5B8C7D" />
+      </view>
+      <view class="dialog-actions">
+        <view class="dialog-btn cancel" bindtap="closeCreateDialog">取消</view>
+        <view class="dialog-btn confirm" bindtap="submitCreate">{{dialogMode === 'edit' ? '保存' : '创建'}}</view>
+      </view>
     </view>
   </view>
 </view>

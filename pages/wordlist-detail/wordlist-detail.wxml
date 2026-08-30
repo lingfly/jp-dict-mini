@@ -4,7 +4,7 @@
   <!-- 词单基本信息 -->
   <view wx:if="{{wordList}}" class="info-section card">
     <view class="info-header">
-      <text class="info-name">{{wordList.name}}</text>
+      <text class="info-name {{nameExpanded ? 'expanded' : ''}}" bindtap="toggleNameExpand">{{wordList.name}}</text>
       <text wx:if="{{wordList.categoryLabel}}" class="info-category">{{wordList.categoryLabel}}</text>
     </view>
     <text wx:if="{{wordList.description}}" class="info-desc">{{wordList.description}}</text>

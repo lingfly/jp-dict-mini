@@ -36,9 +36,47 @@ const wordlistApi = {
     return get('/api/wordlist/current') // 需要 token
   },
 
+  // 取消当前学习的词单
+  clearCurrent() {
+    return post('/api/wordlist/clear-current') // 需要 token
+  },
+
   // 获取词单详情
   getDetail(wordListId) {
     return get('/api/wordlist/detail', { wordListId }) // 需要 token
+  },
+
+  // 创建词单（不传封面图 coverImage）
+  create(name, category, description, isPublic) {
+    const data = { name, category }
+    if (description) data.description = description
+    if (isPublic !== undefined && isPublic !== null) data.isPublic = isPublic
+    return post('/api/wordlist/create', data) // 需要 token
+  },
+
+  // 编辑词单（对齐 UpdateWordListRequest，不传封面图 coverImage）
+  update(wordListId, name, description, category, isPublic) {
+    const data = { wordListId }
+    if (name) data.name = name
+    if (description) data.description = description
+    if (category) data.category = category
+    if (isPublic !== undefined && isPublic !== null) data.isPublic = isPublic
+    return put('/api/wordlist/update', data) // 需要 token
+  },
+
+  // 删除词单（DELETE /api/wordlist/delete?wordListId=xxx）
+  remove(wordListId) {
+    return request(`/api/wordlist/delete?wordListId=${encodeURIComponent(wordListId)}`, 'DELETE', {}) // 需要 token
+  },
+
+  // 收藏词单
+  favoriteList(wordListId) {
+    return post('/api/wordlist/favorite-list', { wordListId }) // 需要 token
+  },
+
+  // 取消收藏词单
+  unfavoriteList(wordListId) {
+    return post('/api/wordlist/unfavorite-list', { wordListId }) // 需要 token
   },
 
   // 获取词单单词列表（支持指定排序）

@@ -23,6 +23,19 @@
   font-size: 22px;
   font-weight: 700;
   color: #303133;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 展开后完整显示（允许换行） */
+.info-name.expanded {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-all;
 }
 
 .info-category {
