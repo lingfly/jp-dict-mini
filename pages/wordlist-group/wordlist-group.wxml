@@ -1,0 +1,321 @@
+<!-- pages/wordlist-group/wordlist-group.wxml -->
+<view class="group-page">
+  <!-- 统计 + 管理入口 -->
+  <view class="summary-bar">
+    <text class="summary-text">共 <text class="summary-num">{{totalGroups}}</text> 个分组 · <text class="summary-num">{{totalWords}}</text> 个单词 · <text class="summary-num">{{totalUngrouped}}</text> 个未分组</text>
+    <view class="manage-btn" bindtap="toggleSelectMode">{{selectMode ? '完成' : '管理'}}</view>
+  </view>
+
+  <!-- 主体列表：分组与未分组单词共用同一滚动区，靠吸顶分区头区分 -->
+  <scroll-view class="list-scroll" scroll-y="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}">
+    <!-- ===== 分区一：分组 ===== -->
+    <view class="sec-header">
+      <block wx:if="{{selectMode}}">
+        <view class="pick-all" data-scope="group" bindtap="onSelectAll">
+          <view class="cb small {{groupAllOn ? 'on' : ''}} {{groupSomeOn ? 'half' : ''}}">
+            <text wx:if="{{groupAllOn}}" class="cb-tick">✓</text>
+          </view>
+          <text class="pick-text">分组（全选）</text>
+        </view>
+      </block>
+      <block wx:else>
+        <text class="sec-title">分组</text>
+        <text class="sec-count">{{totalGroups}}</text>
+        <text class="sec-action" bindtap="openCreate">+ 新建</text>
+      </block>
+    </view>
+    <view class="rows">
+      <view wx:if="{{totalGroups === 0}}" class="blank">
+        <view class="blank-folder">
+          <view class="blank-folder-tab"></view>
+          <view class="blank-folder-body"></view>
+        </view>
+        <text class="blank-text">还没有分组</text>
+      </view>
+      <view
+        wx:for="{{viewGroups}}"
+        wx:key="id"
+        class="row {{selectMode ? 'sel-mode' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="onGroupTap"
+      >
+        <view wx:if="{{selectMode}}" class="cb {{item.selected ? 'on' : ''}}" catchtap="onGroupCheck" data-id="{{item.id}}">
+          <text wx:if="{{item.selected}}" class="cb-tick">✓</text>
+        </view>
+        <view class="gicon" style="background:{{item.color}}">
+          <view class="folder">
+            <view class="folder-tab"></view>
+            <view class="folder-body"></view>
+          </view>
+        </view>
+        <view class="rmain">
+          <view class="rname">{{item.name}}</view>
+          <view class="rmeta {{item.wordCount === 0 ? 'empty' : ''}}">{{item.meta}}</view>
+        </view>
+        <block wx:if="{{!selectMode}}">
+          <view class="more" catchtap="openAction" data-id="{{item.id}}">⋯</view>
+          <view class="chev">›</view>
+        </block>
+      </view>
+    </view>
+
+    <!-- ===== 分区二：未分组 ===== -->
+    <view class="sec-header gap">
+      <block wx:if="{{selectMode}}">
+        <view class="pick-all" data-scope="word" bindtap="onSelectAll">
+          <view class="cb small {{wordAllOn ? 'on' : ''}} {{wordSomeOn ? 'half' : ''}}">
+            <text wx:if="{{wordAllOn}}" class="cb-tick">✓</text>
+          </view>
+          <text class="pick-text">未分组（全选）</text>
+        </view>
+      </block>
+      <block wx:else>
+        <text class="sec-title">未分组</text>
+        <text class="sec-count">{{totalUngrouped}} 个单词</text>
+        <text wx:if="{{totalUngrouped > 0}}" class="sec-action" bindtap="onMoveAllUngrouped">全部移至分组</text>
+      </block>
+    </view>
+    <view class="rows">
+      <view wx:if="{{totalUngrouped === 0}}" class="blank">
+        <view class="blank-box"></view>
+        <text class="blank-text">所有单词都已归入分组</text>
+      </view>
+      <view
+        wx:for="{{visibleWords}}"
+        wx:key="wordId"
+        class="row word-row {{selectMode ? 'sel-mode' : ''}}"
+        data-id="{{item.wordId}}"
+        bindtap="onWordTap"
+      >
+        <view wx:if="{{selectMode}}" class="cb {{item.selected ? 'on' : ''}}" catchtap="onWordCheck" data-id="{{item.wordId}}">
+          <text wx:if="{{item.selected}}" class="cb-tick">✓</text>
+        </view>
+        <view class="rmain">
+          <view class="rname">
+            <text class="jp-text">{{item.kanji}}</text>
+            <text wx:if="{{item.kana && item.kana !== item.kanji}}" class="ph jp-text">{{item.kana}}</text>
+          </view>
+          <view wx:if="{{item.meaning}}" class="rmeta">{{item.meaning}}</view>
+        </view>
+        <view wx:if="{{item.learned}}" class="ok-tag">已掌握</view>
+      </view>
+      <view wx:if="{{hasMoreUngrouped}}" class="more-row" bindtap="onToggleUngrouped">
+        <text>{{showAllUngrouped ? '收起 ›' : '查看全部 ' + totalUngrouped + ' 个未分组单词 ›'}}</text>
+      </view>
+    </view>
+
+    <view class="scroll-pad"></view>
+  </scroll-view>
+
+  <!-- 浏览态悬浮按钮 -->
+  <view wx:if="{{!selectMode}}" class="fab" bindtap="openCreate">
+    <text class="fab-plus">＋</text>
+    <text class="fab-text">新建分组</text>
+  </view>
+
+  <!-- 多选态底部操作栏 -->
+  <view class="bottom-bar {{selectMode ? 'show' : ''}}">
+    <view class="sel-cnt">已选 <text class="sel-num">{{selectedCount}}</text></view>
+    <view class="bbtn {{canRename ? '' : 'disabled'}}" bindtap="onRenameTap">
+      <text class="bbtn-icon">✎</text><text>重命名</text>
+    </view>
+    <view class="bbtn {{canMove ? '' : 'disabled'}}" bindtap="openMove">
+      <text class="bbtn-icon">⇄</text><text>移动</text>
+    </view>
+    <view class="bbtn danger {{canDelete ? '' : 'disabled'}}" bindtap="openDelete">
+      <text class="bbtn-icon">✖</text><text>删除</text>
+    </view>
+  </view>
+
+  <!-- ===== 移动到分组 ===== -->
+  <view wx:if="{{showMove}}" class="ov">
+    <view class="mask" bindtap="closeMove"></view>
+    <view class="sheet">
+      <view class="sheet-h">
+        <view class="sheet-h-main">
+          <view class="sheet-t">移动到分组</view>
+          <view class="sheet-s">将 {{moveCount}} 个单词移动至</view>
+        </view>
+        <view class="sheet-x" bindtap="closeMove">✕</view>
+      </view>
+      <scroll-view class="sheet-b" scroll-y="{{true}}">
+        <view class="opt {{moveTargetId === '__none' ? 'on' : ''}}" data-t="__none" bindtap="onMoveTargetTap">
+          <view class="opt-icon plain">◇</view>
+          <view class="opt-main">
+            <view class="oname">未分组</view>
+            <view class="ometa">移出所有分组</view>
+          </view>
+          <view class="radio {{moveTargetId === '__none' ? 'on' : ''}}">
+            <text wx:if="{{moveTargetId === '__none'}}" class="cb-tick">✓</text>
+          </view>
+        </view>
+        <view
+          wx:for="{{moveTargets}}"
+          wx:key="id"
+          class="opt {{moveTargetId === item.id ? 'on' : ''}}"
+          data-t="{{item.id}}"
+          bindtap="onMoveTargetTap"
+        >
+          <view class="opt-icon" style="background:{{item.color}}">
+            <view class="folder">
+              <view class="folder-tab"></view>
+              <view class="folder-body"></view>
+            </view>
+          </view>
+          <view class="opt-main">
+            <view class="oname">{{item.name}}</view>
+            <view class="ometa">{{item.wordCount}} 个单词</view>
+          </view>
+          <view class="radio {{moveTargetId === item.id ? 'on' : ''}}">
+            <text wx:if="{{moveTargetId === item.id}}" class="cb-tick">✓</text>
+          </view>
+        </view>
+        <view wx:if="{{moveTargets.length === 0 && totalGroups > 0}}" class="opt-tip">没有其他分组可选，可点下方新建</view>
+        <view class="opt" data-t="__new" bindtap="onMoveTargetTap">
+          <view class="opt-icon new">＋</view>
+          <view class="opt-main"><view class="oname accent">新建分组</view></view>
+        </view>
+      </scroll-view>
+      <view class="sheet-f">
+        <view class="bigbtn {{moveTargetId ? '' : 'disabled'}}" bindtap="confirmMove">移动 {{moveCount}} 个单词</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 删除确认 ===== -->
+  <view wx:if="{{showDelete}}" class="ov">
+    <view class="mask" bindtap="closeDelete"></view>
+    <view class="dialog">
+      <view class="dlg-b">
+        <view class="dlg-t">删除</view>
+        <view class="dlg-d">
+          <text wx:if="{{delGroupCount > 0}}">将删除 <text class="b">{{delGroupCount}}</text> 个分组<text wx:if="{{delGroupWords > 0}}">（含 <text class="b">{{delGroupWords}}</text> 个单词）</text>。</text>
+          <text wx:if="{{delWordCount > 0}}">将把 <text class="b">{{delWordCount}}</text> 个单词移出词单。</text>
+        </view>
+        <view wx:if="{{delGroupCount > 0 && delGroupWords > 0}}" class="choose">
+          <view class="c {{deleteKeepWords ? 'on' : ''}}" data-keep="1" bindtap="onKeepChange">
+            <view class="radio {{deleteKeepWords ? 'on' : ''}}">
+              <text wx:if="{{deleteKeepWords}}" class="cb-tick">✓</text>
+            </view>
+            <text>保留单词，移入「未分组」</text>
+          </view>
+          <view class="c {{!deleteKeepWords ? 'on' : ''}}" data-keep="0" bindtap="onKeepChange">
+            <view class="radio {{!deleteKeepWords ? 'on' : ''}}">
+              <text wx:if="{{!deleteKeepWords}}" class="cb-tick">✓</text>
+            </view>
+            <text>同时删除组内单词</text>
+          </view>
+        </view>
+      </view>
+      <view class="dlg-f">
+        <view class="dlg-btn" bindtap="closeDelete">取消</view>
+        <view class="dlg-btn del" bindtap="confirmDelete">删除</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 重命名 ===== -->
+  <view wx:if="{{showRename}}" class="ov">
+    <view class="mask" bindtap="closeRename"></view>
+    <view class="dialog">
+      <view class="dlg-b">
+        <view class="dlg-t">重命名分组</view>
+        <view class="field">
+          <view class="field-label">
+            <text>分组名称</text>
+            <text class="field-count">{{renameName.length}}/{{nameMax}}</text>
+          </view>
+          <input
+            class="inp"
+            value="{{renameName}}"
+            maxlength="20"
+            placeholder="请输入分组名称"
+            placeholder-class="inp-ph"
+            focus="{{showRename}}"
+            bindinput="onRenameInput"
+          />
+        </view>
+      </view>
+      <view class="dlg-f">
+        <view class="dlg-btn" bindtap="closeRename">取消</view>
+        <view class="dlg-btn pri {{renameValid ? '' : 'disabled'}}" bindtap="confirmRename">保存</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 新建分组 ===== -->
+  <view wx:if="{{showCreate}}" class="ov">
+    <view class="mask" bindtap="closeCreate"></view>
+    <view class="dialog">
+      <view class="dlg-b">
+        <view class="dlg-t">新建分组</view>
+        <view class="field">
+          <view class="field-label">
+            <text>分组名称</text>
+            <text class="field-count">{{createName.length}}/{{nameMax}}</text>
+          </view>
+          <input
+            class="inp"
+            value="{{createName}}"
+            maxlength="20"
+            placeholder="例如：考研核心词汇"
+            placeholder-class="inp-ph"
+            focus="{{showCreate}}"
+            bindinput="onCreateNameInput"
+          />
+        </view>
+        <view class="field">
+          <view class="field-label"><text>标识颜色</text></view>
+          <view class="swatches">
+            <view
+              wx:for="{{groupColors}}"
+              wx:key="*this"
+              class="sw {{createColor === item ? 'on' : ''}}"
+              style="background:{{item}}"
+              data-color="{{item}}"
+              bindtap="onColorTap"
+            ></view>
+          </view>
+        </view>
+      </view>
+      <view class="dlg-f">
+        <view class="dlg-btn" bindtap="closeCreate">取消</view>
+        <view class="dlg-btn pri {{createValid ? '' : 'disabled'}}" bindtap="confirmCreate">创建</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 分组快捷菜单 ===== -->
+  <view wx:if="{{showAction}}" class="ov">
+    <view class="mask" bindtap="closeAction"></view>
+    <view class="sheet">
+      <view class="sheet-h">
+        <view class="sheet-h-main">
+          <view class="sheet-t">{{actGroup.name}}</view>
+          <view class="sheet-s">{{actGroup.wordCount}} 个单词</view>
+        </view>
+        <view class="sheet-x" bindtap="closeAction">✕</view>
+      </view>
+      <view class="sheet-b">
+        <view class="opt" data-a="rename" bindtap="onActionTap">
+          <view class="opt-icon soft">✎</view>
+          <view class="opt-main"><view class="oname">重命名</view></view>
+        </view>
+        <view class="opt" data-a="move" bindtap="onActionTap">
+          <view class="opt-icon soft">⇄</view>
+          <view class="opt-main"><view class="oname">移动组内单词</view></view>
+        </view>
+        <view class="opt" data-a="delete" bindtap="onActionTap">
+          <view class="opt-icon warn">✖</view>
+          <view class="opt-main"><view class="oname danger">删除分组</view></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 轻提示（可撤销） -->
+  <view class="toast {{toastShow ? 'show' : ''}}">
+    <text class="toast-msg">{{toastMsg}}</text>
+    <text wx:if="{{toastUndoable}}" class="toast-undo" bindtap="onUndo">撤销</text>
+  </view>
+</view>

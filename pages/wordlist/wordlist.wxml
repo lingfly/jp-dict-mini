@@ -69,6 +69,7 @@
               <view class="more-btn" data-id="{{currentWordList.id}}" data-name="{{currentWordList.name}}" data-isMine="{{currentWordList.isMine}}" catchtap="onMoreTap">···</view>
               <view wx:if="{{activeMenuId === currentWordList.id}}" class="pop-menu">
                 <view wx:if="{{!currentWordList.isMine}}" class="pop-item" data-action="favorite" catchtap="onMenuAction">{{currentWordList.isFavorite ? '取消收藏' : '收藏'}}</view>
+                <view class="pop-item" data-action="group" catchtap="onMenuAction">分组管理</view>
                 <view wx:if="{{currentWordList.isMine && !currentWordList.isDefault}}" class="pop-item" data-action="edit" catchtap="onMenuAction">编辑</view>
                 <view wx:if="{{currentWordList.isMine && !currentWordList.isDefault}}" class="pop-item" data-action="delete" catchtap="onMenuAction">删除</view>
                 <view class="pop-item" data-action="clear" catchtap="onMenuAction">取消学习</view>
@@ -109,6 +110,7 @@
               <view class="more-btn" data-id="{{item.id}}" data-name="{{item.name}}" data-isMine="{{item.isMine}}" catchtap="onMoreTap">···</view>
               <view wx:if="{{activeMenuId === item.id}}" class="pop-menu">
                 <view wx:if="{{!item.isMine}}" class="pop-item" data-action="favorite" catchtap="onMenuAction">{{item.isFavorite ? '取消收藏' : '收藏'}}</view>
+                <view class="pop-item" data-action="group" catchtap="onMenuAction">分组管理</view>
                 <view wx:if="{{item.isMine && !item.isDefault}}" class="pop-item" data-action="edit" catchtap="onMenuAction">编辑</view>
                 <view wx:if="{{item.isMine && !item.isDefault}}" class="pop-item" data-action="delete" catchtap="onMenuAction">删除</view>
                 <view class="pop-item" data-action="select" catchtap="onMenuAction">设为当前学习词单</view>

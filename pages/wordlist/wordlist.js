@@ -194,7 +194,17 @@ Page({
       this.onClearCurrentWordList()
     } else if (action === 'favorite') {
       this.toggleFavorite(id, wordList && wordList.isFavorite)
+    } else if (action === 'group') {
+      this.goWordListGroup(id, name)
     }
+  },
+
+  /** 进入词单分组管理 */
+  goWordListGroup(id, name) {
+    if (!id) return
+    wx.navigateTo({
+      url: `/pages/wordlist-group/wordlist-group?wordListId=${id}&name=${encodeURIComponent(name || '')}`
+    })
   },
 
   /** 收藏/取消收藏词单 */

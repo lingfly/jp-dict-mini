@@ -1,0 +1,1412 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>词单分组管理 · 交互原型</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:#F2F3F5;color:#14181F;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  font-size:14px;line-height:1.5;padding:28px 20px 48px;
+}
+.page{max-width:1180px;margin:0 auto}
+.head{margin-bottom:22px}
+.head h1{font-size:22px;font-weight:600;margin:0 0 6px;letter-spacing:-.2px}
+.head p{margin:0;color:#6B7280;font-size:13px}
+.stage{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+
+/* ---------- phone ---------- */
+.phone{
+  width:390px;height:812px;flex:0 0 390px;background:#fff;border-radius:44px;
+  border:1px solid #E3E5EA;box-shadow:0 18px 48px rgba(20,24,31,.12);
+  overflow:hidden;position:relative;display:flex;flex-direction:column;
+}
+.statusbar{height:44px;flex:0 0 44px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 6px;font-size:13px;font-weight:600;color:#14181F}
+.statusbar .right{display:flex;gap:5px;align-items:center}
+.statusbar .bat{width:22px;height:11px;border:1.5px solid #14181F;border-radius:3px;position:relative;opacity:.85}
+.statusbar .bat::after{content:"";position:absolute;right:-3px;top:3px;width:1.5px;height:5px;background:#14181F;border-radius:0 1px 1px 0}
+.statusbar .bat i{position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:13px;background:#14181F;border-radius:1px;display:block}
+
+.navbar{height:48px;flex:0 0 48px;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 4px;position:relative}
+.navbar .title{font-size:17px;font-weight:600;text-align:center;flex:1}
+.nav-btn{border:0;background:none;font-size:15px;color:#3D6BF5;cursor:pointer;padding:8px 12px;border-radius:10px;font-family:inherit}
+.nav-btn:active{background:#F1F3F7}
+.nav-btn.dim{color:#9AA1AC}
+
+.summary{padding:6px 16px 8px;color:#6B7280;font-size:12px;flex:0 0 auto}
+.summary b{color:#14181F;font-weight:600}
+
+.scroll{flex:1;overflow:auto;overscroll-behavior:contain;position:relative}
+.scroll::-webkit-scrollbar{width:0}
+
+.sec-h{
+  position:sticky;top:0;z-index:6;background:#F7F8FA;
+  padding:9px 16px 7px;display:flex;align-items:center;gap:8px;
+  border-top:1px solid #EDEFF3;
+}
+.sec-h:first-child{border-top:0}
+.sec-h .t{font-size:12px;font-weight:600;color:#6B7280;letter-spacing:.3px}
+.sec-h .n{font-size:12px;color:#9AA1AC}
+.sec-h .act{margin-left:auto;font-size:12px;color:#3D6BF5;cursor:pointer;padding:2px 4px}
+.sec-h .pick{display:flex;align-items:center;gap:7px;cursor:pointer;color:#6B7280;font-size:12px;font-weight:600}
+
+.rows{background:#fff}
+.row{display:flex;align-items:center;gap:11px;padding:11px 16px;position:relative;cursor:pointer}
+.row+.row::before{content:"";position:absolute;left:56px;right:0;top:0;height:1px;background:#F1F2F5}
+.row.sel-mode{padding-left:8px}
+.row .cb{flex:0 0 0;width:0;overflow:hidden;opacity:0;transition:.18s}
+.sel-mode .cb{flex:0 0 20px;width:20px;height:20px;opacity:1;margin-right:0}
+.cb{border:1.6px solid #CDD1D8;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
+.cb.on{background:#3D6BF5;border-color:#3D6BF5}
+.cb.on svg{display:block}
+.cb svg{display:none}
+.cb.half{border-color:#3D6BF5;background:#fff}
+.cb.half::after{content:"";width:9px;height:2px;background:#3D6BF5;border-radius:1px;display:block}
+
+.gicon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--c);flex:0 0 38px}
+.rmain{flex:1;min-width:0}
+.rname{font-size:15px;font-weight:500;color:#14181F;display:flex;align-items:baseline;gap:7px}
+.rname .ph{font-size:12px;color:#9AA1AC;font-weight:400}
+.rmeta{font-size:12px;color:#8A919D;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rmeta.empty{color:#F79009}
+.chev{flex:0 0 auto;color:#C6CBD4}
+.more{flex:0 0 auto;border:0;background:none;color:#C6CBD4;padding:0 2px 0 6px;cursor:pointer;font-size:20px;line-height:1;font-family:inherit}
+.sel-mode .chev,.sel-mode .more{display:none}
+.more-row{display:flex;align-items:center;justify-content:center;padding:13px;color:#3D6BF5;font-size:13px;cursor:pointer}
+.more-row span{cursor:pointer}
+.blank{padding:44px 16px;text-align:center;color:#9AA1AC;font-size:13px}
+.blank svg{margin-bottom:10px}
+
+/* ---------- fab + bottom bar ---------- */
+.fab{
+  position:absolute;right:16px;bottom:20px;height:50px;padding:0 18px;border-radius:25px;
+  background:#3D6BF5;color:#fff;border:0;font-size:15px;font-weight:500;display:flex;align-items:center;gap:6px;
+  box-shadow:0 8px 20px rgba(61,107,245,.34);cursor:pointer;font-family:inherit;z-index:20;transition:.2s
+}
+.fab:hover{background:#3560E8}
+.phone.sel .fab{transform:translateY(90px);opacity:0;pointer-events:none}
+
+.bottombar{
+  position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E9EBF0;
+  padding:10px 14px calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:8px;
+  transform:translateY(120%);transition:transform .24s cubic-bezier(.3,.8,.3,1);z-index:50
+}
+.phone.sel .bottombar{transform:translateY(0)}
+.bottombar .cnt{font-size:13px;color:#6B7280;flex:0 0 auto;width:64px}
+.bottombar .cnt b{color:#3D6BF5}
+.bbtn{flex:1;height:38px;border-radius:10px;border:1px solid #DDE1E8;background:#fff;font-size:13.5px;color:#14181F;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px}
+.bbtn:active{background:#F4F5F8}
+.bbtn[disabled]{opacity:.4;cursor:not-allowed}
+.bbtn.danger{color:#D92D20;border-color:#FBD5D2}
+.bbtn.primary{background:#3D6BF5;border-color:#3D6BF5;color:#fff}
+
+/* ---------- detail screen ---------- */
+.screen{
+  position:absolute;inset:0;z-index:40;background:#F7F8FA;display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.3,.8,.3,1)
+}
+.screen.show{transform:translateX(0)}
+.phone.detail .fab{transform:translateY(90px);opacity:0;pointer-events:none}
+.dscroll{flex:1;overflow:auto;overscroll-behavior:contain;padding-top:2px}
+
+/* ---------- word detail screen ---------- */
+.screen.word{z-index:45}
+.wpage{padding:16px 18px 0}
+.wtitle{font-size:30px;font-weight:600;letter-spacing:-.4px;color:#14181F}
+.wph{display:flex;align-items:center;gap:10px;margin-top:7px}
+.wph .t{font-size:14px;color:#6B7280}
+.spk{width:28px;height:28px;border-radius:14px;border:1px solid #E1E4EB;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.wcard{background:#fff;border:1px solid #EEF0F4;border-radius:14px;margin:14px 16px 0}
+.wc-h{padding:12px 14px 0;font-size:12px;color:#8A919D}
+.def{padding:8px 14px 14px;font-size:15px;line-height:1.6;color:#14181F}
+.wc-row{display:flex;align-items:center;padding:13px 14px}
+.wc-row+.wc-row{border-top:1px solid #F3F4F7}
+.wc-row .k{color:#8A919D;font-size:13.5px}
+.wc-row .v{margin-left:auto;font-size:13.5px;color:#14181F;font-weight:500}
+.sw2{width:44px;height:26px;border-radius:13px;background:#DDE1E8;border:0;position:relative;cursor:pointer;padding:0;margin-left:auto;transition:background .2s}
+.sw2.on{background:#12B76A}
+.sw2 i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:10px;background:#fff;transition:left .2s}
+.sw2.on i{left:21px}
+.joinbar{flex:0 0 auto;padding:12px 16px 16px;background:#fff;border-top:1px solid #E9EBF0}
+.joinbtn{width:100%;height:46px;border-radius:13px;background:#3D6BF5;color:#fff;border:0;font-size:15.5px;font-weight:500;font-family:inherit;cursor:pointer}
+.joinbtn:active{background:#3560E8}
+
+.jrow{display:flex;align-items:center;gap:9px;padding:10px 8px;border-radius:10px;cursor:pointer}
+.jrow+.jrow{border-top:1px solid #F3F4F7}
+.jrow .gicon{width:32px;height:32px;flex:0 0 32px;border-radius:9px}
+.jrow.sub .gicon{width:28px;height:28px;flex:0 0 28px;border-radius:8px}
+.jrow .caret{width:16px;height:16px;flex:0 0 16px;border:0;background:none;padding:0;color:#9AA1AC;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit}
+.jrow .caret svg{transition:transform .2s}
+.jrow .caret.open svg{transform:rotate(90deg)}
+.jrow .radio{width:20px;height:20px;border-radius:6px;border:1.6px solid #CDD1D8;margin-left:auto;flex:0 0 20px;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
+.jrow.on .radio{background:#3D6BF5;border-color:#3D6BF5}
+.jrow.on .oname{color:#3D6BF5}
+.jrow.dis{opacity:.42}
+.jrow.dis .gicon{filter:grayscale(1)}
+.jrow.cur .oname{color:#9AA1AC}
+/* 原位置的勾：灰底灰勾，和手动勾选的蓝底白勾明确区分 */
+.jrow.cur.on .radio{background:#EFF1F4;border-color:#C4C9D2}
+.jrow.cur.on .oname{color:#6B7280}
+.curtag{font-size:11px;color:#8A919D;background:#F2F3F6;border-radius:5px;padding:1px 5px;margin-left:6px;font-weight:400}
+.jrow.cur.on .curtag{color:#6B7280;background:#EEF0F3}
+.jsel{display:flex;flex-wrap:wrap;gap:5px;padding:0 4px 8px;justify-content:center}
+.jchip{font-size:11.5px;color:#3D6BF5;background:#EEF2FE;border-radius:20px;padding:3px 8px;display:flex;align-items:center;gap:4px;max-width:100%}
+.jchip b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jchip i{font-style:normal;color:#8A919D;font-size:11px}
+.jchip.keep{color:#6B7280;background:#F2F3F6}
+.jchip.keep i{color:#9AA1AC}
+.hint{font-size:12px;color:#8A919D;text-align:center;padding:0 4px 8px;line-height:1.5}
+.dscroll::-webkit-scrollbar{width:0}
+.wrow{display:flex;align-items:center;gap:11px;padding:11px 16px;position:relative;background:#fff;cursor:pointer}
+.wrow+.wrow::before{content:"";position:absolute;left:56px;right:0;top:0;height:1px;background:#F1F2F5}
+.wrow.sel-mode{padding-left:8px}
+.wrow .cb{flex:0 0 0;width:0;opacity:0;overflow:hidden}
+.sel-mode .cb{flex:0 0 20px;width:20px;height:20px;opacity:1}
+.wrow .ok{font-size:11px;color:#0F8A4F;background:#E9F7EF;border-radius:5px;padding:1px 5px;flex:0 0 auto}
+
+/* ---------- overlays ---------- */
+.ov{position:absolute;inset:0;z-index:60;display:none}
+.ov.show{display:block}
+.mask{position:absolute;inset:0;background:rgba(16,20,28,.42);opacity:0;transition:.2s}
+.ov.show .mask{opacity:1}
+.sheet{
+  position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:18px 18px 0 0;
+  transform:translateY(100%);transition:transform .26s cubic-bezier(.3,.8,.3,1);
+  padding-bottom:calc(14px + env(safe-area-inset-bottom));max-height:80%;display:flex;flex-direction:column
+}
+.ov.show .sheet{transform:translateY(0)}
+.sheet-h{padding:14px 16px 10px;display:flex;align-items:center;gap:10px}
+.sheet-h .t{font-size:16px;font-weight:600}
+.sheet-h .s{font-size:12px;color:#8A919D;margin-top:1px}
+.sheet-h .x{margin-left:auto;border:0;background:#F2F3F6;width:26px;height:26px;border-radius:13px;color:#6B7280;cursor:pointer;font-family:inherit}
+.sheet-b{overflow:auto;padding:0 8px 8px}
+.sheet-f{padding:6px 16px 4px}
+.bigbtn{width:100%;height:44px;border-radius:12px;background:#3D6BF5;color:#fff;border:0;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit}
+.bigbtn[disabled]{background:#C3CCE8;cursor:not-allowed}
+.bigbtn.ghost{background:#fff;border:1px solid #DDE1E8;color:#14181F}
+
+.opt{display:flex;align-items:center;gap:11px;padding:11px 8px;border-radius:10px;cursor:pointer}
+.opt+.opt{border-top:1px solid #F3F4F7}
+.opt .gicon{width:32px;height:32px;flex:0 0 32px;border-radius:9px}
+.opt .cb{width:20px;height:20px;flex:0 0 20px}
+.ph{font-size:12px;color:#9AA1AC;font-weight:400}
+.opt .oname{font-size:14.5px}
+.opt .ometa{font-size:12px;color:#8A919D}
+.opt .radio{margin-left:auto;width:20px;height:20px;border-radius:50%;border:1.6px solid #CDD1D8;display:flex;align-items:center;justify-content:center}
+.opt.on .radio{background:#3D6BF5;border-color:#3D6BF5}
+
+.dialog{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.94);opacity:0;transition:.2s;
+  width:300px;background:#fff;border-radius:16px;overflow:hidden
+}
+.ov.show .dialog{transform:translate(-50%,-50%) scale(1);opacity:1}
+.dlg-b{padding:18px 18px 8px}
+.dlg-t{font-size:16px;font-weight:600;margin-bottom:7px;text-align:center}
+.dlg-d{font-size:13px;color:#6B7280;text-align:center;line-height:1.55}
+.dlg-d b{color:#14181F}
+.field{margin:12px 4px 0}
+.field label{font-size:12px;color:#8A919D;display:flex;justify-content:space-between;margin-bottom:6px}
+.inp{width:100%;height:40px;border:1px solid #E1E4EB;border-radius:10px;padding:0 12px;font-size:14.5px;outline:none;font-family:inherit;color:#14181F}
+.inp:focus{border-color:#3D6BF5}
+.swatches{display:flex;gap:10px;margin:10px 2px 0}
+.sw{width:28px;height:28px;border-radius:9px;border:2px solid transparent;cursor:pointer}
+.sw.on{border-color:#14181F}
+.choose{margin:12px 2px 0;border:1px solid #E9EBF0;border-radius:11px;overflow:hidden}
+.choose .c{display:flex;align-items:center;gap:9px;padding:11px 12px;font-size:13.5px;cursor:pointer}
+.choose .c+.c{border-top:1px solid #F1F2F5}
+.choose .c .radio{width:18px;height:18px;border-radius:50%;border:1.6px solid #CDD1D8;flex:0 0 18px;display:flex;align-items:center;justify-content:center}
+.choose .c.on .radio{background:#3D6BF5;border-color:#3D6BF5}
+.dlg-f{display:flex;gap:10px;padding:12px 14px 14px}
+.dlg-f button{flex:1;height:42px;border-radius:11px;border:1px solid #DDE1E8;background:#fff;font-size:15px;cursor:pointer;font-family:inherit;color:#14181F}
+.dlg-f button.pri{background:#3D6BF5;border-color:#3D6BF5;color:#fff;font-weight:500}
+.dlg-f button.pri[disabled]{background:#C3CCE8;border-color:#C3CCE8;cursor:not-allowed}
+.dlg-f button.del{background:#D92D20;border-color:#D92D20;color:#fff;font-weight:500}
+
+.toast{
+  position:absolute;left:16px;right:16px;bottom:86px;background:#14181F;color:#fff;border-radius:12px;
+  padding:11px 14px;font-size:13.5px;display:flex;align-items:center;gap:10px;
+  transform:translateY(20px);opacity:0;transition:.22s;pointer-events:none;z-index:70
+}
+.toast.show{transform:translateY(0);opacity:1;pointer-events:auto}
+.toast .un{margin-left:auto;color:#8FB0FF;font-weight:500;cursor:pointer}
+.phone.sel .toast{bottom:86px}
+
+/* ---------- notes ---------- */
+.notes{flex:1;min-width:300px;max-width:520px}
+.card{background:#fff;border:1px solid #E7E9EE;border-radius:16px;padding:18px 20px;margin-bottom:14px}
+.card h3{margin:0 0 12px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h3 .dot{width:6px;height:6px;border-radius:3px;background:#3D6BF5}
+.card ol,.card ul{margin:0;padding-left:18px;color:#4B5563;font-size:13px;line-height:1.85}
+.card p{margin:0 0 8px;color:#4B5563;font-size:13px;line-height:1.75}
+.card p:last-child{margin-bottom:0}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #F0F1F4;color:#4B5563}
+th{color:#8A919D;font-weight:500;font-size:12px}
+td.y{color:#0F8A4F;font-weight:600}
+td.n{color:#C3C8D1}
+.tagline{display:inline-block;font-size:12px;background:#F2F3F6;border-radius:6px;padding:1px 6px;color:#4B5563;margin-right:4px}
+@media(max-width:760px){.stage{flex-direction:column;align-items:center}.phone{transform:scale(.86);transform-origin:top center;margin-bottom:-110px}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="head">
+    <h1>词单分组管理</h1>
+    <p>分组与「未分组单词」平铺同一列表 · 浏览态 / 多选批处理双状态 · 可直接点击体验</p>
+  </div>
+
+  <div class="stage">
+    <!-- ============ PHONE ============ -->
+    <div class="phone" id="phone">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span class="right">
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="7" width="2.5" height="4" rx="1" fill="#14181F"/><rect x="4" y="5" width="2.5" height="6" rx="1" fill="#14181F"/><rect x="8" y="2.5" width="2.5" height="8.5" rx="1" fill="#14181F"/><rect x="12" y="0" width="2.5" height="11" rx="1" fill="#14181F"/></svg>
+          <svg width="15" height="11" viewBox="0 0 15 11" fill="none"><path d="M7.5 10.5 5.2 8.1a3.4 3.4 0 0 1 4.6 0L7.5 10.5Z" fill="#14181F"/><path d="M2.6 5.4 1.3 4a8.8 8.8 0 0 1 12.4 0l-1.3 1.4a6.9 6.9 0 0 0-9.8 0Z" fill="#14181F"/></svg>
+          <span class="bat"><i></i></span>
+        </span>
+      </div>
+
+      <div class="navbar">
+        <button class="nav-btn" id="navLeft">‹ 返回</button>
+        <div class="title" id="navTitle">词单分组</div>
+        <button class="nav-btn" id="navRight">管理</button>
+      </div>
+
+      <div class="summary" id="summary"></div>
+      <div class="scroll" id="scroll"></div>
+
+      <button class="fab" id="fab">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg>
+        新建分组
+      </button>
+
+      <div class="bottombar">
+        <div class="cnt" id="selCnt">已选 <b>0</b></div>
+        <button class="bbtn" id="btnA" disabled></button>
+        <button class="bbtn" id="btnB" disabled></button>
+        <button class="bbtn danger" id="btnC" disabled></button>
+      </div>
+
+      <!-- ============ 分组详情页 ============ -->
+      <div class="screen" id="detail">
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="7" width="2.5" height="4" rx="1" fill="#14181F"/><rect x="4" y="5" width="2.5" height="6" rx="1" fill="#14181F"/><rect x="8" y="2.5" width="2.5" height="8.5" rx="1" fill="#14181F"/><rect x="12" y="0" width="2.5" height="11" rx="1" fill="#14181F"/></svg>
+            <svg width="15" height="11" viewBox="0 0 15 11" fill="none"><path d="M7.5 10.5 5.2 8.1a3.4 3.4 0 0 1 4.6 0L7.5 10.5Z" fill="#14181F"/><path d="M2.6 5.4 1.3 4a8.8 8.8 0 0 1 12.4 0l-1.3 1.4a6.9 6.9 0 0 0-9.8 0Z" fill="#14181F"/></svg>
+            <span class="bat"><i></i></span>
+          </span>
+        </div>
+        <div class="navbar">
+          <button class="nav-btn" id="dBack">‹ 词单</button>
+          <div class="title" id="dTitle">分组</div>
+          <button class="nav-btn" id="dMore">⋯</button>
+        </div>
+        <div class="dscroll" id="dScroll"></div>
+      </div>
+
+      <!-- ============ 单词详情页 ============ -->
+      <div class="screen word" id="word">
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0" y="7" width="2.5" height="4" rx="1" fill="#14181F"/><rect x="4" y="5" width="2.5" height="6" rx="1" fill="#14181F"/><rect x="8" y="2.5" width="2.5" height="8.5" rx="1" fill="#14181F"/><rect x="12" y="0" width="2.5" height="11" rx="1" fill="#14181F"/></svg>
+            <svg width="15" height="11" viewBox="0 0 15 11" fill="none"><path d="M7.5 10.5 5.2 8.1a3.4 3.4 0 0 1 4.6 0L7.5 10.5Z" fill="#14181F"/><path d="M2.6 5.4 1.3 4a8.8 8.8 0 0 1 12.4 0l-1.3 1.4a6.9 6.9 0 0 0-9.8 0Z" fill="#14181F"/></svg>
+            <span class="bat"><i></i></span>
+          </span>
+        </div>
+        <div class="navbar">
+          <button class="nav-btn" id="wBack">‹ 返回</button>
+          <div class="title">单词详情</div>
+          <button class="nav-btn dim">⋯</button>
+        </div>
+        <div class="dscroll" id="wScroll"></div>
+        <div class="joinbar"><button class="joinbtn" id="joinBtn">加入词单</button></div>
+      </div>
+
+      <!-- overlays -->
+      <div class="ov" id="ovMove">
+        <div class="mask" data-close></div>
+        <div class="sheet">
+          <div class="sheet-h">
+            <div>
+              <div class="t">移动到分组</div>
+              <div class="s" id="moveSub">将 0 个单词移动至</div>
+            </div>
+            <button class="x" data-close>✕</button>
+          </div>
+          <div class="sheet-b" id="moveList"></div>
+          <div class="sheet-f"><button class="bigbtn" id="moveGo" disabled>移动</button></div>
+        </div>
+      </div>
+
+      <div class="ov" id="ovDel">
+        <div class="mask" data-close></div>
+        <div class="dialog">
+          <div class="dlg-b">
+            <div class="dlg-t" id="delT">删除</div>
+            <div class="dlg-d" id="delD"></div>
+            <div id="delOpts"></div>
+          </div>
+          <div class="dlg-f">
+            <button data-close>取消</button>
+            <button class="del" id="delGo">删除</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ov" id="ovRename">
+        <div class="mask" data-close></div>
+        <div class="dialog">
+          <div class="dlg-b">
+            <div class="dlg-t">重命名分组</div>
+            <div class="field">
+              <label><span>分组名称</span><span id="rnCnt">0/20</span></label>
+              <input class="inp" id="rnInput" maxlength="20" placeholder="请输入分组名称">
+            </div>
+          </div>
+          <div class="dlg-f">
+            <button data-close>取消</button>
+            <button class="pri" id="rnGo" disabled>保存</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ov" id="ovCreate">
+        <div class="mask" data-close></div>
+        <div class="dialog">
+          <div class="dlg-b">
+            <div class="dlg-t">新建分组</div>
+            <div class="field">
+              <label><span>分组名称</span><span id="crCnt">0/20</span></label>
+              <input class="inp" id="crInput" maxlength="20" placeholder="例如：考研核心词汇">
+            </div>
+            <div class="field">
+              <label><span>标识颜色</span></label>
+              <div class="swatches" id="crSw"></div>
+            </div>
+          </div>
+          <div class="dlg-f">
+            <button data-close>取消</button>
+            <button class="pri" id="crGo" disabled>创建</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ov" id="ovAct">
+        <div class="mask" data-close></div>
+        <div class="sheet">
+          <div class="sheet-h"><div><div class="t" id="actT">分组</div><div class="s" id="actS"></div></div><button class="x" data-close>✕</button></div>
+          <div class="sheet-b" id="actBody"></div>
+        </div>
+      </div>
+
+      <div class="ov" id="ovAdd">
+        <div class="mask" data-close></div>
+        <div class="sheet">
+          <div class="sheet-h">
+            <div>
+              <div class="t">添加单词</div>
+              <div class="s" id="addSub">从未分组中选择</div>
+            </div>
+            <button class="x" data-close>✕</button>
+          </div>
+          <div class="sheet-b" id="addList"></div>
+          <div class="sheet-f"><button class="bigbtn" id="addGo" disabled>加入本分组</button></div>
+        </div>
+      </div>
+
+      <div class="ov" id="ovJoin">
+        <div class="mask" data-close></div>
+        <div class="sheet">
+          <div class="sheet-h">
+            <div>
+              <div class="t">加入词单</div>
+              <div class="s" id="joinSub">原位置已勾选 · 再点一次可取消</div>
+            </div>
+            <button class="x" data-close>✕</button>
+          </div>
+          <div class="sheet-b" id="joinList"></div>
+          <div class="sheet-f">
+            <div class="jsel" id="joinSelBox"></div>
+            <div class="hint" id="joinHint"></div>
+            <button class="bigbtn" id="joinGo" disabled>加入</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast" id="toast"><span id="toastMsg"></span><span class="un" id="toastUndo" style="display:none">撤销</span></div>
+    </div>
+
+    <!-- ============ NOTES ============ -->
+    <div class="notes">
+      <div class="card">
+        <h3><span class="dot"></span>信息架构：单列表 + 双实体</h3>
+        <p>分组和「未分组单词」共用同一个滚动列表，靠 <b>吸顶分区头</b> 区分两类实体，而不是做成两个 Tab。好处：用户不必在「分组」和「未分组」之间来回切，搬运动词的操作路径最短。</p>
+        <ul>
+          <li><span class="tagline">分区一</span>分组：文件夹卡片，展示名称、单词数、掌握进度</li>
+          <li><span class="tagline">分区二</span>未分组：单词行平铺，底部有「查看全部」入口</li>
+          <li>未分组单词较多时默认渲染前 8 条，避免长列表把分组挤到屏幕外</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3><span class="dot"></span>双状态机</h3>
+        <p><b>浏览态</b>：右下角悬浮「新建分组」；点击分组进入分组详情，点击单词进入单词详情。</p>
+        <p><b>多选态</b>：右上角「管理」进入，行内出现复选框、悬浮按钮下沉隐藏、底部升起操作栏。分区头也变成该区的「全选 / 反选」，避免手指从底部操作栏够到顶部列表。</p>
+      </div>
+
+      <div class="card">
+        <h3><span class="dot"></span>分组详情页</h3>
+        <p>从列表点分组卡片进入，是「以分组为主体」的第二个管理入口，解决列表页处理不了的两件事：<b>往组里加词</b> 和 <b>把词从组里拿出来</b>。页面刻意做薄——顶部只留导航标题，进来就是单词列表，不占一屏的信息卡。</p>
+        <ul>
+          <li>添加单词的入口收敛到右上角「⋯」菜单里，低频操作不占主流程版面</li>
+          <li>底部操作栏在详情页换了一套动作：<b>移出分组 / 移动到… / 删除</b></li>
+          <li>「移出分组」是详情页专属的一键操作，等价于移动到「未分组」，不用再过一次选择弹层</li>
+          <li>「移动到…」的目标列表会排除当前分组，避免出现搬进自己这种无意义操作</li>
+          <li>空分组给明确的引导空态，而不是空白页</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3><span class="dot"></span>单词详情页与「加入词单」</h3>
+        <p>单词详情页是第三级页面，底部固定「加入词单」主按钮。点击后弹出选择层，<b>词单与其内部分组在同一张列表里两级平铺</b>（词单行右箭头可展开分组），不在弹层里做二次跳转。</p>
+        <ul>
+          <li><b>选词单</b>＝加入该词单的未分组；<b>选分组</b>＝直接进组。两种粒度一次给全，不用先选词单再进下一页选组</li>
+          <li>默认展开当前词单，让用户先看到「我现在在哪」，减少误选</li>
+          <li><b>同词单内是移动，跨词单是加入</b>：同一个词单里一个单词只应有一份，选中同词单的分组＝搬位置；选中别的词单＝复制一份过去</li>
+          <li>加入后给 Toast + 撤销；取消加入要能一步回到原位置</li>
+        </ul>
+        <p style="margin-top:10px"><b>勾选模型</b>（本次调整）：弹层打开时，<b>原位置就是已勾选状态</b>，用户操作的是「怎么改这份勾选」，而不是从零开始选。</p>
+        <ul>
+          <li><b>原位置的勾要做视觉区分</b>：原位置用灰色勾 + 灰色「原位置」标签，手动勾选用蓝色实心勾 + 名称变蓝。两者都是勾选态，但一眼能看出哪个是原本就有的、哪个是刚点的</li>
+          <li><b>移到同词单的其他位置＝先取消原位置、再勾上新的</b>：勾选新位置时，同词单里的旧勾选（含原位置）先被移除，再落下新勾。所以同词单永远只有一个勾，不会出现两个</li>
+          <li><b>勾选其他词单＝原位置保持勾选</b>：跨词单不冲突，原位置的灰勾保留，语义是「留在这里，同时复制一份过去」</li>
+          <li><b>手动勾选可再点一次取消</b>，原位置不可取消——原位置是基线，取消它等于「让单词无处可去」，在这套语义里不成立；手动勾选是后加的意图，取消它只会回到基线，提交按钮随之禁用，不会产生无效提交</li>
+          <li><b>取消同词单的落点＝撤销这次移动</b>：原位置的灰勾会自动回来，而不是留下一个空集。用户想表达的是「算了不移动了」，不是「让它无家可归」；取消跨词单的落点则单纯移除，不影响原位置</li>
+          <li>同词单的其他位置在已有手动勾选时才置灰；原位置自带的勾不占用名额，不阻挡选择</li>
+          <li>底部已选 chips 分三种标注：<b>保留</b>（灰底，原位置）/ <b>移入</b> / <b>复制</b>。只有「保留」时不产生任何变更，提交按钮保持禁用</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3><span class="dot"></span>选中项 → 可用操作矩阵</h3>
+        <table>
+          <tr><th>选中内容</th><th>重命名</th><th>移动</th><th>删除</th></tr>
+          <tr><td>1 个分组</td><td class="y">可用</td><td class="y">移动组内单词</td><td class="y">可用</td></tr>
+          <tr><td>多个分组</td><td class="n">禁用</td><td class="y">合并移动</td><td class="y">批量删除</td></tr>
+          <tr><td>未分组单词</td><td class="n">禁用</td><td class="y">搬进分组</td><td class="y">移出词单</td></tr>
+          <tr><td>混合选中</td><td class="n">禁用</td><td class="y">全部单词合并移动</td><td class="y">分组与单词分别处理</td></tr>
+          <tr><td>详情页内选词</td><td class="n">—</td><td class="y">移出分组 / 移到他组</td><td class="y">移出词单</td></tr>
+        </table>
+        <p style="margin-top:10px">「移动」语义统一为：<b>把选中项所包含的所有单词搬走</b>——直接选中的单词 + 选中分组内的全部单词。选中分组不等于移动文件夹，避免产生嵌套分组。</p>
+      </div>
+
+      <div class="card">
+        <h3><span class="dot"></span>三个必须做对的细节</h3>
+        <ol>
+          <li><b>删除分组要交代单词去向。</b>二次确认里给两个选项：保留单词（移入未分组，默认）/ 同时删除组内单词。删完给 Toast + 撤销，撤销窗口 5 秒。</li>
+          <li><b>「移动到」的目标里必须有「未分组」。</b>否则单词一旦进组就再也拿不出来，只能删词。</li>
+          <li><b>移动后源分组保留为空分组</b>，显示「0 个单词 · 空分组」橙色提示，而不是自动删掉分组——自动删除会让用户的分组排序莫名错位。</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h3><span class="dot"></span>建议补充的能力</h3>
+        <ul>
+          <li>分组长按 / 右侧「⋯」唤出快捷菜单：重命名、移动组内单词、删除</li>
+          <li>新建分组时支持「顺手把当前未分组单词加进来」，减少一次搬运</li>
+          <li>分组支持拖拽排序，并设置「最近使用」自动置顶</li>
+          <li>空态：一个分组都没有时，用引导卡片 + 「新建分组」主按钮，而不是空白页</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var $ = function(id){return document.getElementById(id)};
+  var phone = $('phone');
+
+  var COLORS = ['#3D6BF5','#12B76A','#F79009','#7A5AF8','#EE46BC','#06AED4'];
+
+  function W(r){return {id:r[0], w:r[1], ph:r[2], m:r[3], ok:!!r[4]}}
+  function G(id,name,color,rows){return {id:id,name:name,color:color,words:rows.map(W)}}
+
+  var state = {
+    view:'list', prevView:'list', cur:null, select:false, showAll:false,
+    books:[
+      {id:'b1', name:'我的词单', groups:[
+      G('g1','考研核心词汇','#3D6BF5',[
+        ['w101','comprehensive','/ˌkɑːmprɪˈhensɪv/','adj. 全面的，综合的',1],
+        ['w102','diligent','/ˈdɪlɪdʒənt/','adj. 勤勉的，用功的',0],
+        ['w103','elaborate','/ɪˈlæbərət/','adj. 精心制作的 v. 详述',1],
+        ['w104','inevitable','/ɪnˈevɪtəbl/','adj. 不可避免的',0],
+        ['w105','rigorous','/ˈrɪɡərəs/','adj. 严谨的，严密的',0]
+      ]),
+      G('g2','雅思高频','#12B76A',[
+        ['w201','fascinating','/ˈfæsɪneɪtɪŋ/','adj. 极有趣的，迷人的',1],
+        ['w202','magnificent','/mæɡˈnɪfɪsnt/','adj. 壮丽的，极好的',0],
+        ['w203','tremendous','/trəˈmendəs/','adj. 巨大的，极好的',1],
+        ['w204','abundant','/əˈbʌndənt/','adj. 丰富的，充裕的',0]
+      ]),
+      G('g3','生活口语','#F79009',[
+        ['w301','gorgeous','/ˈɡɔːrdʒəs/','adj. 极美的，绚丽的',1],
+        ['w302','hesitate','/ˈhezɪteɪt/','v. 犹豫，迟疑',0],
+        ['w303','laundry','/ˈlɔːndri/','n. 洗衣店；待洗衣物',1],
+        ['w304','recipe','/ˈresəpi/','n. 食谱，配方',0]
+      ]),
+      G('g4','词根 -spect','#7A5AF8',[
+        ['w401','inspect','/ɪnˈspekt/','v. 检查，视察',1],
+        ['w402','respect','/rɪˈspekt/','v./n. 尊重，重视',1],
+        ['w403','prospect','/ˈprɑːspekt/','n. 前景，可能性',0],
+        ['w404','spectator','/ˈspekteɪtər/','n. 观众，旁观者',0]
+      ]),
+      G('g5','易错词本','#EE46BC',[
+        ['w501','complement','/ˈkɑːmplɪment/','v./n. 补充，补足',0],
+        ['w502','compliment','/ˈkɑːmplɪment/','n./v. 赞美，称赞',0],
+        ['w503','principal','/ˈprɪnsəpl/','adj. 主要的 n. 校长',1],
+        ['w504','principle','/ˈprɪnsəpl/','n. 原则，原理',0]
+      ])
+      ], ungrouped:[
+      ['w901','abandon','/əˈbændən/','v. 放弃；抛弃',1],
+      ['w902','beneficial','/ˌbenɪˈfɪʃl/','adj. 有益的，有利的',0],
+      ['w903','crucial','/ˈkruːʃl/','adj. 至关重要的',0],
+      ['w904','deliberate','/dɪˈlɪbərət/','adj. 蓄意的 v. 仔细考虑',0],
+      ['w905','empirical','/ɪmˈpɪrɪkl/','adj. 实证的，经验主义的',0],
+      ['w906','fragile','/ˈfrædʒl/','adj. 易碎的，脆弱的',0],
+      ['w907','genuine','/ˈdʒenjuɪn/','adj. 真正的，真诚的',0],
+      ['w908','harsh','/hɑːrʃ/','adj. 严厉的，恶劣的',0],
+      ['w909','implicit','/ɪmˈplɪsɪt/','adj. 含蓄的，隐含的',0],
+      ['w910','jargon','/ˈdʒɑːrɡən/','n. 行话，术语',0],
+      ['w911','keen','/kiːn/','adj. 热衷的，敏锐的',0],
+      ['w912','luminous','/ˈluːmɪnəs/','adj. 发光的，明亮的',0]
+      ].map(W)},
+      {id:'b2', name:'考研 2026 冲刺', groups:[
+        G('b2g1','高频动词','#12B76A',[
+          ['b201','advocate','/ˈædvəkeɪt/','v. 提倡，主张',0],
+          ['b202','undermine','/ˌʌndərˈmaɪn/','v. 逐渐削弱，损害',1]
+        ]),
+        G('b2g2','写作模板','#7A5AF8',[
+          ['b203','manifest','/ˈmænɪfest/','v. 表明 adj. 明显的',0]
+        ])
+      ], ungrouped:[
+        ['b204','coherent','/koʊˈhɪrənt/','adj. 连贯的，有条理的',0]
+      ].map(W)},
+      {id:'b3', name:'日常积累', groups:[
+        G('b3g1','地铁上背','#F79009',[
+          ['b301','reluctant','/rɪˈlʌktənt/','adj. 不情愿的，勉强的',0],
+          ['b302','versatile','/ˈvɜːrsətl/','adj. 多才多艺的，多用途的',1]
+        ])
+      ], ungrouped:[
+        ['b303','ambiguity','/ˌæmbɪˈɡjuːəti/','n. 模棱两可，含糊',0]
+      ].map(W)}
+    ],
+    groups:null, ungrouped:null,
+    sel:new Set(), addSel:new Set(),
+    target:null, actGroup:null, newColor:COLORS[0],
+    word:null, exp:{'b1':true}, joinSel:new Set()
+  };
+  state.groups = state.books[0].groups;
+  state.ungrouped = state.books[0].ungrouped;
+
+  var CHECK  = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="m2.2 6.2 2.4 2.4 5.2-5.6" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  /* 原位置的勾：浅灰底 + 深灰勾，与手动勾选的「蓝底白勾」在底色和勾色上都拉开 */
+  var CHECK_G = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="m2.2 6.2 2.4 2.4 5.2-5.6" stroke="#7A828F" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var FOLDER = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2.6 5.4c0-.6.5-1.1 1.1-1.1h3.2l1.5 1.8h7.9c.6 0 1.1.5 1.1 1.1v7.4c0 .6-.5 1.1-1.1 1.1H3.7c-.6 0-1.1-.5-1.1-1.1V5.4Z" fill="#fff" fill-opacity=".92"/></svg>';
+  var CHEV   = '<svg class="chev" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="m6 4 4 4-4 4" stroke="#C6CBD4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var EMPTY  = '<svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect x="5" y="9" width="30" height="24" rx="4" stroke="#DDE1E8" stroke-width="1.6"/><path d="M5 17h30" stroke="#DDE1E8" stroke-width="1.6"/></svg>';
+  var SPK = '<svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8.5 2.5 5 5.5H2.5v5H5l3.5 3v-11Z" stroke="#6B7280" stroke-width="1.3" stroke-linejoin="round"/><path d="M11 6a3.2 3.2 0 0 1 0 4" stroke="#6B7280" stroke-width="1.3" stroke-linecap="round"/></svg>';
+  var BOOK = '<svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M3.4 4.6c0-.6.5-1.1 1.1-1.1h11c.6 0 1.1.5 1.1 1.1v10.8c0 .6-.5 1.1-1.1 1.1h-11c-.6 0-1.1-.5-1.1-1.1V4.6Z" fill="#fff" fill-opacity=".95"/><path d="M8.2 3.5v13M12.6 3.5v13" stroke="#3D6BF5" stroke-width="1.1"/></svg>';
+  var CARET = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="m4.2 2.6 3.6 3.4-3.6 3.4" stroke="#9AA1AC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var FOLDER_EMPTY = '<svg width="40" height="40" viewBox="0 0 40 40" fill="none"><path d="M4.5 10.5c0-.8.7-1.5 1.5-1.5h7.3l2.4 2.8h19.3c.8 0 1.5.7 1.5 1.5v19c0 .8-.7 1.5-1.5 1.5H6c-.8 0-1.5-.7-1.5-1.5v-19Z" stroke="#DDE1E8" stroke-width="1.6"/></svg>';
+  var ICON = {
+    rename:'<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M11.2 2.3 13.7 4.8 5.4 13H2.9v-2.5l8.3-8.2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+    move:'<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4.2h4.2M2 4.2v7.6h4.8M2 4.2 8.9 7l6.1 2.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 11.8h4.8l4.2 2.2H15" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+    del:'<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2.8 4.3h10.4M6 4.3V2.9h4v1.4M4.3 4.3l.7 8.6h6l.7-8.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    out:'<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2.4 4.2v7.6h4.8" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M9.8 5.4 13 8l-3.2 2.6M6.4 8H13" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function byId(id){ return state.groups.filter(function(g){return g.id===id})[0] || null }
+  function curGroup(){ return byId(state.cur) }
+  function selGroups(){ return state.groups.filter(function(g){return state.sel.has(g.id)}) }
+  function selUngrouped(){ return state.ungrouped.filter(function(w){return state.sel.has(w.id)}) }
+  function curWordsSel(){ var g=curGroup(); return g ? g.words.filter(function(w){return state.sel.has(w.id)}) : [] }
+  function moveN(){ return selUngrouped().length + selGroups().reduce(function(a,g){return a+g.words.length},0) }
+  function totalWords(){ return state.groups.reduce(function(a,g){return a+g.words.length},0) + state.ungrouped.length }
+  function removeWordEverywhere(id){
+    state.groups.forEach(function(g){ g.words = g.words.filter(function(w){return w.id!==id}) });
+    state.ungrouped = state.ungrouped.filter(function(w){return w.id!==id});
+  }
+  function bookById(id){ return state.books.filter(function(b){return b.id===id})[0] || null }
+  function groupById(id){
+    var r = null;
+    state.books.forEach(function(b){
+      b.groups.forEach(function(g){ if(g.id===id) r = g });
+    });
+    return r;
+  }
+  function bookOfGroup(g){
+    var r = null;
+    state.books.forEach(function(b){ if(b.groups.indexOf(g)>=0) r = b });
+    return r;
+  }
+  function bookWordCount(b){ return b.ungrouped.length + b.groups.reduce(function(a,g){return a+g.words.length},0) }
+  function wordRef(){
+    if(!state.word) return null;
+    var b = bookById(state.word.bid); if(!b) return null;
+    if(state.word.gid){
+      var g = b.groups.filter(function(x){return x.id===state.word.gid})[0];
+      if(!g) return null;
+      var w = g.words.filter(function(x){return x.id===state.word.wid})[0];
+      return w ? {book:b, group:g, word:w} : null;
+    }
+    var w2 = b.ungrouped.filter(function(x){return x.id===state.word.wid})[0];
+    return w2 ? {book:b, group:null, word:w2} : null;
+  }
+  function syncBook(){
+    state.books[0].groups = state.groups;
+    state.books[0].ungrouped = state.ungrouped;
+  }
+  /* 反向同步：直接改动了 books 之后，把 books[0] 重新映射回列表页视图 */
+  function pullBook(){
+    state.groups = state.books[0].groups;
+    state.ungrouped = state.books[0].ungrouped;
+  }
+  function snap(){ return JSON.parse(JSON.stringify(state.books)) }
+  function restore(s, view, cur, keepWord){
+    state.books = s;
+    state.groups = state.books[0].groups;
+    state.ungrouped = state.books[0].ungrouped;
+    state.select = false; state.sel.clear();
+    state.joinSel.clear();
+    state.word = keepWord || null;
+    if(keepWord){
+      state.view = 'word';
+      state.prevView = (view === 'detail') ? 'detail' : 'list';
+    }
+    else if(view==='detail' && cur && byId(cur)){ state.view='detail'; state.cur=cur }
+    else { state.view='list'; state.cur=null }
+    render();
+  }
+
+  /* ---------------- render ---------------- */
+  function render(){
+    syncBook();
+    phone.classList.toggle('detail', state.view !== 'list');
+    phone.classList.toggle('sel', state.select);
+    if(state.view==='word') renderWord();
+    else if(state.view==='detail') renderDetail();
+    else renderList();
+    $('word').classList.toggle('show', state.view==='word');
+    $('detail').classList.toggle('show', state.view==='detail' || (state.view==='word' && state.prevView==='detail'));
+    renderBar();
+  }
+
+  function renderList(){
+    $('navRight').textContent = state.select ? '完成' : '管理';
+    $('navTitle').textContent = state.select ? '选择项目' : '词单分组';
+    $('summary').innerHTML = '共 <b>'+state.groups.length+'</b> 个分组 · <b>'+totalWords()+'</b> 个单词 · <b>'+state.ungrouped.length+'</b> 个未分组';
+
+    var h = '', f = { groups: state.groups, words: state.ungrouped };
+
+    var gAll  = f.groups.length>0 && f.groups.every(function(g){return state.sel.has(g.id)});
+    var gSome = f.groups.some(function(g){return state.sel.has(g.id)});
+    h += '<div class="sec-h">' +
+      (state.select
+        ? '<div class="pick" data-all="g"><span class="cb '+(gAll?'on':(gSome?'half':''))+'" style="width:17px;height:17px;flex:none;opacity:1">'+CHECK+'</span>分组（全选）</div>'
+        : '<span class="t">分组</span><span class="n">'+state.groups.length+'</span><span class="act" data-act="create">+ 新建</span>') +
+      '</div><div class="rows">';
+    if(!f.groups.length){
+      h += '<div class="blank">'+FOLDER_EMPTY+'<div>还没有分组</div></div>';
+    }
+    f.groups.forEach(function(g){
+      var pct = g.words.length ? Math.round(g.words.filter(function(w){return w.ok}).length/g.words.length*100) : 0;
+      h += '<div class="row'+(state.select?' sel-mode':'')+'" data-row="'+g.id+'">' +
+        '<button class="cb'+(state.sel.has(g.id)?' on':'')+'" data-sel="'+g.id+'">'+CHECK+'</button>' +
+        '<div class="gicon" style="--c:'+g.color+'">'+FOLDER+'</div>' +
+        '<div class="rmain"><div class="rname">'+esc(g.name)+'</div>' +
+        '<div class="rmeta'+(g.words.length===0?' empty':'')+'">'+(g.words.length===0?'0 个单词 · 空分组':g.words.length+' 个单词 · 已掌握 '+pct+'%')+'</div></div>' +
+        '<button class="more" data-more="'+g.id+'">⋯</button>' + CHEV +
+      '</div>';
+    });
+    h += '</div>';
+
+    var shown = state.showAll ? f.words : f.words.slice(0,8);
+    var wAll  = shown.length>0 && shown.every(function(w){return state.sel.has(w.id)});
+    var wSome = shown.some(function(w){return state.sel.has(w.id)});
+    h += '<div class="sec-h" style="margin-top:8px">' +
+      (state.select
+        ? '<div class="pick" data-all="w"><span class="cb '+(wAll?'on':(wSome?'half':''))+'" style="width:17px;height:17px;flex:none;opacity:1">'+CHECK+'</span>未分组（全选）</div>'
+        : '<span class="t">未分组</span><span class="n">'+f.words.length+' 个单词</span><span class="act" data-act="moveall">全部移至分组</span>') +
+      '</div><div class="rows">';
+    if(!shown.length){
+      h += '<div class="blank">'+EMPTY+'<div>所有单词都已归入分组</div></div>';
+    }
+    shown.forEach(function(w){
+      h += '<div class="row'+(state.select?' sel-mode':'')+'" data-row="'+w.id+'">' +
+        '<button class="cb'+(state.sel.has(w.id)?' on':'')+'" data-sel="'+w.id+'">'+CHECK+'</button>' +
+        '<div class="rmain"><div class="rname">'+esc(w.w)+'<span class="ph">'+esc(w.ph)+'</span></div>' +
+        '<div class="rmeta">'+esc(w.m)+'</div></div>' +
+      '</div>';
+    });
+    if(f.words.length > 8){
+      h += '<div class="more-row"><span data-more-words>'+(state.showAll?'收起 ›':'查看全部 '+f.words.length+' 个未分组单词 ›')+'</span></div>';
+    }
+    h += '</div>';
+    $('scroll').innerHTML = h;
+  }
+
+  function renderDetail(){
+    var g = curGroup();
+    if(!g){ state.view='list'; state.cur=null; renderList(); return }
+    $('detail').classList.add('show');
+    $('dTitle').textContent = g.name;
+    $('dMore').textContent = state.select ? '完成' : '⋯';
+
+    var total = g.words.length;
+    var h = '';
+
+    var all  = total>0 && g.words.every(function(w){return state.sel.has(w.id)});
+    var some = g.words.some(function(w){return state.sel.has(w.id)});
+    h += '<div class="sec-h">' +
+      (state.select
+        ? '<div class="pick" data-all="d"><span class="cb '+(all?'on':(some?'half':''))+'" style="width:17px;height:17px;flex:none;opacity:1">'+CHECK+'</span>单词（全选）</div>'
+        : '<span class="t">单词列表</span><span class="n">'+total+'</span><span class="act" data-act="manage">管理</span>') +
+      '</div><div class="rows">';
+    if(!total){
+      h += '<div class="blank">'+EMPTY+'<div>这个分组还是空的</div><div style="margin-top:4px">右上角「⋯」可从未分组添加单词</div></div>';
+    }
+    g.words.forEach(function(w){
+      h += '<div class="wrow'+(state.select?' sel-mode':'')+'" data-row="'+w.id+'">' +
+        '<button class="cb'+(state.sel.has(w.id)?' on':'')+'" data-sel="'+w.id+'">'+CHECK+'</button>' +
+        '<div class="rmain"><div class="rname">'+esc(w.w)+'<span class="ph">'+esc(w.ph)+'</span></div>' +
+        '<div class="rmeta">'+esc(w.m)+'</div></div>' +
+        (w.ok?'<span class="ok">已掌握</span>':'') +
+      '</div>';
+    });
+    h += '</div>';
+    $('dScroll').innerHTML = h;
+  }
+
+  /* ---------------- 单词详情页 ---------------- */
+  function renderWord(){
+    var loc = wordRef();
+    if(!loc){ state.view = state.prevView || 'list'; state.word = null; render(); return }
+    var w = loc.word;
+    var h = '<div class="wpage">' +
+      '<div class="wtitle">'+esc(w.w)+'</div>' +
+      '<div class="wph"><span class="t">'+esc(w.ph)+'</span>' +
+      '<button class="spk" id="spkBtn">'+SPK+'</button></div>' +
+      '</div>';
+    h += '<div class="wcard"><div class="wc-h">释义</div><div class="def">'+esc(w.m)+'</div></div>';
+    h += '<div class="wcard">' +
+      '<div class="wc-row"><span class="k">所属词单</span><span class="v">'+esc(loc.book.name)+'</span></div>' +
+      '<div class="wc-row"><span class="k">所属分组</span><span class="v">'+esc(loc.group?loc.group.name:'未分组')+'</span></div>' +
+      '<div class="wc-row"><span class="k">掌握状态</span>' +
+      '<button class="sw2'+(w.ok?' on':'')+'" id="okToggle"><i></i></button></div>' +
+      '</div>';
+    h += '<div style="height:18px"></div>';
+    $('wScroll').innerHTML = h;
+  }
+
+  function openWord(gid, wid){
+    state.prevView = state.view;
+    state.word = {bid:'b1', gid:gid || null, wid:wid};
+    state.view = 'word';
+    render();
+  }
+
+  $('wBack').onclick = function(){
+    state.view = state.prevView || 'list';
+    state.word = null; state.joinSel.clear();
+    render();
+  };
+  $('wScroll').addEventListener('click', function(e){
+    if(e.target.closest('#spkBtn')){ toast('演示原型：播放发音'); return }
+    if(e.target.closest('#okToggle')){
+      var loc = wordRef(); if(!loc) return;
+      loc.word.ok = !loc.word.ok;
+      syncBook(); render();
+      toast(loc.word.ok ? '已标记为已掌握' : '已取消掌握标记');
+    }
+  });
+
+  /* ---------------- 加入词单 ---------------- */
+  function curLocKey(){
+    var loc = wordRef(); if(!loc) return null;
+    return loc.group ? ('g:'+loc.group.id) : ('u:'+loc.book.id);
+  }
+  function joinTargetInfo(t){
+    if(!t) return null;
+    if(t.slice(0,2)==='u:'){
+      var b = bookById(t.slice(2));
+      return b ? {book:b, group:null, name:b.name, label:b.name+' · 未分组'} : null;
+    }
+    var g = groupById(t.slice(2)); if(!g) return null;
+    var bk = bookOfGroup(g);
+    return {book:bk, group:g, name:g.name, label:bk.name+' · '+g.name};
+  }
+  /* 目标所属词单 id —— 同词单互斥的判定依据 */
+  function joinBookId(t){
+    if(t.slice(0,2)==='u:') return t.slice(2);
+    var g = groupById(t.slice(2));
+    return g ? bookOfGroup(g).id : null;
+  }
+  /* 当前已选目标，按词单 id 索引，保证一个词单最多一个 */
+  function joinTargets(){
+    var out = [];
+    state.joinSel.forEach(function(t){
+      var i = joinTargetInfo(t);
+      if(i) out.push({t:t, info:i});
+    });
+    return out;
+  }
+  /* 该词单下是否存在「非原位置」的手动勾选 —— 决定同词单其他行是否置灰。
+     原位置自带的勾选不构成占用：选同词单的其他位置时它会被自动替换掉。 */
+  function joinManualInBook(bid){
+    var key = curLocKey(), r = false;
+    state.joinSel.forEach(function(t){
+      if(t !== key && joinBookId(t) === bid) r = true;
+    });
+    return r;
+  }
+  function joinRadio(on, isCur){
+    if(!on) return '';
+    return isCur ? CHECK_G : CHECK;
+  }
+  function openJoin(){
+    var loc = wordRef(); if(!loc) return;
+    state.joinSel.clear();
+    var k = curLocKey(); if(k) state.joinSel.add(k);   /* 原位置默认勾选 */
+    $('joinSub').textContent = '「'+loc.word.w+'」当前在「'+(loc.group?loc.group.name:loc.book.name+' · 未分组')+'」';
+    state.exp = {}; state.exp[loc.book.id] = true;
+    renderJoinList();
+    open('ovJoin');
+  }
+  function renderJoinList(){
+    var key = curLocKey(), h = '';
+    state.books.forEach(function(b){
+      var open = !!state.exp[b.id];
+      var sel = state.joinSel.has('u:'+b.id);
+      var cur = key === ('u:'+b.id);
+      var blocked = !cur && !sel && joinManualInBook(b.id);
+      h += '<div class="jrow'+(sel?' on':'')+(cur?' cur':'')+(blocked?' dis':'')+'" data-t="u:'+b.id+'">' +
+        '<button class="caret'+(open?' open':'')+'" data-exp="'+b.id+'">'+(b.groups.length?CARET:'')+'</button>' +
+        '<div class="gicon" style="--c:#EEF2FE">'+BOOK+'</div>' +
+        '<div style="flex:1;min-width:0"><div class="oname">'+esc(b.name)+(cur?'<span class="curtag">原位置</span>':'')+'</div>' +
+        '<div class="ometa">'+bookWordCount(b)+' 个单词 · '+b.groups.length+' 个分组</div></div>' +
+        '<div class="radio">'+joinRadio(sel, cur)+'</div></div>';
+      if(!open) return;
+      b.groups.forEach(function(g){
+        var s2 = state.joinSel.has('g:'+g.id), c2 = key === ('g:'+g.id);
+        var blocked2 = !c2 && !s2 && joinManualInBook(b.id);
+        h += '<div class="jrow sub'+(s2?' on':'')+(c2?' cur':'')+(blocked2?' dis':'')+'" data-t="g:'+g.id+'">' +
+          '<span class="caret"></span>' +
+          '<div class="gicon" style="--c:'+g.color+'">'+FOLDER+'</div>' +
+          '<div style="flex:1;min-width:0"><div class="oname">'+esc(g.name)+(c2?'<span class="curtag">原位置</span>':'')+'</div>' +
+          '<div class="ometa">'+g.words.length+' 个单词</div></div>' +
+          '<div class="radio">'+joinRadio(s2, c2)+'</div></div>';
+      });
+    });
+    $('joinList').innerHTML = h;
+
+    var loc = wordRef(), from = loc ? (loc.group?loc.group.name:'未分组') : '';
+    var all = joinTargets();            /* 只算一次：后面要靠对象引用区分保留/移入/复制 */
+    var kept = null, mv = null, cps = [];
+    all.forEach(function(x){
+      if(x.t === key) kept = x;
+      else if(loc && x.info.book === loc.book) mv = x;
+      else cps.push(x);
+    });
+    var act = (mv?1:0) + cps.length;   /* 真正会产生变更的位置数 */
+
+    /* 原位置是基准，永远排第一：取消勾选后它会重新入列，按勾选先后会跑到末尾 */
+    var ordered = kept ? [kept].concat(all.filter(function(x){ return x!==kept })) : all;
+    $('joinSelBox').innerHTML = ordered.map(function(x){
+      var tag = (x===kept) ? '保留' : ((x===mv) ? '移入' : '复制');
+      return '<span class="jchip'+(x===kept?' keep':'')+'"><b>'+esc(x.info.name)+'</b><i>'+tag+'</i></span>';
+    }).join('');
+
+    if(!act){
+      $('joinHint').textContent = kept
+        ? '当前只在原位置，勾选其他位置即可移动或复制'
+        : '同一词单内只能选一个位置，不同词单可多选';
+      $('joinGo').disabled = true; $('joinGo').textContent = '加入';
+      return;
+    }
+    var hint = mv ? '将从「'+from+'」移动到「'+mv.info.name+'」' : '';
+    if(cps.length){
+      var nm = cps.map(function(x){ return x.info.name });
+      var txt = nm.length>2 ? ('「'+nm.slice(0,2).join('」「')+'」等 '+nm.length+' 处') : ('「'+nm.join('」「')+'」');
+      hint += (hint ? '，并复制' : (kept ? '保留在「'+from+'」，并加入' : '将加入')) + txt;
+    }
+    $('joinHint').textContent = hint;
+    $('joinGo').disabled = false;
+    $('joinGo').textContent = act===1 ? '加入「'+(mv?mv.info.name:cps[0].info.name)+'」' : '加入 '+act+' 个位置';
+  }
+  $('joinList').addEventListener('click', function(e){
+    var exp = e.target.closest('[data-exp]');
+    if(exp){
+      var bid = exp.getAttribute('data-exp');
+      state.exp[bid] = !state.exp[bid];
+      renderJoinList(); return;
+    }
+    var row = e.target.closest('[data-t]'); if(!row) return;
+    var t = row.getAttribute('data-t');
+    if(row.classList.contains('dis')){ toast('同一词单内只能选一个位置'); return }
+    if(t === curLocKey() && state.joinSel.has(t)){
+      toast('这是原位置，勾选其他位置会自动替换'); return   /* 原位置不可手动取消 */
+    }
+    if(state.joinSel.has(t)){          /* 再点一次 = 取消勾选 */
+      state.joinSel.delete(t);
+      /* 取消的是原位置所在词单里的落点 → 原位置的勾自动回来，
+         等价于「撤销这次移动意图」，而不是把单词变成无家可归 */
+      var k2 = curLocKey(), kb = k2 ? joinBookId(k2) : null, tb = joinBookId(t);
+      if(k2 && kb && tb && kb === tb && !state.joinSel.has(k2)) state.joinSel.add(k2);
+      renderJoinList(); return;
+    }
+    var bid2 = joinBookId(t);
+    if(bid2){
+      var drop = [];
+      state.joinSel.forEach(function(x){ if(joinBookId(x) === bid2) drop.push(x) });
+      drop.forEach(function(x){ state.joinSel.delete(x) });   /* 先取消原位置/旧勾选 */
+    }
+    state.joinSel.add(t);              /* 再勾选新位置 */
+    renderJoinList();
+  });
+  $('joinBtn').onclick = openJoin;
+  $('joinGo').onclick = function(){
+    var loc = wordRef(); if(!loc) return;
+    var key = curLocKey(), tgs = joinTargets();
+    var act = tgs.filter(function(x){ return x.t !== key });
+    if(!act.length) return;
+    var s = snap(), cur = state.cur, prev = state.prevView, wref = state.word;
+    var moved = null, added = [];
+    act.forEach(function(x){
+      if(x.info.book === loc.book){
+        if(state.word && state.word.wid === loc.word.id){
+          if(loc.group) loc.group.words = loc.group.words.filter(function(w){return w.id!==loc.word.id});
+          else loc.book.ungrouped = loc.book.ungrouped.filter(function(w){return w.id!==loc.word.id});
+        }
+        if(x.info.group) x.info.group.words.push(loc.word); else x.info.book.ungrouped.push(loc.word);
+        moved = x;
+      } else {
+        var copy = JSON.parse(JSON.stringify(loc.word));
+        if(x.info.group) x.info.group.words.push(copy); else x.info.book.ungrouped.push(copy);
+        added.push(x);
+      }
+    });
+    if(moved) state.word = {bid:moved.info.book.id, gid:moved.info.group?moved.info.group.id:null, wid:loc.word.id};
+    close($('ovJoin'));
+    state.joinSel.clear();
+    pullBook(); render();
+    var msg = [];
+    if(moved) msg.push('移动到「'+moved.info.name+'」');
+    if(added.length){
+      var nm = added.map(function(x){ return x.info.name });
+      msg.push('加入「'+nm.join('」「')+'」');
+    }
+    toast('已'+msg.join('，'), function(){
+      restore(s, prev, cur, wref); toast('已撤销');
+    });
+  };
+
+  function setBar(id, icon, label, disabled, fn){
+    var b = $(id);
+    b.innerHTML = icon + label;
+    b.disabled = !!disabled;
+    b.onclick = disabled ? null : fn;
+  }
+  function renderBar(){
+    var n = state.sel.size;
+    $('selCnt').innerHTML = '已选 <b>'+n+'</b>';
+    if(state.view==='detail'){
+      var wn = curWordsSel().length;
+      setBar('btnA', ICON.out, '移出分组', wn===0, function(){ applyMove('__none') });
+      setBar('btnB', ICON.move, '移动到…', wn===0, openMove);
+      setBar('btnC', ICON.del, '删除',     wn===0, openDel);
+    } else {
+      var sg = selGroups().length, sw = selUngrouped().length;
+      setBar('btnA', ICON.rename, '重命名', !(sg===1 && sw===0), function(){ openRename(selGroups()[0]) });
+      setBar('btnB', ICON.move,   '移动',   moveN()===0, openMove);
+      setBar('btnC', ICON.del,    '删除',   n===0, openDel);
+    }
+  }
+
+  /* ---------------- toast ---------------- */
+  var toastTimer;
+  function toast(msg, undoFn){
+    clearTimeout(toastTimer);
+    $('toastMsg').textContent = msg;
+    $('toastUndo').style.display = undoFn ? 'block' : 'none';
+    $('toastUndo').onclick = undoFn ? function(){ undoFn(); hideToast() } : null;
+    $('toast').classList.add('show');
+    toastTimer = setTimeout(hideToast, undoFn?5000:2200);
+  }
+  function hideToast(){ $('toast').classList.remove('show') }
+
+  /* ---------------- overlays ---------------- */
+  function open(id){ $(id).classList.add('show') }
+  function close(el){ el.classList.remove('show') }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function(b){
+    b.addEventListener('click', function(){ close(b.closest('.ov')) });
+  });
+
+  /* ---------------- 列表页交互 ---------------- */
+  $('navRight').onclick = function(){
+    state.select = !state.select;
+    if(!state.select) state.sel.clear();
+    render();
+  };
+  $('navLeft').onclick = function(){
+    if(state.select){ state.select=false; state.sel.clear(); render() }
+    else toast('演示原型：返回词单首页');
+  };
+
+  $('scroll').addEventListener('click', function(e){
+    var cb = e.target.closest('[data-sel]');
+    if(cb){
+      var id = cb.getAttribute('data-sel');
+      state.sel.has(id) ? state.sel.delete(id) : state.sel.add(id);
+      render(); return;
+    }
+    var all = e.target.closest('[data-all]');
+    if(all){
+      var kind = all.getAttribute('data-all');
+      var list = kind==='g' ? state.groups : (state.showAll ? state.ungrouped : state.ungrouped.slice(0,8));
+      var allOn = list.length>0 && list.every(function(x){return state.sel.has(x.id)});
+      list.forEach(function(x){ allOn ? state.sel.delete(x.id) : state.sel.add(x.id) });
+      render(); return;
+    }
+    var more = e.target.closest('[data-more]');
+    if(more){
+      state.actGroup = byId(more.getAttribute('data-more'));
+      openAct('list'); return;
+    }
+    if(e.target.closest('[data-act="create"]')){ openCreate(); return }
+    if(e.target.closest('[data-act="moveall"]')){
+      state.sel = new Set(state.ungrouped.map(function(w){return w.id}));
+      render(); openMove(); return;
+    }
+    if(e.target.closest('[data-more-words]')){ state.showAll = !state.showAll; render(); return }
+
+    var row = e.target.closest('[data-row]');
+    if(row && state.select){
+      var rid = row.getAttribute('data-row');
+      state.sel.has(rid) ? state.sel.delete(rid) : state.sel.add(rid);
+      render(); return;
+    }
+    if(row){
+      var id2 = row.getAttribute('data-row'), g = byId(id2);
+      if(g) openDetail(g);
+      else { var w = state.ungrouped.filter(function(x){return x.id===id2})[0]; if(w) openWord(null, id2) }
+    }
+  });
+
+  function openDetail(g){
+    state.cur = g.id; state.view = 'detail'; state.select = false; state.sel.clear();
+    render();
+  }
+
+  /* ---------------- 详情页交互 ---------------- */
+  $('dBack').onclick = function(){
+    state.view='list'; state.cur=null; state.select=false; state.sel.clear(); render();
+  };
+  $('dMore').onclick = function(){
+    if(state.select){ state.select=false; state.sel.clear(); render(); return }
+    state.actGroup = curGroup(); openAct('detail');
+  };
+  $('dScroll').addEventListener('click', function(e){
+    var cb = e.target.closest('[data-sel]');
+    if(cb){
+      var id = cb.getAttribute('data-sel');
+      state.sel.has(id) ? state.sel.delete(id) : state.sel.add(id);
+      render(); return;
+    }
+    var all = e.target.closest('[data-all]');
+    if(all){
+      var g = curGroup(), list = g.words;
+      var allOn = list.length>0 && list.every(function(x){return state.sel.has(x.id)});
+      list.forEach(function(x){ allOn ? state.sel.delete(x.id) : state.sel.add(x.id) });
+      render(); return;
+    }
+    if(e.target.closest('[data-act="manage"]')){ state.select = true; render(); return }
+    var row = e.target.closest('[data-row]');
+    if(row && state.select){
+      var rid = row.getAttribute('data-row');
+      state.sel.has(rid) ? state.sel.delete(rid) : state.sel.add(rid);
+      render(); return;
+    }
+    if(row){
+      var g2 = curGroup(), w = g2 && g2.words.filter(function(x){return x.id===row.getAttribute('data-row')})[0];
+      if(w) openWord(g2.id, w.id);
+    }
+  });
+
+  /* ---------------- 快捷菜单 ---------------- */
+  var ACTS = {
+    list:[
+      ['rename','#EEF2FE','✎','重命名'],
+      ['move','#EAF6EF','⇄','移动组内单词'],
+      ['del','#FDEDEC','🗑','删除分组',1]
+    ],
+    detail:[
+      ['rename','#EEF2FE','✎','重命名分组'],
+      ['add','#EAF2FE','＋','添加单词'],
+      ['del','#FDEDEC','🗑','删除分组',1]
+    ]
+  };
+  function openAct(ctx){
+    var g = state.actGroup; if(!g) return;
+    $('actT').textContent = g.name;
+    $('actS').textContent = g.words.length + ' 个单词';
+    $('actBody').innerHTML = ACTS[ctx].map(function(a){
+      return '<div class="opt" data-act="'+a[0]+'"><div class="gicon" style="--c:'+a[1]+'">'+a[2]+'</div>' +
+        '<div><div class="oname"'+(a[4]?' style="color:#D92D20"':'')+'>'+a[3]+'</div></div></div>';
+    }).join('');
+    open('ovAct');
+  }
+  $('actBody').addEventListener('click', function(e){
+    var o = e.target.closest('[data-act]'); if(!o) return;
+    var a = o.getAttribute('data-act'), g = state.actGroup;
+    close($('ovAct'));
+    setTimeout(function(){
+      if(a==='rename') openRename(g);
+      if(a==='add'){ state.cur = g.id; state.view='detail'; render(); openAdd() }
+      if(a==='move'){ state.sel = new Set([g.id]); state.select = true; render(); openMove() }
+      if(a==='del'){ state.sel = new Set([g.id]); state.select = true; render(); openDel() }
+    }, 180);
+  });
+
+  /* ---------------- 新建分组 ---------------- */
+  function openCreate(){
+    $('crInput').value=''; $('crCnt').textContent='0/20'; $('crGo').disabled=true;
+    state.newColor = COLORS[state.groups.length % COLORS.length];
+    $('crSw').innerHTML = COLORS.map(function(c){
+      return '<div class="sw'+(c===state.newColor?' on':'')+'" data-c="'+c+'" style="background:'+c+'"></div>';
+    }).join('');
+    open('ovCreate');
+  }
+  $('fab').onclick = openCreate;
+  $('crSw').addEventListener('click', function(e){
+    var s = e.target.closest('[data-c]'); if(!s) return;
+    state.newColor = s.getAttribute('data-c');
+    Array.prototype.forEach.call($('crSw').children, function(n){ n.classList.toggle('on', n===s) });
+  });
+  $('crInput').addEventListener('input', function(e){
+    $('crCnt').textContent = e.target.value.length + '/20';
+    $('crGo').disabled = !e.target.value.trim();
+  });
+  $('crGo').onclick = function(){
+    var name = $('crInput').value.trim();
+    state.groups.unshift({id:'g'+Date.now(), name:name, color:state.newColor, words:[]});
+    close($('ovCreate')); render();
+    toast('已创建分组「'+name+'」');
+  };
+
+  /* ---------------- 重命名 ---------------- */
+  function openRename(g){
+    if(!g) return;
+    state.actGroup = g;
+    $('rnInput').value = g.name;
+    $('rnCnt').textContent = g.name.length + '/20';
+    $('rnGo').disabled = true;
+    open('ovRename');
+    setTimeout(function(){ $('rnInput').focus() }, 220);
+  }
+  $('rnInput').addEventListener('input', function(e){
+    var v = e.target.value;
+    $('rnCnt').textContent = v.length + '/20';
+    var dup = state.groups.some(function(g){return g!==state.actGroup && g.name===v.trim()});
+    $('rnGo').disabled = !v.trim() || dup || v.trim()===state.actGroup.name;
+    $('rnInput').style.borderColor = dup ? '#D92D20' : (v.trim() ? '#3D6BF5' : '#E1E4EB');
+  });
+  $('rnGo').onclick = function(){
+    var v = $('rnInput').value.trim(), g = state.actGroup;
+    g.name = v; close($('ovRename')); render();
+    toast('已重命名为「'+v+'」');
+  };
+
+  /* ---------------- 移动 ---------------- */
+  function targets(){
+    var skip = {};
+    if(state.view==='detail') skip[state.cur] = 1;
+    else selGroups().forEach(function(g){ skip[g.id] = 1 });
+    return state.groups.filter(function(g){ return !skip[g.id] });
+  }
+  function openMove(){
+    state.target = null;
+    var n = state.view==='detail' ? curWordsSel().length : moveN();
+    $('moveSub').textContent = '将 ' + n + ' 个单词移动至';
+    renderMoveList();
+    $('moveGo').disabled = true;
+    $('moveGo').textContent = '移动 ' + n + ' 个单词';
+    open('ovMove');
+  }
+  function renderMoveList(){
+    var h = '<div class="opt'+(state.target==='__none'?' on':'')+'" data-t="__none">' +
+      '<div class="gicon" style="--c:#F2F3F6;color:#6B7280">◇</div>' +
+      '<div><div class="oname">未分组</div><div class="ometa">移出所有分组</div></div>' +
+      '<div class="radio">'+(state.target==='__none'?CHECK:'')+'</div></div>';
+    var list = targets();
+    if(!list.length){
+      h += '<div class="blank" style="padding:18px 8px;font-size:12px">没有其他分组可选，可点下方新建</div>';
+    }
+    list.forEach(function(g){
+      h += '<div class="opt'+(state.target===g.id?' on':'')+'" data-t="'+g.id+'">' +
+        '<div class="gicon" style="--c:'+g.color+'">'+FOLDER+'</div>' +
+        '<div><div class="oname">'+esc(g.name)+'</div><div class="ometa">'+g.words.length+' 个单词</div></div>' +
+        '<div class="radio">'+(state.target===g.id?CHECK:'')+'</div></div>';
+    });
+    h += '<div class="opt" data-t="__new"><div class="gicon" style="--c:#EEF2FE;color:#3D6BF5">＋</div><div><div class="oname" style="color:#3D6BF5">新建分组</div></div></div>';
+    $('moveList').innerHTML = h;
+  }
+  $('moveList').addEventListener('click', function(e){
+    var o = e.target.closest('[data-t]'); if(!o) return;
+    var t = o.getAttribute('data-t');
+    if(t==='__new'){ close($('ovMove')); setTimeout(openCreate, 180); return }
+    state.target = t; renderMoveList();
+    $('moveGo').disabled = false;
+  });
+  $('moveGo').onclick = function(){ applyMove(state.target) };
+
+  function applyMove(t){
+    if(!t) return;
+    var s = snap(), view = state.view, cur = state.cur;
+    var tg = t==='__none' ? null : byId(t);
+    var n = 0;
+    if(view==='detail'){
+      var g = byId(cur);
+      if(g && g!==tg){
+        g.words.filter(function(w){return state.sel.has(w.id)}).forEach(function(w){
+          n++; g.words = g.words.filter(function(x){return x.id!==w.id});
+          (tg ? tg.words : state.ungrouped).push(w);
+        });
+      }
+    } else {
+      var sgs = selGroups(), su = selUngrouped();
+      sgs.forEach(function(g){
+        if(g===tg) return;
+        g.words.slice().forEach(function(w){ n++; (tg?tg.words:state.ungrouped).push(w) });
+        g.words = [];
+      });
+      su.forEach(function(w){
+        if(!tg) return;
+        n++; state.ungrouped = state.ungrouped.filter(function(x){return x.id!==w.id}); tg.words.push(w);
+      });
+    }
+    close($('ovMove'));
+    state.select = false; state.sel.clear(); render();
+    if(!n){ toast('所选单词已经在「'+(tg?tg.name:'未分组')+'」了'); return }
+    toast('已移动 '+n+' 个单词到「'+(tg?tg.name:'未分组')+'」', function(){
+      restore(s, view, cur); toast('已撤销移动');
+    });
+  }
+
+  /* ---------------- 添加单词 ---------------- */
+  function openAdd(){
+    state.addSel = new Set();
+    renderAddList();
+    $('addGo').disabled = true;
+    $('addGo').textContent = '加入本分组';
+    $('addSub').textContent = '从未分组中选择（共 ' + state.ungrouped.length + ' 个）';
+    open('ovAdd');
+  }
+  function renderAddList(){
+    if(!state.ungrouped.length){
+      $('addList').innerHTML = '<div class="blank" style="padding:24px 8px">'+EMPTY+'<div>没有未分组的单词了</div></div>';
+      return;
+    }
+    $('addList').innerHTML = state.ungrouped.map(function(w){
+      return '<div class="opt" data-add="'+w.id+'">' +
+        '<span class="cb'+(state.addSel.has(w.id)?' on':'')+'">'+CHECK+'</span>' +
+        '<div><div class="oname">'+esc(w.w)+'<span class="ph" style="margin-left:6px">'+esc(w.ph)+'</span></div>' +
+        '<div class="ometa">'+esc(w.m)+'</div></div></div>';
+    }).join('');
+  }
+  $('addList').addEventListener('click', function(e){
+    var o = e.target.closest('[data-add]'); if(!o) return;
+    var id = o.getAttribute('data-add');
+    state.addSel.has(id) ? state.addSel.delete(id) : state.addSel.add(id);
+    renderAddList();
+    var n = state.addSel.size;
+    $('addGo').disabled = n===0;
+    $('addGo').textContent = n ? '加入本分组（'+n+'）' : '加入本分组';
+  });
+  $('addGo').onclick = function(){
+    var g = curGroup(); if(!g) return;
+    var s = snap(), view = state.view, cur = state.cur;
+    var n = 0;
+    state.ungrouped.filter(function(w){return state.addSel.has(w.id)}).forEach(function(w){
+      n++; state.ungrouped = state.ungrouped.filter(function(x){return x.id!==w.id}); g.words.push(w);
+    });
+    close($('ovAdd')); render();
+    toast('已添加 '+n+' 个单词到「'+g.name+'」', function(){ restore(s, view, cur); toast('已撤销添加') });
+  };
+
+  /* ---------------- 删除 ---------------- */
+  function openDel(){
+    var sg = selGroups();
+    var sw = state.view==='detail' ? curWordsSel() : selUngrouped();
+    var gw = sg.reduce(function(a,g){return a+g.words.length},0);
+    $('delOpts').innerHTML = '';
+    var d = '';
+    if(sg.length){
+      d += '将删除 <b>'+sg.length+'</b> 个分组';
+      if(gw) d += '（含 <b>'+gw+'</b> 个单词）';
+      d += '。';
+      if(gw){
+        $('delOpts').innerHTML =
+          '<div class="choose">' +
+          '<div class="c on" data-keep="1"><div class="radio">'+CHECK+'</div><div>保留单词，移入「未分组」</div></div>' +
+          '<div class="c" data-keep="0"><div class="radio"></div><div>同时删除组内单词</div></div>' +
+          '</div>';
+      }
+    }
+    if(sw.length){
+      d += (d?'<br>':'') + '将把 <b>'+sw.length+'</b> 个单词移出词单。';
+    }
+    $('delD').innerHTML = d;
+    open('ovDel');
+  }
+  $('delOpts').addEventListener('click', function(e){
+    var c = e.target.closest('.c'); if(!c) return;
+    Array.prototype.forEach.call($('delOpts').querySelectorAll('.c'), function(n){ n.classList.remove('on') });
+    Array.prototype.forEach.call($('delOpts').querySelectorAll('.radio'), function(n){ n.innerHTML = '' });
+    c.classList.add('on'); c.querySelector('.radio').innerHTML = CHECK;
+  });
+  $('delGo').onclick = function(){
+    var s = snap(), view = state.view, cur = state.cur;
+    var sg = selGroups();
+    var sw = state.view==='detail' ? curWordsSel() : selUngrouped();
+    var keep = true, on = $('delOpts').querySelector('.c.on');
+    if(on) keep = on.getAttribute('data-keep') === '1';
+
+    sg.forEach(function(g){ if(keep) g.words.forEach(function(w){ state.ungrouped.push(w) }) });
+    var curGone = sg.some(function(g){ return g.id === cur });
+    state.groups = state.groups.filter(function(g){ return !state.sel.has(g.id) });
+    sw.forEach(function(w){ removeWordEverywhere(w.id) });
+
+    var msg = [];
+    if(sg.length) msg.push('已删除 '+sg.length+' 个分组');
+    if(sw.length) msg.push('已移除 '+sw.length+' 个单词');
+
+    close($('ovDel'));
+    state.select = false; state.sel.clear();
+    if(state.view==='detail' && curGone){ state.view='list'; state.cur=null }
+    render();
+    toast(msg.join('，'), function(){ restore(s, view, cur); toast('已撤销删除') });
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>

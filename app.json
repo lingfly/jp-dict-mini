@@ -2,6 +2,8 @@
   "pages": [
     "pages/home/home",
     "pages/wordlist/wordlist",
+    "pages/wordlist-group/wordlist-group",
+    "pages/wordlist-group-words/wordlist-group-words",
     "pages/wordlist-detail/wordlist-detail",
     "pages/word-detail/word-detail",
     "pages/review-list/review-list",

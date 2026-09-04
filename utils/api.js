@@ -105,6 +105,60 @@ const wordlistApi = {
 }
 
 /**
+ * 词单分组 API（需要认证）
+ * 对应后端 WordListController：
+ * - GET    /api/wordlist/groups?wordListId=                    获取分组列表
+ * - GET    /api/wordlist/group-words?wordListId=&groupId=      获取分组内单词
+ * - POST   /api/wordlist/groups?wordListId=                    创建分组
+ * - PUT    /api/wordlist/groups?wordListId=&groupId=           更新分组
+ * - DELETE /api/wordlist/groups?wordListId=&groupId=           删除分组
+ * - PUT    /api/wordlist/word-group?wordListId=&groupId=       移动单词到分组
+ */
+const wordlistGroupApi = {
+  // 获取分组列表
+  list(wordListId) {
+    return get('/api/wordlist/groups', { wordListId }) // 需要 token
+  },
+
+  // 获取分组内的单词列表（分页）
+  getGroupWords(wordListId, groupId, page = 1, size = 20) {
+    return get('/api/wordlist/group-words', { wordListId, groupId, page, size }) // 需要 token
+  },
+
+  // 新建分组
+  create(wordListId, name, color) {
+    return post(`/api/wordlist/groups?wordListId=${encodeURIComponent(wordListId)}`, {
+      groupName: name,
+      color: color || '#5B8C7D',
+      groupKey: null,
+      sortOrder: 0
+    }) // 需要 token
+  },
+
+  // 更新分组（重命名 / 改标识色）
+  update(wordListId, groupId, name, color) {
+    return put(`/api/wordlist/groups?wordListId=${encodeURIComponent(wordListId)}&groupId=${encodeURIComponent(groupId)}`, {
+      groupName: name,
+      color: color,
+      groupKey: null,
+      sortOrder: 0
+    }) // 需要 token
+  },
+
+  // 删除分组
+  remove(wordListId, groupId) {
+    const url = `/api/wordlist/groups?wordListId=${encodeURIComponent(wordListId)}&groupId=${encodeURIComponent(groupId)}`
+    return request(url, 'DELETE', {}) // 需要 token
+  },
+
+  // 移动单词到目标分组（groupId 为 null/undefined 表示移到未分组）
+  moveWords(wordListId, wordIds, targetGroupId) {
+    const url = `/api/wordlist/word-group?wordListId=${encodeURIComponent(wordListId)}${targetGroupId ? '&groupId=' + encodeURIComponent(targetGroupId) : ''}`
+    return put(url, { wordIds }) // 需要 token
+  }
+}
+
+/**
  * FSRS 复习 API（需要认证）
  * 对应后端 FsrsReviewController：
  * - GET  /api/fsrs/due-count?endTs=  查询当天待复习单词总数（用于角标/入口展示）
@@ -473,6 +527,7 @@ const adminApi = {
 
 module.exports = {
   wordlistApi,
+  wordlistGroupApi,
   fsrsApi,
   reviewApi,
   wordApi,
