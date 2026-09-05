@@ -101,6 +101,12 @@ const wordlistApi = {
   // 取消收藏
   unfavorite(wordId, wordListId) {
     return post('/api/wordlist/unfavorite', { wordId, wordListId }) // 需要 token
+  },
+
+  // 更新单词加入词单的关系（全量替换）
+  // targets: [{ wordListId, groupId }]，groupId 为 null 表示加入词单未分组
+  updateRelations(wordId, targets) {
+    return post('/api/wordlist/update-relations', { wordId, targets }) // 需要 token
   }
 }
 
@@ -125,13 +131,22 @@ const wordlistGroupApi = {
     return get('/api/wordlist/group-words', { wordListId, groupId, page, size }) // 需要 token
   },
 
-  // 新建分组
-  create(wordListId, name, color) {
+  // 获取词单分组内容（一次性返回分组 + 单词）
+  // 只传 wordListId：返回所有分组（含 wordCount）+ 未分组单词
+  // 传 groupId：返回该分组下的单词
+  getGroupContent(wordListId, groupId) {
+    const params = { wordListId }
+    if (groupId) params.groupId = groupId
+    return get('/api/wordlist/group-content', params) // 需要 token
+  },
+
+  // 新建分组（sortOrder 用于升序排序：先创建的排在前面）
+  create(wordListId, name, color, sortOrder) {
     return post(`/api/wordlist/groups?wordListId=${encodeURIComponent(wordListId)}`, {
       groupName: name,
       color: color || '#5B8C7D',
       groupKey: null,
-      sortOrder: 0
+      sortOrder: typeof sortOrder === 'number' ? sortOrder : 0
     }) // 需要 token
   },
 
@@ -155,6 +170,13 @@ const wordlistGroupApi = {
   moveWords(wordListId, wordIds, targetGroupId) {
     const url = `/api/wordlist/word-group?wordListId=${encodeURIComponent(wordListId)}${targetGroupId ? '&groupId=' + encodeURIComponent(targetGroupId) : ''}`
     return put(url, { wordIds }) // 需要 token
+  },
+
+  // 批量设置分组排序（items: [{ groupId, sortOrder }]）
+  batchUpdateSortOrder(wordListId, items) {
+    return put(`/api/wordlist/groups/sort-order?wordListId=${encodeURIComponent(wordListId)}`, {
+      items: items || []
+    }) // 需要 token
   }
 }
 

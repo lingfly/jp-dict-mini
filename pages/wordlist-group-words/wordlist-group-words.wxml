@@ -58,7 +58,6 @@
             <text class="jp-text">{{item.kanji}}</text>
             <text wx:if="{{item.kana && item.kana !== item.kanji}}" class="ph jp-text">{{item.kana}}</text>
           </view>
-          <view wx:if="{{item.meaning}}" class="rmeta">{{item.meaning}}</view>
         </view>
         <view wx:if="{{item.learned}}" class="ok-tag">已掌握</view>
       </view>
@@ -191,7 +190,6 @@
               <text class="jp-text">{{item.kanji}}</text>
               <text wx:if="{{item.kana && item.kana !== item.kanji}}" class="ph jp-text">{{item.kana}}</text>
             </view>
-            <view wx:if="{{item.meaning}}" class="ometa">{{item.meaning}}</view>
           </view>
         </view>
       </scroll-view>

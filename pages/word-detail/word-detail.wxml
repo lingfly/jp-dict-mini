@@ -92,4 +92,79 @@
 
     </view>
   </view>
+
+  <!-- 底部操作栏：加入词单 + 收藏 -->
+  <view wx:if="{{wordDetail}}" class="join-bar">
+    <view class="join-btn" bindtap="openJoin">加入词单</view>
+    <view class="fav-btn {{isFavorited ? 'favorited' : ''}} {{favoriting ? 'disabled' : ''}}" bindtap="toggleFavorite">
+      {{isFavorited ? '已收藏' : '收藏'}}
+    </view>
+  </view>
+
+  <!-- ===== 加入词单弹层 ===== -->
+  <view wx:if="{{showJoin}}" class="join-ov">
+    <view class="join-mask" bindtap="closeJoin"></view>
+    <view class="join-sheet" catchtap="noop">
+      <view class="join-h">
+        <view class="join-h-main">
+          <view class="join-t">加入词单</view>
+          <view class="join-s">原位置已勾选 · 再点一次可取消</view>
+        </view>
+        <view class="join-x" bindtap="closeJoin">✕</view>
+      </view>
+
+      <scroll-view class="join-b" scroll-y="{{true}}">
+        <view wx:if="{{joinLoading}}" class="join-loading">加载中...</view>
+        <block wx:else>
+          <block wx:for="{{joinView}}" wx:key="id" wx:for-item="wl">
+            <!-- 词单行 -->
+            <view
+              class="jrow {{wl.selected ? 'on' : ''}} {{wl.isOrig ? 'cur' : ''}}"
+              data-key="w:{{wl.id}}"
+              bindtap="onJoinTap"
+            >
+              <view wx:if="{{wl.hasGroups}}" class="jcaret {{wl.expanded ? 'open' : ''}}" catchtap="onJoinExpand" data-id="{{wl.id}}">›</view>
+              <view wx:else class="jcaret-spacer"></view>
+              <view class="jbook">📚</view>
+              <view class="jmain">
+                <view class="jname">{{wl.name}}</view>
+                <view class="jmeta">{{wl.wordCount}} 个单词</view>
+              </view>
+              <view class="jradio {{wl.selected ? 'on' : ''}}">
+                <text wx:if="{{wl.selected}}" class="jradio-tick">✓</text>
+              </view>
+            </view>
+
+            <!-- 分组行（展开时显示） -->
+            <block wx:if="{{wl.expanded}}">
+              <view
+                wx:for="{{wl.groups}}"
+                wx:key="id"
+                wx:for-item="gp"
+                class="jrow sub {{gp.selected ? 'on' : ''}} {{gp.isOrig ? 'cur' : ''}}"
+                data-key="g:{{gp.id}}"
+                bindtap="onJoinTap"
+              >
+                <view class="jcaret-spacer"></view>
+                <view class="jfolder" style="background:{{gp.color}}"></view>
+                <view class="jmain">
+                  <view class="jname">{{gp.name}}</view>
+                </view>
+                <view class="jradio {{gp.selected ? 'on' : ''}}">
+                  <text wx:if="{{gp.selected}}" class="jradio-tick">✓</text>
+                </view>
+              </view>
+            </block>
+          </block>
+          <view wx:if="{{joinView.length === 0}}" class="join-empty">暂无可用词单</view>
+        </block>
+      </scroll-view>
+
+      <view class="join-f">
+        <view wx:if="{{joinHint}}" class="jhint">{{joinHint}}</view>
+        <view class="join-go {{joinCanGo ? '' : 'disabled'}}" bindtap="confirmJoin">{{joinGoText}}</view>
+      </view>
+    </view>
+  </view>
+
 </view>

@@ -140,9 +140,12 @@ function fail(message) {
  * 获取分组列表 + 未分组单词
  * 返回 { code, data: { groups: Group[], ungrouped: Word[] } }
  *
- * 后端接口分离：
- * 1. GET /api/wordlist/groups?wordListId= 返回分组元信息 [{id, groupName, color, ...}]
- * 2. GET /api/wordlist/words?wordListId=  返回所有单词，每个单词可能有 groupId 字段
+ * 后端接口：GET /api/wordlist/group-content?wordListId=
+ *   - groups: 分组元信息 [{id, groupName, color, wordCount}]（不含组内单词列表）
+ *   - words:  未分组单词 [{id, kanji, kana, learningStatus}]
+ *
+ * 说明：Group 使用 wordCount 数字（不再含 words 数组），
+ *       Word 仅含 wordId/kanji/kana/learned（无 meaning）。
  */
 async function fetchGroups(wordListId) {
   if (USE_MOCK) {
@@ -150,47 +153,20 @@ async function fetchGroups(wordListId) {
     return ok(clone(_store[wordListId]))
   }
   try {
-    // 并行获取分组列表和单词列表
-    const [groupsRes, wordsRes] = await Promise.all([
-      wordlistGroupApi.list(wordListId),
-      wordlistApi.getWords(wordListId, 1, 9999) // 获取所有单词
-    ])
-
-    if (!groupsRes || groupsRes.code !== 200) {
-      return groupsRes || fail('获取分组列表失败')
+    const res = await wordlistGroupApi.getGroupContent(wordListId)
+    if (!res || res.code !== 200) {
+      return res || fail('获取分组失败')
     }
+    const data = res.data || {}
 
-    const groupsData = groupsRes.data || []
+    const groups = (data.groups || []).map(g => ({
+      id: String(g.id),
+      name: g.groupName || g.name || '未命名',
+      color: g.color || GROUP_COLORS[0],
+      wordCount: g.wordCount || 0
+    }))
 
-    // 初始化分组结构
-    const groupMap = {}
-    const groups = groupsData.map(g => {
-      const group = {
-        id: String(g.id),
-        name: g.groupName || g.name || '未命名',
-        color: g.color || GROUP_COLORS[0],
-        words: []
-      }
-      groupMap[group.id] = group
-      return group
-    })
-
-    // 分配单词到分组或未分组
-    const ungrouped = []
-    if (wordsRes && wordsRes.code === 200 && wordsRes.data) {
-      const records = wordsRes.data.records || []
-      records.forEach(raw => {
-        const word = normalizeWord(raw)
-        if (!word) return
-
-        const groupId = raw.groupId ? String(raw.groupId) : null
-        if (groupId && groupMap[groupId]) {
-          groupMap[groupId].words.push(word)
-        } else {
-          ungrouped.push(word)
-        }
-      })
-    }
+    const ungrouped = (data.words || []).map(w => normalizeGroupWord(w)).filter(Boolean)
 
     return ok({ groups, ungrouped })
   } catch (e) {
@@ -198,6 +174,56 @@ async function fetchGroups(wordListId) {
     if (!_seeded[wordListId]) seed(wordListId)
     return ok(clone(_store[wordListId]))
   }
+}
+
+/** 归一化 /group-content 返回的单词（GroupWordResponse：id/kanji/kana/learningStatus） */
+function normalizeGroupWord(raw) {
+  if (!raw) return null
+  return {
+    wordId: String(raw.id !== undefined && raw.id !== null ? raw.id : raw.wordId),
+    kanji: raw.kanji || raw.kana || '',
+    kana: raw.kana || '',
+    meaning: '',
+    learned: raw.learningStatus === 'learned' || raw.learningStatus === 'mastered' ||
+      raw.learningStatus === 'LEARNED' || raw.learningStatus === 'MASTERED'
+  }
+}
+
+/**
+ * 获取指定分组内的单词列表
+ * 返回 { code, data: Word[] }
+ * 后端接口：GET /api/wordlist/group-content?wordListId=&groupId=
+ */
+async function fetchGroupWords(wordListId, groupId) {
+  if (USE_MOCK) {
+    if (!_seeded[wordListId]) seed(wordListId)
+    const g = _store[wordListId].groups.find(x => x.id === groupId)
+    return ok(g ? clone(g.words) : [])
+  }
+  try {
+    const res = await wordlistGroupApi.getGroupContent(wordListId, groupId)
+    if (!res || res.code !== 200) return res || fail('获取分组单词失败')
+    const words = (res.data && res.data.words || []).map(w => normalizeGroupWord(w)).filter(Boolean)
+    return ok(words)
+  } catch (e) {
+    console.error('获取分组单词失败:', e)
+    return fail('获取分组单词失败')
+  }
+}
+
+/**
+ * 获取多个分组内的全部单词 id（用于「选中分组 → 移动组内单词」）
+ * 返回 { code, data: String[] }（wordId 数组）
+ */
+async function fetchWordIdsOfGroups(wordListId, groupIds) {
+  const ids = []
+  for (const groupId of groupIds) {
+    const res = await fetchGroupWords(wordListId, groupId)
+    if (res.code === 200) {
+      (res.data || []).forEach(w => ids.push(w.wordId))
+    }
+  }
+  return ok(ids)
 }
 
 /** 取本地态（供 mock 下的增删改复用） */
@@ -209,7 +235,7 @@ async function state(wordListId) {
 /* ============ 写 ============ */
 
 /** 新建分组，返回 { code, data: { id } } */
-async function createGroup(wordListId, name, color) {
+async function createGroup(wordListId, name, color, sortOrder) {
   if (USE_MOCK) {
     const s = await state(wordListId)
     const group = { id: nextId('g'), name, color, words: [] }
@@ -217,7 +243,7 @@ async function createGroup(wordListId, name, color) {
     return ok({ id: group.id })
   }
   try {
-    const res = await wordlistGroupApi.create(wordListId, name, color)
+    const res = await wordlistGroupApi.create(wordListId, name, color, sortOrder)
     return res
   } catch (e) {
     return fail('新建分组失败')
@@ -240,6 +266,27 @@ async function updateGroup(wordListId, groupId, name, color) {
     return await wordlistGroupApi.update(wordListId, groupId, name, color)
   } catch (e) {
     return fail('保存失败')
+  }
+}
+
+/**
+ * 批量更新分组排序
+ * @param {String} wordListId 词单 id
+ * @param {Array} orderedGroupIds 按新顺序排列的分组 id 数组（[第一个, 第二个, ...]）
+ */
+async function updateSortOrder(wordListId, orderedGroupIds) {
+  if (USE_MOCK) {
+    const s = await state(wordListId)
+    const orderMap = {}
+    orderedGroupIds.forEach((id, i) => { orderMap[id] = i })
+    s.groups.sort((a, b) => (orderMap[a.id] || 0) - (orderMap[b.id] || 0))
+    return ok(true)
+  }
+  try {
+    const items = orderedGroupIds.map((groupId, i) => ({ groupId, sortOrder: i }))
+    return await wordlistGroupApi.batchUpdateSortOrder(wordListId, items)
+  } catch (e) {
+    return fail('排序保存失败')
   }
 }
 
@@ -350,17 +397,73 @@ async function sync(wordListId, groups, ungrouped) {
   return fail('后端暂不支持整体同步，撤销功能不可用')
 }
 
+/**
+ * 「加入词单」弹层数据源：获取我的词单列表（含该单词当前是否已加入的标记）
+ * 返回 { code, data: [{ id, name, containsWord, wordCount, groups }] }
+ *
+ * 后端 GET /api/wordlist/list?mineOnly=true&wordId= 会返回每个词单的：
+ *   - containsWord：该单词是否在此词单中
+ *   - groups：该词单的所有分组，每个分组含 containsWord（该单词是否在此分组中）
+ * 据此可精确判断「原位置」是落在词单未分组（containsWord=true 且无分组 containsWord）
+ * 还是某个分组（该分组的 containsWord=true）。
+ * 词单/分组 id 由后端序列化为字符串，前端保持字符串。
+ */
+async function fetchJoinLists(wordId) {
+  try {
+    const res = await wordlistApi.list({ mineOnly: true, wordId })
+    if (!res || res.code !== 200) return res || fail('获取词单失败')
+    const lists = (res.data || []).map(w => ({
+      id: String(w.id),
+      name: w.name || '未命名词单',
+      wordCount: w.wordCount || 0,
+      containsWord: !!w.containsWord,
+      groups: (w.groups || []).map(g => ({
+        id: String(g.id),
+        name: g.groupName || g.name || '未命名分组',
+        color: g.color || GROUP_COLORS[0],
+        wordCount: g.wordCount || 0,
+        containsWord: !!g.containsWord
+      }))
+    }))
+    return ok(lists)
+  } catch (e) {
+    console.error('获取可加入词单失败:', e)
+    return fail('获取词单失败')
+  }
+}
+
+/**
+ * 更新单词加入词单的关系（全量替换）
+ * 调用后端 POST /api/wordlist/update-relations
+ * @param {String} wordId 单词 id（字符串）
+ * @param {Array} targets [{ wordListId, groupId }]，groupId 为 null 表示加入词单未分组
+ */
+async function updateRelations(wordId, targets) {
+  try {
+    const res = await wordlistApi.updateRelations(wordId, targets || [])
+    return res
+  } catch (e) {
+    console.error('更新词单关系失败:', e)
+    return fail('加入词单失败')
+  }
+}
+
 module.exports = {
   USE_MOCK,
   GROUP_COLORS,
   normalizeWord,
   fetchGroups,
+  fetchGroupWords,
+  fetchWordIdsOfGroups,
   createGroup,
   updateGroup,
+  updateSortOrder,
   removeGroup,
   moveWords,
   addWords,
   removeWords,
   deleteWords,
-  sync
+  sync,
+  fetchJoinLists,
+  updateRelations
 }

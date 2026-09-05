@@ -71,27 +71,31 @@ Page({
   async loadData() {
     this.setData({ loading: true })
     try {
-      const res = await groupSource.fetchGroups(this.data.wordListId)
-      if (res.code === 200 && res.data) {
-        const g = (res.data.groups || []).find(x => x.id === this.data.groupId)
+      const [groupsRes, wordsRes] = await Promise.all([
+        groupSource.fetchGroups(this.data.wordListId),
+        groupSource.fetchGroupWords(this.data.wordListId, this.data.groupId)
+      ])
+      if (groupsRes.code === 200 && groupsRes.data) {
+        const g = (groupsRes.data.groups || []).find(x => x.id === this.data.groupId)
         if (!g) {
           wx.showToast({ title: '分组不存在', icon: 'none' })
           setTimeout(() => wx.navigateBack(), 800)
           return
         }
-        this._groups = res.data.groups || []
+        this._groups = groupsRes.data.groups || []
+        const words = (wordsRes.code === 200 ? wordsRes.data : []) || []
         this.setData({
           group: {
             id: g.id,
             name: g.name,
             color: g.color,
-            wordCount: g.words.length,
-            learnedCount: g.words.filter(w => w.learned).length
+            wordCount: words.length,
+            learnedCount: words.filter(w => w.learned).length
           },
-          ungrouped: res.data.ungrouped || []
+          ungrouped: groupsRes.data.ungrouped || []
         })
         wx.setNavigationBarTitle({ title: g.name })
-        this._rawWords = g.words
+        this._rawWords = words
       }
     } catch (e) {
       console.error('加载分组详情失败:', e)
@@ -108,7 +112,6 @@ Page({
       wordId: w.wordId,
       kanji: w.kanji,
       kana: w.kana,
-      meaning: w.meaning,
       learned: w.learned,
       selected: this.data.selectedWordIds.indexOf(w.wordId) > -1
     }))
@@ -209,7 +212,7 @@ Page({
     // 目标列表排除当前分组，避免出现搬进自己这种无意义操作
     const moveTargets = (this._groups || [])
       .filter(g => g.id !== this.data.groupId)
-      .map(g => ({ id: g.id, name: g.name, color: g.color, wordCount: g.words.length }))
+      .map(g => ({ id: g.id, name: g.name, color: g.color, wordCount: g.wordCount || 0 }))
     this.setData({
       showMove: true,
       moveTargets,
@@ -317,7 +320,6 @@ Page({
       wordId: w.wordId,
       kanji: w.kanji,
       kana: w.kana,
-      meaning: w.meaning,
       selected: false
     }))
     this.setData({

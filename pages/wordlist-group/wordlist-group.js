@@ -1,6 +1,7 @@
 // pages/wordlist-group/wordlist-group.js
 // 词单分组管理：分组与「未分组单词」平铺同一列表，浏览态 / 多选批处理双状态
 const groupSource = require('../../utils/wordlistGroup')
+const { createFabDrag } = require('../../utils/fabDrag')
 
 const UNGROUPED_LIMIT = 8 // 未分组默认渲染条数，避免长列表把分组挤到屏幕外
 const NAME_MAX = 20
@@ -71,18 +72,34 @@ Page({
     /* 轻提示 */
     toastShow: false,
     toastMsg: '',
-    toastUndoable: false
+    toastUndoable: false,
+
+    /* 悬浮按钮位置 */
+    fabLeft: null,
+    fabTop: null,
+
+    /* 分组排序模式 */
+    sortMode: false,        // 是否处于排序模式
+    sortDragging: false,    // 是否正在拖动某个分组
+    sortDragId: '',         // 正在拖动的分组 id
+    sortDragTranslate: 0,   // 被拖动行的 translateY（px）
+    sortSaving: false       // 是否正在保存排序
   },
 
   onLoad(options) {
     const wordListId = options.wordListId || ''
     const wordListName = options.name ? decodeURIComponent(options.name) : ''
     this.setData({ wordListId, wordListName })
+    this._fabDrag = createFabDrag(this, 'wordlistGroupFabPos_v4', { w: 120, h: 46 }, 96)
     if (wordListName) {
       wx.setNavigationBarTitle({ title: wordListName })
     }
     this.loadGroups()
   },
+
+  onFabTouchStart(e) { this._fabDrag.touchStart(e) },
+  onFabTouchMove(e) { this._fabDrag.touchMove(e) },
+  onFabTouchEnd(e) { this._fabDrag.touchEnd(e) },
 
   onShow() {
     // 从分组详情页返回后刷新（详情页可能改过分组内容）
@@ -133,9 +150,8 @@ Page({
     const wSet = {}
     selectedWordIds.forEach(id => { wSet[id] = true })
 
-    const viewGroups = groups.map(g => {
-      const total = g.words.length
-      const learned = g.words.filter(w => w.learned).length
+    const viewGroups = groups.map((g, i) => {
+      const total = g.wordCount || 0
       return {
         id: g.id,
         name: g.name,
@@ -143,19 +159,19 @@ Page({
         wordCount: total,
         selected: !!gSet[g.id],
         isEmpty: total === 0,
+        sortIndex: i + 1,
         // 空分组用橙色提示，而不是自动删除（自动删除会让分组排序莫名错位）
         meta: total === 0
           ? '0 个单词 · 空分组'
-          : `${total} 个单词 · 已掌握 ${Math.round(learned / total * 100)}%`
+          : `${total} 个单词`
       }
     })
 
-    const groupWords = groups.reduce((a, g) => a + g.words.length, 0)
+    const groupWords = groups.reduce((a, g) => a + (g.wordCount || 0), 0)
     const viewWords = ungrouped.map(w => ({
       wordId: w.wordId,
       kanji: w.kanji,
       kana: w.kana,
-      meaning: w.meaning,
       learned: w.learned,
       selected: !!wSet[w.wordId]
     }))
@@ -165,7 +181,7 @@ Page({
     const selWordCount = selectedWordIds.length
     const moveCount = selWordCount + groups
       .filter(g => gSet[g.id])
-      .reduce((a, g) => a + g.words.length, 0)
+      .reduce((a, g) => a + (g.wordCount || 0), 0)
 
     this.setData({
       viewGroups,
@@ -186,17 +202,167 @@ Page({
     })
   },
 
-  /** 当前待移动的单词 id：直接选中的单词 + 选中分组内的全部单词 */
-  collectMoveWordIds() {
+  /** 当前待移动的单词 id：直接选中的单词 + 选中分组内的全部单词（组内单词需异步查询） */
+  async collectMoveWordIds() {
     const wSet = {}
     this.data.selectedWordIds.forEach(id => { wSet[id] = true })
-    const gSet = {}
-    this.data.selectedGroupIds.forEach(id => { gSet[id] = true })
-    this.data.groups.forEach(g => {
-      if (!gSet[g.id]) return
-      g.words.forEach(w => { wSet[w.wordId] = true })
-    })
+    // 选中分组 → 通过 /group-content?groupId= 查询组内单词 id
+    if (this.data.selectedGroupIds.length) {
+      const res = await groupSource.fetchWordIdsOfGroups(this.data.wordListId, this.data.selectedGroupIds)
+      if (res.code === 200) {
+        (res.data || []).forEach(id => { wSet[id] = true })
+      }
+    }
     return Object.keys(wSet)
+  },
+
+  /* ================= 分组排序 ================= */
+
+  /** 进入排序模式 */
+  enterSortMode() {
+    if (this.data.groups.length < 2) {
+      wx.showToast({ title: '至少需要 2 个分组才能排序', icon: 'none' })
+      return
+    }
+    this.setData({ sortMode: true })
+  },
+
+  /** 退出排序模式（不保存） */
+  exitSortMode() {
+    this._resetSortDrag()
+    this.setData({ sortMode: false })
+  },
+
+  /** 重置拖拽状态 */
+  _resetSortDrag() {
+    this._sort = null
+    this.setData({ sortDragging: false, sortDragId: '', sortDragTranslate: 0 })
+  },
+
+  /** 长按拖动分组：按下 */
+  onSortRowTouchStart(e) {
+    if (!this.data.sortMode) return
+    const touch = e.touches && e.touches[0]
+    if (!touch) return
+    const id = e.currentTarget.dataset.id
+    const index = this.data.viewGroups.findIndex(g => g.id === id)
+    if (index < 0) return
+
+    this._sort = {
+      id,
+      index,
+      startIndex: index,
+      startY: touch.clientY,
+      startX: touch.clientX,
+      itemHeight: 0,
+      timer: null,
+      dragging: false
+    }
+    // 长按 250ms 触发拖动
+    this._sort.timer = setTimeout(() => {
+      if (!this._sort) return
+      this._sort.dragging = true
+      this.setData({ sortDragging: true, sortDragId: this._sort.id })
+      if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
+    }, 250)
+  },
+
+  /** 长按拖动分组：移动 */
+  onSortRowTouchMove(e) {
+    const s = this._sort
+    if (!s) return
+    const touch = e.touches && e.touches[0]
+    if (!touch) return
+
+    // 未进入拖动态前，判断是否取消长按（横向/纵向位移过大视为滚动，取消拖动）
+    if (!s.dragging) {
+      const dy = Math.abs(touch.clientY - s.startY)
+      const dx = Math.abs(touch.clientX - s.startX)
+      if (dy > 10 || dx > 10) {
+        clearTimeout(s.timer)
+        s.timer = null
+      }
+      return
+    }
+
+    // 计算每个分组行高度（首次测量）
+    if (!s.itemHeight) {
+      wx.createSelectorQuery()
+        .selectAll('.row.sort-item')
+        .boundingClientRect((rects) => {
+          if (rects && rects.length) s.itemHeight = rects[0].height
+        })
+        .exec()
+      s.itemHeight = s.itemHeight || 60
+    }
+
+    // 被拖动行用 translate 跟随手指（数组不重排，松手时统一重排）
+    const offset = touch.clientY - s.startY
+    this.setData({ sortDragTranslate: offset })
+  },
+
+  _clampIndex(i) {
+    const len = this.data.groups.length
+    if (i < 0) return 0
+    if (i > len - 1) return len - 1
+    return i
+  },
+
+  /** 把 groups 数组中 from 位置的项移动到 to 位置 */
+  _moveGroup(from, to) {
+    const groups = this.data.groups.slice()
+    const item = groups.splice(from, 1)[0]
+    groups.splice(to, 0, item)
+    this.setData({ groups })
+    this.applyView()
+  },
+
+  /** 长按拖动分组：松手 */
+  onSortRowTouchEnd(e) {
+    const s = this._sort
+    if (!s) return
+    if (s.timer) clearTimeout(s.timer)
+
+    // 拖动态下松手：根据最终偏移重排数组
+    if (s.dragging) {
+      const touch = e.changedTouches && e.changedTouches[0]
+      if (touch) {
+        const offset = touch.clientY - s.startY
+        const delta = Math.round(offset / (s.itemHeight || 60))
+        const targetIndex = this._clampIndex(s.startIndex + delta)
+        if (targetIndex !== s.startIndex) {
+          this._moveGroup(s.startIndex, targetIndex)
+        }
+      }
+    }
+
+    this._sort = null
+    this.setData({ sortDragging: false, sortDragId: '', sortDragTranslate: 0 })
+  },
+
+  /** 保存排序 */
+  async confirmSort() {
+    if (this.data.sortSaving) return
+    const orderedIds = this.data.groups.map(g => g.id)
+    this.setData({ sortSaving: true })
+    wx.showLoading({ title: '保存中...', mask: true })
+    try {
+      const res = await groupSource.updateSortOrder(this.data.wordListId, orderedIds)
+      wx.hideLoading()
+      if (res.code === 200) {
+        this.setData({ sortMode: false })
+        wx.showToast({ title: '排序已保存', icon: 'success' })
+        this.loadGroups()
+      } else {
+        wx.showToast({ title: res.message || '保存失败', icon: 'none' })
+      }
+    } catch (e) {
+      wx.hideLoading()
+      console.error('保存排序失败:', e)
+      wx.showToast({ title: '保存失败', icon: 'none' })
+    } finally {
+      this.setData({ sortSaving: false })
+    }
   },
 
   /* ================= 多选态 ================= */
@@ -252,6 +418,10 @@ Page({
 
   onGroupTap(e) {
     const id = e.currentTarget.dataset.id
+    if (this.data.sortMode) {
+      // 排序模式下不响应点击（拖拽排序）
+      return
+    }
     if (this.data.selectMode) {
       this._toggleId('selectedGroupIds', id)
       return
@@ -320,7 +490,8 @@ Page({
     if (!name) return
     wx.showLoading({ title: '创建中...' })
     try {
-      const res = await groupSource.createGroup(this.data.wordListId, name, this.data.createColor)
+      // sortOrder = 当前分组数，升序排序时先创建的排在前面
+      const res = await groupSource.createGroup(this.data.wordListId, name, this.data.createColor, this.data.groups.length)
       wx.hideLoading()
       if (res.code === 200) {
         this.setData({ showCreate: false })
@@ -386,15 +557,15 @@ Page({
 
   /* ================= 移动 ================= */
 
-  openMove() {
-    const wordIds = this.collectMoveWordIds()
+  async openMove() {
+    const wordIds = await this.collectMoveWordIds()
     if (!wordIds.length) return
     const gSet = {}
     this.data.selectedGroupIds.forEach(id => { gSet[id] = true })
     // 目标列表排除选中的分组，避免"搬进自己"这种无意义操作
     const moveTargets = this.data.groups
       .filter(g => !gSet[g.id])
-      .map(g => ({ id: g.id, name: g.name, color: g.color, wordCount: g.words.length }))
+      .map(g => ({ id: g.id, name: g.name, color: g.color, wordCount: g.wordCount || 0 }))
     this.setData({
       showMove: true,
       moveTargets,
@@ -420,7 +591,7 @@ Page({
   async confirmMove() {
     const target = this.data.moveTargetId
     if (!target) return
-    const wordIds = this.collectMoveWordIds()
+    const wordIds = await this.collectMoveWordIds()
     const targetId = target === '__none' ? '' : target
     const targetName = targetId
       ? (this.data.groups.find(g => g.id === targetId) || {}).name
@@ -458,7 +629,7 @@ Page({
       showDelete: true,
       deleteKeepWords: true,
       delGroupCount: selGroups.length,
-      delGroupWords: selGroups.reduce((a, g) => a + g.words.length, 0),
+      delGroupWords: selGroups.reduce((a, g) => a + (g.wordCount || 0), 0),
       delWordCount
     })
   },
@@ -505,7 +676,7 @@ Page({
     if (!g) return
     this.setData({
       showAction: true,
-      actGroup: { id: g.id, name: g.name, wordCount: g.words.length }
+      actGroup: { id: g.id, name: g.name, wordCount: g.wordCount || 0 }
     })
   },
 

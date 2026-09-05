@@ -1,5 +1,6 @@
 // pages/wordlist/wordlist.js
 const { wordlistApi } = require('../../utils/api')
+const { createFabDrag } = require('../../utils/fabDrag')
 
 Page({
   data: {
@@ -13,6 +14,7 @@ Page({
     currentWordList: null, // 正在学习的词单（通过 /current 接口获取）
     activeMenuId: '',      // 当前展开"更多"菜单的词单 id（空表示关闭）
     activeMenuName: '',    // 当前展开菜单的词单名称
+    activeMenuUp: false,   // 菜单是否向上弹出（靠近底部时自动上翻）
     showCreateDialog: false, // 是否显示创建/编辑词单弹窗
     dialogMode: 'create',    // 弹窗模式：create 创建 / edit 编辑
     editingWordListId: '',   // 编辑时的词单 id
@@ -20,14 +22,35 @@ Page({
     createDescription: '',   // 词单描述输入
     createIsPublic: false,   // 词单是否公开
     categoryLabels: [],      // 分类标签列表（用于 picker 展示）
-    createCategoryIndex: 0   // 选中的分类索引
+    createCategoryIndex: 0,  // 选中的分类索引
+    fabLeft: null,           // 悬浮按钮位置（px）
+    fabTop: null
   },
 
   onLoad() {
+    this._fabDrag = createFabDrag(this, 'wordlistFabPos_v2', { w: 120, h: 46 }, 96)
     this.loadCategories()
     this.loadCurrentWordList()
     this.loadWordLists()
+    this.measureViewportHeight()
   },
+
+  /** 缓存视口高度（不含 tabBar），用于"更多"菜单上翻判断 */
+  measureViewportHeight() {
+    const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
+    this._viewportHeight = (info.windowHeight || 0) - 50
+    wx.createSelectorQuery()
+      .selectViewport()
+      .boundingClientRect((vp) => {
+        const h = vp && (vp.height || vp.bottom)
+        if (h) this._viewportHeight = h
+      })
+      .exec()
+  },
+
+  onFabTouchStart(e) { this._fabDrag.touchStart(e) },
+  onFabTouchMove(e) { this._fabDrag.touchMove(e) },
+  onFabTouchEnd(e) { this._fabDrag.touchEnd(e) },
 
   onShow() {
     this.loadCurrentWordList()
@@ -163,13 +186,52 @@ Page({
       : this.data.wordLists
     const wordList = all.find(item => String(item.id) === String(id)) || null
     this._activeWordList = wordList
-    this.setData({ activeMenuId: id, activeMenuName: name })
+    // 同步计算菜单弹出方向，与菜单一起一次性渲染，避免"先向下再向上"闪烁
+    const activeMenuUp = this.calcMenuUp(wordList, id, e)
+    this.setData({ activeMenuId: id, activeMenuName: name, activeMenuUp })
+  },
+
+  /** 计算菜单是否向上弹出（纯计算，不依赖 DOM 测量） */
+  calcMenuUp(wordList, id, e) {
+    if (!wordList) return false
+
+    // 计算菜单项数量（与 wxml 的 wx:if 条件保持一致）
+    const isCurrent = this.data.currentWordList
+      && String(this.data.currentWordList.id) === String(id)
+    const isMine = !!wordList.isMine
+    const isDefault = !!wordList.isDefault
+    let itemCount
+    if (isCurrent) {
+      if (!isMine) itemCount = 2          // 收藏 / 取消学习
+      else if (!isDefault) itemCount = 4  // 分组管理 / 编辑 / 删除 / 取消学习
+      else itemCount = 1                  // 取消学习
+    } else {
+      if (!isMine) itemCount = 2          // 收藏 / 设为当前学习词单
+      else if (!isDefault) itemCount = 4  // 分组管理 / 编辑 / 删除 / 设为当前学习词单
+      else itemCount = 1                  // 设为当前学习词单
+    }
+
+    const ITEM_HEIGHT = 43   // 单项高度（12+12 padding + 行高）
+    const MENU_PADDING = 12  // 菜单上下 padding（6+6）
+    const menuHeight = itemCount * ITEM_HEIGHT + MENU_PADDING
+
+    // 按钮底部 Y 坐标：tap 事件坐标（相对视口）+ 按钮高的一半（按钮高约 32）
+    let btnBottom = 0
+    if (e && e.detail && typeof e.detail.y === 'number') {
+      btnBottom = e.detail.y + 16
+    }
+
+    const viewportBottom = this._viewportHeight || 0
+    if (!btnBottom || !viewportBottom) return false
+
+    // 菜单向下弹出时，底部 = 按钮底部 + 40(菜单 top 偏移) + menuHeight
+    return (btnBottom + 40 + menuHeight) > viewportBottom
   },
 
   /** 关闭弹出菜单 */
   closeMenu() {
     if (this.data.activeMenuId) {
-      this.setData({ activeMenuId: '', activeMenuName: '' })
+      this.setData({ activeMenuId: '', activeMenuName: '', activeMenuUp: false })
     }
     this._activeWordList = null
   },

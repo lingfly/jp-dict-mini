@@ -373,11 +373,9 @@ page {
   background: #DCDFE6;
 }
 
-/* ===== 悬浮新建按钮 ===== */
+/* ===== 悬浮新建分组按钮（长按可拖动） ===== */
 .fab {
   position: fixed;
-  right: 16px;
-  bottom: 24px;
   height: 46px;
   padding: 0 18px;
   border-radius: 23px;
@@ -872,4 +870,78 @@ page {
   color: #8FD3BF;
   font-weight: 500;
   padding-left: 10px;
+}
+
+/* ===== 分组排序模式 ===== */
+
+/* 分组标题栏「完成」主色强调 */
+.sec-action.primary {
+  font-weight: 600;
+}
+
+/* 排序模式下的分组行 */
+.row.sort-mode {
+  cursor: grab;
+}
+
+/* 正在拖动的分组行：浮起 + 阴影 */
+.row.sort-mode.dragging {
+  background: #F7FAF9;
+  box-shadow: 0 8px 20px rgba(91, 140, 125, 0.25);
+  border-radius: 10px;
+  transition: none;
+}
+
+/* 序号角标 */
+.sort-index {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #EFF2F6;
+  color: #909399;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 拖拽手柄 */
+.sort-handle {
+  flex: 0 0 auto;
+  color: #B0B6BF;
+  font-size: 18px;
+  padding: 4px 8px;
+  margin-right: -8px;
+}
+
+.row.sort-mode.dragging .sort-handle {
+  color: #5B8C7D;
+}
+
+/* 排序模式底部操作栏 */
+.bottom-bar.sort-bar {
+  justify-content: flex-end;
+}
+
+.sort-tip {
+  flex: 1;
+  font-size: 12.5px;
+  color: #909399;
+}
+
+.bbtn.pri {
+  color: #fff;
+  background: #5B8C7D;
+  border-color: #5B8C7D;
+  font-weight: 500;
+}
+
+.bbtn.pri:active {
+  background: #4a7a6c;
+}
+
+.bbtn.pri.disabled {
+  background: #B7CBC4;
+  border-color: #B7CBC4;
 }

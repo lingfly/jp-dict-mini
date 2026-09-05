@@ -3,11 +3,11 @@
   <!-- 统计 + 管理入口 -->
   <view class="summary-bar">
     <text class="summary-text">共 <text class="summary-num">{{totalGroups}}</text> 个分组 · <text class="summary-num">{{totalWords}}</text> 个单词 · <text class="summary-num">{{totalUngrouped}}</text> 个未分组</text>
-    <view class="manage-btn" bindtap="toggleSelectMode">{{selectMode ? '完成' : '管理'}}</view>
+    <view wx:if="{{!sortMode}}" class="manage-btn" bindtap="toggleSelectMode">{{selectMode ? '完成' : '管理'}}</view>
   </view>
 
   <!-- 主体列表：分组与未分组单词共用同一滚动区，靠吸顶分区头区分 -->
-  <scroll-view class="list-scroll" scroll-y="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}">
+  <scroll-view class="list-scroll" scroll-y="{{!sortDragging}}" enhanced="{{true}}" show-scrollbar="{{false}}">
     <!-- ===== 分区一：分组 ===== -->
     <view class="sec-header">
       <block wx:if="{{selectMode}}">
@@ -21,7 +21,8 @@
       <block wx:else>
         <text class="sec-title">分组</text>
         <text class="sec-count">{{totalGroups}}</text>
-        <text class="sec-action" bindtap="openCreate">+ 新建</text>
+        <text wx:if="{{sortMode}}" class="sec-action primary" bindtap="exitSortMode">完成</text>
+        <text wx:else class="sec-action" bindtap="enterSortMode">排序</text>
       </block>
     </view>
     <view class="rows">
@@ -35,11 +36,17 @@
       <view
         wx:for="{{viewGroups}}"
         wx:key="id"
-        class="row {{selectMode ? 'sel-mode' : ''}}"
+        class="row sort-item {{selectMode ? 'sel-mode' : ''}} {{sortMode ? 'sort-mode' : ''}} {{sortDragging && sortDragId === item.id ? 'dragging' : ''}}"
+        style="{{sortDragging && sortDragId === item.id ? 'transform: translateY(' + sortDragTranslate + 'px); z-index: 10;' : ''}}"
         data-id="{{item.id}}"
         bindtap="onGroupTap"
+        bindtouchstart="onSortRowTouchStart"
+        bindtouchmove="onSortRowTouchMove"
+        bindtouchend="onSortRowTouchEnd"
+        bindtouchcancel="onSortRowTouchEnd"
       >
-        <view wx:if="{{selectMode}}" class="cb {{item.selected ? 'on' : ''}}" catchtap="onGroupCheck" data-id="{{item.id}}">
+        <view wx:if="{{sortMode}}" class="sort-index">{{item.sortIndex}}</view>
+        <view wx:elif="{{selectMode}}" class="cb {{item.selected ? 'on' : ''}}" catchtap="onGroupCheck" data-id="{{item.id}}">
           <text wx:if="{{item.selected}}" class="cb-tick">✓</text>
         </view>
         <view class="gicon" style="background:{{item.color}}">
@@ -52,14 +59,18 @@
           <view class="rname">{{item.name}}</view>
           <view class="rmeta {{item.wordCount === 0 ? 'empty' : ''}}">{{item.meta}}</view>
         </view>
-        <block wx:if="{{!selectMode}}">
+        <block wx:if="{{sortMode}}">
+          <view class="sort-handle">☰</view>
+        </block>
+        <block wx:elif="{{!selectMode}}">
           <view class="more" catchtap="openAction" data-id="{{item.id}}">⋯</view>
           <view class="chev">›</view>
         </block>
       </view>
     </view>
 
-    <!-- ===== 分区二：未分组 ===== -->
+    <!-- ===== 分区二：未分组（排序模式下隐藏） ===== -->
+    <block wx:if="{{!sortMode}}">
     <view class="sec-header gap">
       <block wx:if="{{selectMode}}">
         <view class="pick-all" data-scope="word" bindtap="onSelectAll">
@@ -95,7 +106,6 @@
             <text class="jp-text">{{item.kanji}}</text>
             <text wx:if="{{item.kana && item.kana !== item.kanji}}" class="ph jp-text">{{item.kana}}</text>
           </view>
-          <view wx:if="{{item.meaning}}" class="rmeta">{{item.meaning}}</view>
         </view>
         <view wx:if="{{item.learned}}" class="ok-tag">已掌握</view>
       </view>
@@ -103,12 +113,22 @@
         <text>{{showAllUngrouped ? '收起 ›' : '查看全部 ' + totalUngrouped + ' 个未分组单词 ›'}}</text>
       </view>
     </view>
+    </block>
 
     <view class="scroll-pad"></view>
   </scroll-view>
 
-  <!-- 浏览态悬浮按钮 -->
-  <view wx:if="{{!selectMode}}" class="fab" bindtap="openCreate">
+  <!-- 浏览态悬浮按钮（长按可拖动，排序模式下隐藏） -->
+  <view
+    wx:if="{{!selectMode && !sortMode}}"
+    class="fab"
+    style="left:{{fabLeft}}px;top:{{fabTop}}px;"
+    bindtap="openCreate"
+    bindtouchstart="onFabTouchStart"
+    bindtouchmove="onFabTouchMove"
+    bindtouchend="onFabTouchEnd"
+    bindtouchcancel="onFabTouchEnd"
+  >
     <text class="fab-plus">＋</text>
     <text class="fab-text">新建分组</text>
   </view>
@@ -125,6 +145,13 @@
     <view class="bbtn danger {{canDelete ? '' : 'disabled'}}" bindtap="openDelete">
       <text class="bbtn-icon">✖</text><text>删除</text>
     </view>
+  </view>
+
+  <!-- 排序模式底部操作栏 -->
+  <view class="bottom-bar sort-bar {{sortMode ? 'show' : ''}}">
+    <view class="sort-tip">长按分组拖动调整顺序</view>
+    <view class="bbtn" bindtap="exitSortMode">取消</view>
+    <view class="bbtn pri {{sortSaving ? 'disabled' : ''}}" bindtap="confirmSort">完成排序</view>
   </view>
 
   <!-- ===== 移动到分组 ===== -->
