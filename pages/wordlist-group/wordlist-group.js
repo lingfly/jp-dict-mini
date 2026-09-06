@@ -90,7 +90,7 @@ Page({
     const wordListId = options.wordListId || ''
     const wordListName = options.name ? decodeURIComponent(options.name) : ''
     this.setData({ wordListId, wordListName })
-    this._fabDrag = createFabDrag(this, 'wordlistGroupFabPos_v4', { w: 120, h: 46 }, 96)
+    this._fabDrag = createFabDrag(this, 'wordlistGroupFabPos_v5', { w: 120, h: 46 }, 48)
     if (wordListName) {
       wx.setNavigationBarTitle({ title: wordListName })
     }

@@ -140,7 +140,7 @@
     style="left:{{fabLeft}}px;top:{{fabTop}}px;"
     bindtap="onCreateTap"
     bindtouchstart="onFabTouchStart"
-    bindtouchmove="onFabTouchMove"
+    catchtouchmove="onFabTouchMove"
     bindtouchend="onFabTouchEnd"
     bindtouchcancel="onFabTouchEnd"
   >

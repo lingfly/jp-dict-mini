@@ -485,45 +485,96 @@ Page({
       // 只有开启思维模式时才传递 thinking 和 reasoningEffort
       const thinking = aiDictThinking ? true : false
       const reasoningEffort = aiDictThinking ? (aiDictReasoningEffort || 'medium') : null
-      const res = await aiDictApi.query(keyword, thinking, reasoningEffort, aiDictModel, aiDictTemperature)
-      // res.data 结构: { logId, results: [...] }
-      if (res.code === 200 && res.data && res.data.results && res.data.results.length > 0) {
-        const logId = res.data.logId
-        // 复用搜索结果的处理和展示逻辑，并注入 logId 和来源标记
-        const processed = this.processSearchResults(res.data.results)
-        processed.forEach(item => {
-          item._logId = logId
-          item._fromAi = true
-        })
-        this.setData({
-          searchResults: processed,
-          showAiSearch: false,
-          aiStreaming: false,
-          isAiResult: true,
-          hasMoreResults: false,
-          currentPage: 1,
-          totalResults: processed.length
-        })
 
-        // AI 查词成功后刷新已用次数
-        this.refreshAiQueryUsage()
+      // 1. 提交异步查询，获取 logId
+      const submitRes = await aiDictApi.submitAsyncQuery(keyword, thinking, reasoningEffort, aiDictModel, aiDictTemperature)
+      if (submitRes.code !== 200 || !submitRes.data || !submitRes.data.logId) {
+        throw new Error(submitRes.message || '提交查询失败')
+      }
+      const logId = submitRes.data.logId
 
-        // 添加到最近搜索
-        const recent = [...this.data.recentSearches]
-        if (!recent.includes(keyword)) {
-          recent.unshift(keyword)
-          if (recent.length > 4) recent.pop()
-          this.setData({ recentSearches: recent })
+      // 2. 轮询查询结果
+      const asyncRes = await this.pollAiQueryResult(logId)
+
+      if (asyncRes.code === 200 && asyncRes.data) {
+        const { status, results, errorMessage } = asyncRes.data
+
+        if (status === 'failed') {
+          this.setData({ aiStreaming: false })
+          wx.showToast({ title: errorMessage || 'AI查词失败', icon: 'none' })
+          return
+        }
+
+        if (status === 'success' && results && results.length > 0) {
+          // 复用搜索结果的处理和展示逻辑，并注入 logId 和来源标记
+          const processed = this.processSearchResults(results)
+          processed.forEach(item => {
+            item._logId = logId
+            item._fromAi = true
+          })
+          this.setData({
+            searchResults: processed,
+            showAiSearch: false,
+            aiStreaming: false,
+            isAiResult: true,
+            hasMoreResults: false,
+            currentPage: 1,
+            totalResults: processed.length
+          })
+
+          // AI 查词成功后刷新已用次数
+          this.refreshAiQueryUsage()
+
+          // 添加到最近搜索
+          const recent = [...this.data.recentSearches]
+          if (!recent.includes(keyword)) {
+            recent.unshift(keyword)
+            if (recent.length > 4) recent.pop()
+            this.setData({ recentSearches: recent })
+          }
+        } else {
+          this.setData({ aiStreaming: false })
+          wx.showToast({ title: 'AI 未找到相关释义', icon: 'none' })
         }
       } else {
-        this.setData({ aiStreaming: false })
-        wx.showToast({ title: 'AI 未找到相关释义', icon: 'none' })
+        throw new Error(asyncRes.message || '查询结果获取失败')
       }
     } catch (error) {
       console.error('AI查词失败:', error)
       this.setData({ aiStreaming: false })
       wx.showToast({ title: 'AI查词失败', icon: 'none' })
     }
+  },
+
+  /**
+   * 轮询异步查词结果
+   * 单次轮询为短请求，规避 iOS 上 wx.request 60s 超时上限
+   * @param {Long} logId 查询 ID
+   * @returns {Promise} 最终结果（status=success 或 failed）
+   */
+  async pollAiQueryResult(logId) {
+    const POLL_INTERVAL = 2000  // 轮询间隔 2s
+    const MAX_ATTEMPTS = 150     // 最多轮询 150 次（约 5 分钟）
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const res = await aiDictApi.queryAsyncResult(logId)
+
+      // 非 200 或异常，稍后重试
+      if (res.code !== 200 || !res.data || !res.data.status) {
+        await new Promise(r => setTimeout(r, POLL_INTERVAL))
+        continue
+      }
+
+      const status = res.data.status
+      if (status === 'success' || status === 'failed') {
+        return res
+      }
+      // processing：继续轮询
+      await new Promise(r => setTimeout(r, POLL_INTERVAL))
+    }
+
+    // 超时：抛出错误
+    throw new Error('查询超时，请稍后重试')
   },
 
   async addToReview() {

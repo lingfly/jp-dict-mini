@@ -304,8 +304,8 @@ const audioApi = {
  * AI 查词 API
  */
 const aiDictApi = {
-  // 同步查词（返回 AiDictQueryResult: { logId, words: [...] }）
-  query(word, thinking, reasoningEffort, model, temperature) {
+  // 构造查词请求体（同步与异步接口共用）
+  buildQueryData(word, thinking, reasoningEffort, model, temperature) {
     const data = { word }
     // 如果 thinking 为 true，才传递 thinking 和 reasoningEffort
     if (thinking) {
@@ -314,10 +314,25 @@ const aiDictApi = {
     }
     if (model) data.model = model
     if (temperature !== null && temperature !== undefined) data.temperature = temperature
+    return data
+  },
 
-    // 思维模式下增加超时时间（180秒），否则使用默认超时（60秒）
-    const timeout = thinking ? 180000 : 60000
+  // 同步查词（返回 AiDictQueryResult: { logId, results: [...] }）
+  query(word, thinking, reasoningEffort, model, temperature) {
+    const data = this.buildQueryData(word, thinking, reasoningEffort, model, temperature)
+    const timeout = 300000
     return post('/api/ai-dict/query', data, true, timeout)
+  },
+
+  // 异步查词提交（返回 AiDictAsyncSubmitResult: { logId }）
+  submitAsyncQuery(word, thinking, reasoningEffort, model, temperature) {
+    const data = this.buildQueryData(word, thinking, reasoningEffort, model, temperature)
+    return post('/api/ai-dict/query-async', data, true)
+  },
+
+  // 异步查词结果轮询（返回 AiDictAsyncResult: { logId, queryWord, status, results, errorMessage }）
+  queryAsyncResult(logId) {
+    return get('/api/ai-dict/query-result', { logId })
   },
 
   // 反馈：符合预期（将 AI 查词结果加入词库，需传入 selectedIndex）

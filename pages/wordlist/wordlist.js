@@ -28,7 +28,7 @@ Page({
   },
 
   onLoad() {
-    this._fabDrag = createFabDrag(this, 'wordlistFabPos_v2', { w: 120, h: 46 }, 96)
+    this._fabDrag = createFabDrag(this, 'wordlistFabPos_v3', { w: 120, h: 46 }, 24)
     this.loadCategories()
     this.loadCurrentWordList()
     this.loadWordLists()

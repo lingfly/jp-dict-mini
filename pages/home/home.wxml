@@ -15,10 +15,13 @@
   <!-- 搜索栏 -->
   <view class="search-section">
     <view class="search-bar">
-      <input
+      <textarea
         class="search-input"
         value="{{searchKeyword}}"
-        placeholder="输入日语单词，如：ありがとう"
+        placeholder="输入日语单词、句子或长文本，如：ありがとう"
+        maxlength="2000"
+        auto-height
+        fixed="{{false}}"
         bindinput="onSearchInput"
         bindconfirm="handleSearch"
       />
