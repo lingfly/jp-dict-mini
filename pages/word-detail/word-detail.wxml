@@ -113,13 +113,14 @@
         <view class="join-x" bindtap="closeJoin">✕</view>
       </view>
 
-      <scroll-view class="join-b" scroll-y="{{true}}">
+      <scroll-view class="join-b" scroll-y="{{true}}" scroll-into-view="{{joinScrollInto}}">
         <view wx:if="{{joinLoading}}" class="join-loading">加载中...</view>
         <block wx:else>
           <block wx:for="{{joinView}}" wx:key="id" wx:for-item="wl">
             <!-- 词单行 -->
             <view
-              class="jrow {{wl.selected ? 'on' : ''}} {{wl.isOrig ? 'cur' : ''}}"
+              id="jlw-{{wl.id}}"
+              class="jrow {{wl.selected ? 'on' : ''}} {{wl.isOrig ? 'cur' : ''}} {{wl.lastJoined ? 'last' : ''}}"
               data-key="w:{{wl.id}}"
               bindtap="onJoinTap"
             >
@@ -127,7 +128,7 @@
               <view wx:else class="jcaret-spacer"></view>
               <view class="jbook">📚</view>
               <view class="jmain">
-                <view class="jname">{{wl.name}}</view>
+                <view class="jname">{{wl.name}}<text wx:if="{{wl.lastJoined}}" class="jlast-tag">上次</text></view>
                 <view class="jmeta">{{wl.wordCount}} 个单词</view>
               </view>
               <view class="jradio {{wl.selected ? 'on' : ''}}">
@@ -141,14 +142,15 @@
                 wx:for="{{wl.groups}}"
                 wx:key="id"
                 wx:for-item="gp"
-                class="jrow sub {{gp.selected ? 'on' : ''}} {{gp.isOrig ? 'cur' : ''}}"
+                id="jlg-{{gp.id}}"
+                class="jrow sub {{gp.selected ? 'on' : ''}} {{gp.isOrig ? 'cur' : ''}} {{gp.lastJoined ? 'last' : ''}}"
                 data-key="g:{{gp.id}}"
                 bindtap="onJoinTap"
               >
                 <view class="jcaret-spacer"></view>
                 <view class="jfolder" style="background:{{gp.color}}"></view>
                 <view class="jmain">
-                  <view class="jname">{{gp.name}}</view>
+                  <view class="jname">{{gp.name}}<text wx:if="{{gp.lastJoined}}" class="jlast-tag">上次</text></view>
                 </view>
                 <view class="jradio {{gp.selected ? 'on' : ''}}">
                   <text wx:if="{{gp.selected}}" class="jradio-tick">✓</text>

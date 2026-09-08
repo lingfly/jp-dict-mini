@@ -729,107 +729,245 @@
   margin-bottom: 4px;
 }
 
-/* ===== 加入词单弹窗 ===== */
-.popup-mask {
+/* ===== 加入词单弹层 ===== */
+.join-ov {
   position: fixed;
-  top: 0;
+  inset: 0;
+  z-index: 200;
+}
+
+.join-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 20, 28, 0.42);
+}
+
+.join-sheet {
+  position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 200;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.popup-panel {
-  width: 100%;
-  max-height: 60vh;
   background: #fff;
-  border-radius: 16px 16px 0 0;
+  border-radius: 18px 18px 0 0;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
 }
 
-.popup-header {
+.join-h {
+  padding: 14px 16px 10px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid #F2F3F5;
+  gap: 10px;
 }
 
-.popup-title {
-  font-size: 17px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.popup-close {
-  font-size: 18px;
-  color: #C0C4CC;
-  padding: 4px;
-}
-
-.popup-list {
+.join-h-main {
   flex: 1;
-  overflow-y: auto;
 }
 
-.popup-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid #F5F7FA;
+.join-t {
+  font-size: 16px;
+  font-weight: 600;
+  color: #14181F;
 }
 
-.popup-item.disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-.popup-item-info {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.popup-item-name {
-  font-size: 15px;
-  color: #303133;
-}
-
-.popup-item-count {
+.join-s {
   font-size: 12px;
-  color: #C0C4CC;
+  color: #8A919D;
+  margin-top: 1px;
 }
 
-.popup-checkbox {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid #DCDFE6;
+.join-x {
+  width: 26px;
+  height: 26px;
+  border-radius: 13px;
+  background: #F2F3F6;
+  color: #6B7280;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  color: transparent;
+}
+
+.join-b {
+  overflow: hidden;
+  max-height: 52vh;
+}
+
+.join-loading {
+  padding: 32px 0;
+  text-align: center;
+  color: #9AA1AC;
+  font-size: 13px;
+}
+
+.join-empty {
+  padding: 32px 0;
+  text-align: center;
+  color: #9AA1AC;
+  font-size: 13px;
+}
+
+/* 词单/分组行 */
+.jrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 16px;
+  position: relative;
+}
+
+.jrow + .jrow {
+  border-top: 1px solid #F3F4F7;
+}
+
+.jrow.sub {
+  padding-left: 40px;
+}
+
+.jcaret {
+  width: 18px;
+  height: 18px;
+  color: #9AA1AC;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
   flex-shrink: 0;
 }
 
-.popup-checkbox.checked {
-  background: #5B8C7D;
-  border-color: #5B8C7D;
-  color: #fff;
+.jcaret.open {
+  transform: rotate(90deg);
 }
 
-.popup-empty {
+.jcaret-spacer {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.jbook {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: #EEF2FE;
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 40px 0;
-  color: #909399;
-  font-size: 14px;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.jfolder {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+
+.jmain {
+  flex: 1;
+  min-width: 0;
+}
+
+.jname {
+  font-size: 15px;
+  font-weight: 500;
+  color: #14181F;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jrow.on .jname {
+  color: #5B8C7D;
+}
+
+.jmeta {
+  font-size: 12px;
+  color: #8A919D;
+  margin-top: 2px;
+}
+
+.jradio {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.6px solid #CDD1D8;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.jradio.on {
+  background: #5B8C7D;
+  border-color: #5B8C7D;
+}
+
+.jradio-tick {
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* 原位置的勾：灰底灰勾，与手动勾选区分 */
+.jrow.cur .jradio {
+  background: #EFF1F4;
+  border-color: #C4C9D2;
+}
+
+.jrow.cur .jradio-tick {
+  color: #7A828F;
+}
+
+/* 上次加入的定位高亮 */
+.jrow.last {
+  background: #F0F7F4;
+}
+
+.jlast-tag {
+  font-size: 10px;
+  line-height: 1;
+  color: #5B8C7D;
+  background: #E3F0EB;
+  border-radius: 4px;
+  padding: 2px 5px;
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+/* 底部 */
+.join-f {
+  padding: 6px 16px 4px;
+  border-top: 1px solid #E9EBF0;
+}
+
+.jhint {
+  font-size: 12px;
+  color: #8A919D;
+  text-align: center;
+  padding: 0 4px 8px;
+  line-height: 1.5;
+}
+
+.join-go {
+  height: 44px;
+  border-radius: 12px;
+  background: #5B8C7D;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.join-go:active {
+  background: #4a7a6c;
+}
+
+.join-go.disabled {
+  background: #C3CCE8;
 }

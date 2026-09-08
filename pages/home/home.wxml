@@ -55,7 +55,7 @@
     <view class="results-list">
       <view
         wx:for="{{searchResults}}"
-        wx:key="word.id"
+        wx:key="id"
         class="result-item"
         data-index="{{index}}"
         bindtap="selectWord"
@@ -199,7 +199,7 @@
   </view>
   <!-- 普通搜索结果：加入词单/收藏按钮 -->
   <view wx:elif="{{wordDetail}}" class="word-actions">
-    <view class="action-btn {{addingToWordlist ? 'disabled' : ''}}" bindtap="addToWordlist">加入词单</view>
+    <view class="action-btn" bindtap="openJoin">加入词单</view>
     <view class="action-btn {{wordDetail.isFavorited ? 'favorited' : ''}} {{favoriting ? 'disabled' : ''}}" bindtap="addToReview">
       {{wordDetail.isFavorited ? '已收藏' : '收藏'}}
     </view>
@@ -211,32 +211,70 @@
     <text class="empty-text">输入日语单词开始查询，查不到时可以使用<text class="empty-highlight">AI查词</text>，支持使用汉字、假名、中文意思等配合查询</text>
   </view>
 
-  <!-- 加入词单弹窗 -->
-  <view wx:if="{{showWordListPopup}}" class="popup-mask" bindtap="closeWordListPopup">
-    <view class="popup-panel" catchtap="">
-      <view class="popup-header">
-        <text class="popup-title">加入词单</text>
-        <text class="popup-close" bindtap="closeWordListPopup">✕</text>
-      </view>
-      <scroll-view wx:if="{{myWordLists.length > 0}}" class="popup-list" scroll-y="true">
-        <view
-          wx:for="{{myWordLists}}"
-          wx:key="id"
-          class="popup-item {{item.containsWord ? 'checked' : ''}} {{togglingWordList ? 'disabled' : ''}}"
-          data-index="{{index}}"
-          bindtap="toggleWordListSelect"
-        >
-          <view class="popup-item-info">
-            <text class="popup-item-name">{{item.name}}</text>
-            <text class="popup-item-count">{{item.wordCount || 0}} 词</text>
-          </view>
-          <view class="popup-checkbox {{item.containsWord ? 'checked' : ''}}">
-            <text wx:if="{{item.containsWord}}">✓</text>
-          </view>
+  <!-- ===== 加入词单弹层 ===== -->
+  <view wx:if="{{showJoin}}" class="join-ov">
+    <view class="join-mask" bindtap="closeJoin"></view>
+    <view class="join-sheet" catchtap="noop">
+      <view class="join-h">
+        <view class="join-h-main">
+          <view class="join-t">加入词单</view>
+          <view class="join-s">原位置已勾选 · 再点一次可取消</view>
         </view>
+        <view class="join-x" bindtap="closeJoin">✕</view>
+      </view>
+
+      <scroll-view class="join-b" scroll-y="{{true}}" scroll-into-view="{{joinScrollInto}}">
+        <view wx:if="{{joinLoading}}" class="join-loading">加载中...</view>
+        <block wx:else>
+          <block wx:for="{{joinView}}" wx:key="id" wx:for-item="wl">
+            <!-- 词单行 -->
+            <view
+              id="jlw-{{wl.id}}"
+              class="jrow {{wl.selected ? 'on' : ''}} {{wl.isOrig ? 'cur' : ''}} {{wl.lastJoined ? 'last' : ''}}"
+              data-key="w:{{wl.id}}"
+              bindtap="onJoinTap"
+            >
+              <view wx:if="{{wl.hasGroups}}" class="jcaret {{wl.expanded ? 'open' : ''}}" catchtap="onJoinExpand" data-id="{{wl.id}}">›</view>
+              <view wx:else class="jcaret-spacer"></view>
+              <view class="jbook">📚</view>
+              <view class="jmain">
+                <view class="jname">{{wl.name}}<text wx:if="{{wl.lastJoined}}" class="jlast-tag">上次</text></view>
+                <view class="jmeta">{{wl.wordCount}} 个单词</view>
+              </view>
+              <view class="jradio {{wl.selected ? 'on' : ''}}">
+                <text wx:if="{{wl.selected}}" class="jradio-tick">✓</text>
+              </view>
+            </view>
+
+            <!-- 分组行（展开时显示） -->
+            <block wx:if="{{wl.expanded}}">
+              <view
+                wx:for="{{wl.groups}}"
+                wx:key="id"
+                wx:for-item="gp"
+                id="jlg-{{gp.id}}"
+                class="jrow sub {{gp.selected ? 'on' : ''}} {{gp.isOrig ? 'cur' : ''}} {{gp.lastJoined ? 'last' : ''}}"
+                data-key="g:{{gp.id}}"
+                bindtap="onJoinTap"
+              >
+                <view class="jcaret-spacer"></view>
+                <view class="jfolder" style="background:{{gp.color}}"></view>
+                <view class="jmain">
+                  <view class="jname">{{gp.name}}<text wx:if="{{gp.lastJoined}}" class="jlast-tag">上次</text></view>
+                </view>
+                <view class="jradio {{gp.selected ? 'on' : ''}}">
+                  <text wx:if="{{gp.selected}}" class="jradio-tick">✓</text>
+                </view>
+              </view>
+            </block>
+          </block>
+          <view wx:if="{{joinView.length === 0}}" class="join-empty">暂无可用词单</view>
+        </block>
       </scroll-view>
-      <view wx:else class="popup-empty">
-        <text>暂无我的词单</text>
+
+      <view class="join-f">
+        <view wx:if="{{joinHint}}" class="jhint">{{joinHint}}</view>
+        <view class="join-go {{joinCanGo ? '' : 'disabled'}}" bindtap="confirmJoin">{{joinGoText}}</view>
       </view>
     </view>
   </view>

@@ -544,6 +544,22 @@
   color: #7A828F;
 }
 
+/* 上次加入的定位高亮 */
+.jrow.last {
+  background: #F0F7F4;
+}
+
+.jlast-tag {
+  font-size: 10px;
+  line-height: 1;
+  color: #5B8C7D;
+  background: #E3F0EB;
+  border-radius: 4px;
+  padding: 2px 5px;
+  margin-left: 6px;
+  font-weight: 400;
+}
+
 /* 底部 */
 .join-f {
   padding: 6px 16px 4px;

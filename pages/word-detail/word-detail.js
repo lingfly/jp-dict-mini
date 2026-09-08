@@ -28,7 +28,9 @@ Page({
     joinGoText: '确定',
     joinCanGo: false,
     // 原位置（该单词当前所在的词单/分组），key 集合
-    joinOrigKeys: []
+    joinOrigKeys: [],
+    // 上次加入定位：滚动到的行 id（jlw-词单id / jlg-分组id）
+    joinScrollInto: ''
   },
 
   onLoad(options) {
@@ -202,7 +204,9 @@ Page({
       wx.showToast({ title: '单词信息缺失', icon: 'none' })
       return
     }
-    this.setData({ showJoin: true, joinLoading: true })
+    this.setData({ showJoin: true, joinLoading: true, joinScrollInto: '' })
+    this._targetWordListId = null
+    this._targetGroupId = null
     try {
       const res = await groupSource.fetchJoinLists(wordId)
       if (res.code === 200) {
@@ -218,13 +222,38 @@ Page({
           return inGroup ? ('g:' + inGroup.id) : ('w:' + w.id)
         })
 
-        // 只有单词加入了某个分组时，该词单的分组才默认展开
+        // 默认展开分组：已加入的分组，或上次加入的分组
         const joinExpanded = {}
         lists.forEach(w => {
-          if (w.containsWord && (w.groups || []).some(g => g.containsWord)) {
+          const joinedInGroup = w.containsWord && (w.groups || []).some(g => g.containsWord)
+          const lastInGroup = w.lastJoinedGroupId != null
+          if (joinedInGroup || lastInGroup) {
             joinExpanded[w.id] = true
           }
         })
+
+        // 定位目标优先级：既是上次也是已加入 > 上次加入 > 已加入
+        let targetWordListId = null
+        let targetGroupId = null
+
+        // 1. 既是上次加入也是已加入
+        let target = lists.find(w => w.isLastJoined && w.containsWord)
+        // 2. 上次加入
+        if (!target) target = lists.find(w => w.isLastJoined)
+        // 3. 已加入
+        if (!target) target = lists.find(w => w.containsWord)
+
+        if (target) {
+          targetWordListId = target.id
+          if (target.containsWord) {
+            const joinedGroup = (target.groups || []).find(g => g.containsWord)
+            targetGroupId = joinedGroup ? joinedGroup.id : null
+          } else {
+            targetGroupId = target.lastJoinedGroupId || null
+          }
+        }
+        this._targetWordListId = targetWordListId
+        this._targetGroupId = targetGroupId
 
         this.setData({
           joinLists: lists,
@@ -244,6 +273,17 @@ Page({
     } finally {
       this.setData({ joinLoading: false })
       this.buildJoinView()
+      // 定位目标：先滚到词单行，再滚到具体分组行（若有）
+      if (this._targetWordListId) {
+        const wid = this._targetWordListId
+        const gid = this._targetGroupId
+        setTimeout(() => {
+          this.setData({ joinScrollInto: 'jlw-' + wid })
+          if (gid) {
+            setTimeout(() => this.setData({ joinScrollInto: 'jlg-' + gid }), 60)
+          }
+        }, 30)
+      }
     }
   },
 
@@ -313,7 +353,8 @@ Page({
         name: g.name,
         color: g.color,
         selected: !!selSet['g:' + g.id],
-        isOrig: !!origSet['g:' + g.id]
+        isOrig: !!origSet['g:' + g.id],
+        lastJoined: !!(wl.lastJoinedGroupId && String(g.id) === String(wl.lastJoinedGroupId))
       })) : []
       return {
         id: wl.id,
@@ -321,6 +362,8 @@ Page({
         wordCount: wl.wordCount,
         selected: !!selSet['w:' + wl.id],
         isOrig: !!origSet['w:' + wl.id],
+        // 上次加入的是分组时，词单行不加「上次」，仅在对应分组行标注
+        lastJoined: !!wl.isLastJoined && wl.lastJoinedGroupId == null,
         expanded: !!expanded[wl.id],
         // 有分组才显示展开箭头
         hasGroups: loaded.length > 0,
@@ -344,7 +387,9 @@ Page({
 
   /** 关闭弹层 */
   closeJoin() {
-    this.setData({ showJoin: false })
+    this._targetWordListId = null
+    this._targetGroupId = null
+    this.setData({ showJoin: false, joinScrollInto: '' })
   },
 
   /** 提交加入词单（全量替换） */

@@ -1,5 +1,6 @@
 // pages/home/home.js
 const { wordApi, audioApi, wordlistApi, aiDictApi, userApi } = require('../../utils/api')
+const groupSource = require('../../utils/wordlistGroup')
 
 Page({
   data: {
@@ -11,9 +12,20 @@ Page({
     expandedSense: [0],
     currentAudio: null,
     statusBarHeight: 20,
-    // 加入词单弹窗
-    showWordListPopup: false,
-    myWordLists: [],
+    // 加入词单弹层
+    showJoin: false,
+    joinLoading: false,
+    joinSubmitting: false,
+    joinLists: [],        // 词单列表 [{ id, name, wordCount, containsWord, groups, isLastJoined, lastJoinedGroupId }]
+    joinView: [],         // 视图树
+    joinGroupsMap: {},    // { wordListId: [{ id, name, color, wordCount }] }
+    joinExpanded: {},     // { wordListId: true } 展开的分组
+    joinSel: [],          // 选中的目标 key：'w:词单id'（未分组）或 'g:分组id'
+    joinHint: '',
+    joinGoText: '确定',
+    joinCanGo: false,
+    joinOrigKeys: [],     // 原位置 key 集合
+    joinScrollInto: '',   // 上次加入定位滚动目标
     // AI 查词
     showAiSearch: false,
     aiStreaming: false,
@@ -35,8 +47,6 @@ Page({
     // 更多菜单
     showMenu: false,
     // 防重复点击状态
-    addingToWordlist: false,
-    togglingWordList: false,
     favoriting: false,
     // 保存结果列表的滚动位置
     savedScrollTop: 0,
@@ -402,70 +412,235 @@ Page({
     this.setData({ currentAudio: innerAudioContext })
   },
 
-  /** 打开加入词单弹窗，加载我的词单列表 */
-  async addToWordlist() {
-    if (!this.data.wordDetail) return
-    if (this.data.addingToWordlist) return
-    const wordId = this.data.wordDetail.word.id
+  /** 当前单词 id */
+  getWordId() {
+    return this.data.wordDetail && this.data.wordDetail.word
+      ? String(this.data.wordDetail.word.id)
+      : ''
+  },
 
-    this.setData({ addingToWordlist: true })
-    wx.showLoading({ title: '加载中...', mask: true })
-    try {
-      const res = await wordlistApi.list({ mineOnly: true, wordId })
-      if (res.code === 200) {
-        this.setData({
-          myWordLists: res.data || [],
-          showWordListPopup: true
-        })
-      }
-    } catch (e) {
-      console.error('加载词单失败:', e)
-      wx.showToast({ title: '加载失败', icon: 'none' })
-    } finally {
-      wx.hideLoading()
-      this.setData({ addingToWordlist: false })
+  /** 打开加入词单弹层：加载我的词单列表，原位置默认勾选 */
+  async openJoin() {
+    const wordId = this.getWordId()
+    if (!wordId) {
+      wx.showToast({ title: '单词信息缺失', icon: 'none' })
+      return
     }
-  },
-
-  /** 关闭弹窗 */
-  closeWordListPopup() {
-    this.setData({ showWordListPopup: false })
-  },
-
-  /** 切换词单勾选 */
-  async toggleWordListSelect(e) {
-    if (this.data.togglingWordList) return
-    const index = e.currentTarget.dataset.index
-    const item = this.data.myWordLists[index]
-    if (!item) return
-
-    const wordId = this.data.wordDetail.word.id
-    const wordListId = item.id
-    const isAdding = !item.containsWord
-
-    this.setData({ togglingWordList: true })
-    wx.showLoading({ title: isAdding ? '添加中...' : '移除中...', mask: true })
+    this.setData({ showJoin: true, joinLoading: true, joinScrollInto: '' })
+    this._targetWordListId = null
+    this._targetGroupId = null
     try {
-      const res = isAdding
-        ? await wordlistApi.favorite(wordId, wordListId)
-        : await wordlistApi.unfavorite(wordId, wordListId)
-
+      const res = await groupSource.fetchJoinLists(wordId)
       if (res.code === 200) {
-        this.setData({
-          [`myWordLists[${index}].containsWord`]: isAdding
+        const lists = res.data || []
+
+        // 预取的分组信息填充到 joinGroupsMap（供视图树与 key 反查使用）
+        const groupsMap = {}
+        lists.forEach(w => { groupsMap[w.id] = w.groups || [] })
+
+        // 原位置：containsWord 的词单；若单词落在某分组内则精确到分组，否则为词单未分组
+        const origKeys = lists.filter(w => w.containsWord).map(w => {
+          const inGroup = (w.groups || []).find(g => g.containsWord)
+          return inGroup ? ('g:' + inGroup.id) : ('w:' + w.id)
         })
-        wx.showToast({ title: isAdding ? '已加入' : '已移除', icon: 'success' })
+
+        // 默认展开分组：已加入的分组，或上次加入的分组
+        const joinExpanded = {}
+        lists.forEach(w => {
+          const joinedInGroup = w.containsWord && (w.groups || []).some(g => g.containsWord)
+          const lastInGroup = w.lastJoinedGroupId != null
+          if (joinedInGroup || lastInGroup) {
+            joinExpanded[w.id] = true
+          }
+        })
+
+        // 定位目标优先级：既是上次也是已加入 > 上次加入 > 已加入
+        let targetWordListId = null
+        let targetGroupId = null
+
+        // 1. 既是上次加入也是已加入
+        let target = lists.find(w => w.isLastJoined && w.containsWord)
+        // 2. 上次加入
+        if (!target) target = lists.find(w => w.isLastJoined)
+        // 3. 已加入
+        if (!target) target = lists.find(w => w.containsWord)
+
+        if (target) {
+          targetWordListId = target.id
+          if (target.containsWord) {
+            const joinedGroup = (target.groups || []).find(g => g.containsWord)
+            targetGroupId = joinedGroup ? joinedGroup.id : null
+          } else {
+            targetGroupId = target.lastJoinedGroupId || null
+          }
+        }
+        this._targetWordListId = targetWordListId
+        this._targetGroupId = targetGroupId
+
+        this.setData({
+          joinLists: lists,
+          joinSel: origKeys.slice(),
+          joinOrigKeys: origKeys,
+          joinExpanded,
+          joinGroupsMap: groupsMap
+        })
       } else {
-        wx.showToast({ title: res.message || '操作失败', icon: 'none' })
+        wx.showToast({ title: res.message || '获取词单失败', icon: 'none' })
+        this.setData({ showJoin: false })
       }
     } catch (e) {
-      console.error('操作失败:', e)
-      wx.showToast({ title: '操作失败', icon: 'none' })
+      console.error('打开加入词单失败:', e)
+      wx.showToast({ title: '获取词单失败', icon: 'none' })
+      this.setData({ showJoin: false })
     } finally {
-      wx.hideLoading()
-      this.setData({ togglingWordList: false })
+      this.setData({ joinLoading: false })
+      this.buildJoinView()
+      // 定位目标：先滚到词单行，再滚到具体分组行（若有）
+      if (this._targetWordListId) {
+        const wid = this._targetWordListId
+        const gid = this._targetGroupId
+        setTimeout(() => {
+          this.setData({ joinScrollInto: 'jlw-' + wid })
+          if (gid) {
+            setTimeout(() => this.setData({ joinScrollInto: 'jlg-' + gid }), 60)
+          }
+        }, 30)
+      }
     }
   },
+
+  /** 展开/收起词单分组（分组已预取，仅切换展开态） */
+  onJoinExpand(e) {
+    const wordListId = e.currentTarget.dataset.id
+    const expanded = { ...this.data.joinExpanded }
+    if (expanded[wordListId]) {
+      delete expanded[wordListId]
+    } else {
+      expanded[wordListId] = true
+    }
+    this.setData({ joinExpanded: expanded })
+    this.buildJoinView()
+  },
+
+  /** key -> { wordListId }：g:分组id 需要反查所属词单（用于同词单互斥） */
+  joinWordListIdOfKey(key) {
+    if (key.slice(0, 2) === 'w:') return key.slice(2)
+    if (key.slice(0, 2) === 'g:') {
+      const gid = key.slice(2)
+      const map = this.data.joinGroupsMap
+      for (const wid in map) {
+        if (map[wid].some(g => g.id === gid)) return wid
+      }
+    }
+    return null
+  },
+
+  /** 点击词单行 / 分组行：切换勾选（同词单内互斥，可取消原位置） */
+  onJoinTap(e) {
+    const key = e.currentTarget.dataset.key
+    if (!key) return
+    const wid = this.joinWordListIdOfKey(key)
+    let sel = this.data.joinSel.slice()
+
+    if (sel.indexOf(key) > -1) {
+      sel = sel.filter(k => k !== key)
+    } else {
+      sel = sel.filter(k => this.joinWordListIdOfKey(k) !== wid)
+      sel.push(key)
+    }
+    this.setData({ joinSel: sel })
+    this.buildJoinView()
+  },
+
+  /** 根据 joinSel 推导视图树 + 提示 + 按钮状态 */
+  buildJoinView() {
+    const sel = this.data.joinSel
+    const origKeys = this.data.joinOrigKeys
+    const lists = this.data.joinLists
+    const groupsMap = this.data.joinGroupsMap
+    const expanded = this.data.joinExpanded
+
+    const selSet = {}
+    sel.forEach(k => { selSet[k] = true })
+    const origSet = {}
+    origKeys.forEach(k => { origSet[k] = true })
+
+    const joinView = lists.map(wl => {
+      const loaded = groupsMap[wl.id] || []
+      const groups = expanded[wl.id] ? loaded.map(g => ({
+        id: g.id,
+        name: g.name,
+        color: g.color,
+        selected: !!selSet['g:' + g.id],
+        isOrig: !!origSet['g:' + g.id],
+        lastJoined: !!(wl.lastJoinedGroupId && String(g.id) === String(wl.lastJoinedGroupId))
+      })) : []
+      return {
+        id: wl.id,
+        name: wl.name,
+        wordCount: wl.wordCount,
+        selected: !!selSet['w:' + wl.id],
+        isOrig: !!origSet['w:' + wl.id],
+        // 上次加入的是分组时，词单行不加「上次」，仅在对应分组行标注
+        lastJoined: !!wl.isLastJoined && wl.lastJoinedGroupId == null,
+        expanded: !!expanded[wl.id],
+        hasGroups: loaded.length > 0,
+        groups
+      }
+    })
+
+    const hasChange = sel.length !== origKeys.length || sel.some(k => !origSet[k])
+    const hint = `加入 ${sel.length} 个词单`
+
+    this.setData({
+      joinView,
+      joinHint: hint,
+      joinCanGo: hasChange,
+      joinGoText: '确定'
+    })
+  },
+
+  /** 关闭弹层 */
+  closeJoin() {
+    this._targetWordListId = null
+    this._targetGroupId = null
+    this.setData({ showJoin: false, joinScrollInto: '' })
+  },
+
+  /** 提交加入词单（全量替换） */
+  async confirmJoin() {
+    if (this.data.joinSubmitting) return
+    if (!this.data.joinCanGo) return
+    const wordId = this.getWordId()
+
+    const targets = this.data.joinSel.map(key => {
+      const wid = this.joinWordListIdOfKey(key)
+      const groupId = key.slice(0, 2) === 'g:' ? key.slice(2) : null
+      return { wordListId: wid, groupId }
+    }).filter(t => t.wordListId)
+
+    this.setData({ joinSubmitting: true })
+    wx.showLoading({ title: '加入中...', mask: true })
+    try {
+      const res = await groupSource.updateRelations(wordId, targets)
+      wx.hideLoading()
+      if (res.code === 200) {
+        this.setData({ showJoin: false })
+        wx.showToast({ title: '已更新词单', icon: 'success' })
+      } else {
+        wx.showToast({ title: res.message || '加入失败', icon: 'none' })
+      }
+    } catch (e) {
+      wx.hideLoading()
+      console.error('加入词单失败:', e)
+      wx.showToast({ title: '加入失败', icon: 'none' })
+    } finally {
+      this.setData({ joinSubmitting: false })
+    }
+  },
+
+  /** 阻止弹层内容区域点击冒泡到遮罩 */
+  noop() {},
 
   /** AI 查词 — 同步接口，返回与 search 相同的数据结构 */
   async startAiSearch() {
@@ -714,7 +889,7 @@ Page({
    * matchContent: 匹配的具体内容
    */
   processSearchResults(data) {
-    return data.map(item => {
+    return data.map((item, idx) => {
       const word = item.word
       const matchType = item.matchType
       const matchContent = item.matchContent || ''
@@ -764,6 +939,8 @@ Page({
 
       return {
         ...item,
+        // 供 wx:key 使用：优先取单词 id，AI 结果无 id 时退回索引，保证列表 key 唯一
+        id: (word && word.id != null) ? word.id : (item.id != null ? item.id : idx),
         word,
         definitions,
         _kanjiSegments: kanjiSegments,

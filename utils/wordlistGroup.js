@@ -399,13 +399,15 @@ async function sync(wordListId, groups, ungrouped) {
 
 /**
  * 「加入词单」弹层数据源：获取我的词单列表（含该单词当前是否已加入的标记）
- * 返回 { code, data: [{ id, name, containsWord, wordCount, groups }] }
+ * 返回 { code, data: [{ id, name, containsWord, wordCount, groups, isLastJoined, lastJoinedGroupId }] }
  *
  * 后端 GET /api/wordlist/list?mineOnly=true&wordId= 会返回每个词单的：
  *   - containsWord：该单词是否在此词单中
  *   - groups：该词单的所有分组，每个分组含 containsWord（该单词是否在此分组中）
+ *   - isLastJoined：是否为上次加入时选择的词单（用于定位上次加入位置）
+ *   - lastJoinedGroupId：上次加入该词单时选择的分组 id（null 表示未分组）
  * 据此可精确判断「原位置」是落在词单未分组（containsWord=true 且无分组 containsWord）
- * 还是某个分组（该分组的 containsWord=true）。
+ * 还是某个分组（该分组的 containsWord=true），并定位到上次加入的词单/分组。
  * 词单/分组 id 由后端序列化为字符串，前端保持字符串。
  */
 async function fetchJoinLists(wordId) {
@@ -417,6 +419,8 @@ async function fetchJoinLists(wordId) {
       name: w.name || '未命名词单',
       wordCount: w.wordCount || 0,
       containsWord: !!w.containsWord,
+      isLastJoined: !!w.isLastJoined,
+      lastJoinedGroupId: w.lastJoinedGroupId != null ? String(w.lastJoinedGroupId) : null,
       groups: (w.groups || []).map(g => ({
         id: String(g.id),
         name: g.groupName || g.name || '未命名分组',
