@@ -24,6 +24,9 @@
           <view class="popup-menu-item" bindtap="goDefinitionCorrection">
             <text>释义纠错</text>
           </view>
+          <view wx:if="{{isAdmin}}" class="popup-menu-item popup-menu-item-danger" bindtap="deleteWord">
+            <text>删除单词</text>
+          </view>
         </view>
       </view>
 

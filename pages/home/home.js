@@ -1,5 +1,5 @@
 // pages/home/home.js
-const { wordApi, audioApi, wordlistApi, aiDictApi, userApi } = require('../../utils/api')
+const { wordApi, audioApi, wordlistApi, aiDictApi, userApi, authApi } = require('../../utils/api')
 const groupSource = require('../../utils/wordlistGroup')
 
 Page({
@@ -46,6 +46,8 @@ Page({
     aiDictReasoningEffort: null,
     // 更多菜单
     showMenu: false,
+    // 是否为管理员（可删除单词）
+    isAdmin: false,
     // 防重复点击状态
     favoriting: false,
     // 保存结果列表的滚动位置
@@ -66,6 +68,7 @@ Page({
     // 等待登录完成，再发需要 token 的请求，避免未登录时 401 触发重复登录
     await getApp().waitForLogin()
 
+    this.checkAdmin()
     this.loadDefaultWordListId()
     this.loadCollapseConfig()
   },
@@ -292,6 +295,56 @@ Page({
     if (!wordId) return
     wx.navigateTo({
       url: `/pages/correction-definition/correction-definition?wordId=${wordId}`
+    })
+  },
+
+  /** 判断是否为管理员（userType 缺失时主动拉取当前用户信息） */
+  async checkAdmin() {
+    const app = getApp()
+    let userInfo = app.globalData.userInfo || wx.getStorageSync('userInfo')
+    if (!userInfo || userInfo.userType == null) {
+      try {
+        const res = await authApi.getCurrentUser()
+        if (res.code === 200 && res.data) {
+          userInfo = res.data
+          app.globalData.userInfo = userInfo
+          wx.setStorageSync('userInfo', userInfo)
+        }
+      } catch (e) {
+        console.error('获取用户信息失败:', e)
+      }
+    }
+    this.setData({ isAdmin: !!(userInfo && userInfo.userType === 1) })
+  },
+
+  /** 删除单词（仅管理员） */
+  deleteWord() {
+    this.setData({ showMenu: false })
+    const wordId = this.data.wordDetail && this.data.wordDetail.word && this.data.wordDetail.word.id
+    if (!wordId) return
+    wx.showModal({
+      title: '删除单词',
+      content: '确定要删除该单词及其所有关联数据吗？此操作不可恢复。',
+      confirmText: '删除',
+      confirmColor: '#E64340',
+      success: async (res) => {
+        if (!res.confirm) return
+        wx.showLoading({ title: '删除中...', mask: true })
+        try {
+          const result = await wordApi.remove(wordId)
+          wx.hideLoading()
+          if (result.code === 200) {
+            wx.showToast({ title: '删除成功', icon: 'success' })
+            this.backToResults()
+          } else {
+            wx.showToast({ title: result.message || '删除失败', icon: 'none' })
+          }
+        } catch (e) {
+          wx.hideLoading()
+          console.error('删除单词失败:', e)
+          wx.showToast({ title: '删除失败', icon: 'none' })
+        }
+      }
     })
   },
 

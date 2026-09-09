@@ -287,6 +287,11 @@ const wordApi = {
   // wordIds 保持字符串传参：wordId 可能超 JS 安全整数（后端 ToStringSerializer），Jackson 字符串→Long 无损
   getDetailBatch(wordIds) {
     return post('/api/word/batch', wordIds) // 需要 token
+  },
+
+  // 删除单词及其所有关联数据（仅管理员）
+  remove(wordId) {
+    return request(`/api/word/${encodeURIComponent(wordId)}`, 'DELETE', {}) // 需要 token + 管理员权限
   }
 }
 

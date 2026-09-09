@@ -75,6 +75,10 @@
   background: #F5F7FA;
 }
 
+.popup-menu-item-danger {
+  color: #E64340;
+}
+
 .detail-content {
   padding: 16px;
 }
@@ -448,8 +452,8 @@
 }
 
 .jcaret {
-  width: 18px;
-  height: 18px;
+  width: 32px;
+  height: 32px;
   color: #9AA1AC;
   font-size: 16px;
   display: flex;
@@ -464,7 +468,7 @@
 }
 
 .jcaret-spacer {
-  width: 18px;
+  width: 32px;
   flex-shrink: 0;
 }
 

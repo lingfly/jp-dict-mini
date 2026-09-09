@@ -1,5 +1,5 @@
 // pages/word-detail/word-detail.js
-const { wordApi, audioApi, userApi, wordlistApi } = require('../../utils/api')
+const { wordApi, audioApi, userApi, wordlistApi, authApi } = require('../../utils/api')
 const groupSource = require('../../utils/wordlistGroup')
 
 Page({
@@ -11,6 +11,8 @@ Page({
     currentAudio: null,
     collapseDefinitionOnQuery: false,
     showMenu: false,
+    // 是否为管理员（可删除单词）
+    isAdmin: false,
     // 收藏状态（是否在默认收藏夹中）
     isFavorited: false,
     favoriting: false,
@@ -35,6 +37,7 @@ Page({
 
   onLoad(options) {
     const wordId = options.wordId || ''
+    this.checkAdmin()
     if (wordId) {
       this.setData({ wordId })
       this.loadCollapseConfig().then(() => {
@@ -185,6 +188,56 @@ Page({
     if (!wordId) return
     wx.navigateTo({
       url: `/pages/correction-definition/correction-definition?wordId=${wordId}`
+    })
+  },
+
+  /** 判断是否为管理员（userType 缺失时主动拉取当前用户信息） */
+  async checkAdmin() {
+    const app = getApp()
+    let userInfo = app.globalData.userInfo || wx.getStorageSync('userInfo')
+    if (!userInfo || userInfo.userType == null) {
+      try {
+        const res = await authApi.getCurrentUser()
+        if (res.code === 200 && res.data) {
+          userInfo = res.data
+          app.globalData.userInfo = userInfo
+          wx.setStorageSync('userInfo', userInfo)
+        }
+      } catch (e) {
+        console.error('获取用户信息失败:', e)
+      }
+    }
+    this.setData({ isAdmin: !!(userInfo && userInfo.userType === 1) })
+  },
+
+  /** 删除单词（仅管理员） */
+  deleteWord() {
+    this.setData({ showMenu: false })
+    const wordId = this.data.wordDetail && this.data.wordDetail.word && this.data.wordDetail.word.id
+    if (!wordId) return
+    wx.showModal({
+      title: '删除单词',
+      content: '确定要删除该单词及其所有关联数据吗？此操作不可恢复。',
+      confirmText: '删除',
+      confirmColor: '#E64340',
+      success: async (res) => {
+        if (!res.confirm) return
+        wx.showLoading({ title: '删除中...', mask: true })
+        try {
+          const result = await wordApi.remove(wordId)
+          wx.hideLoading()
+          if (result.code === 200) {
+            wx.showToast({ title: '删除成功', icon: 'success' })
+            setTimeout(() => wx.navigateBack(), 800)
+          } else {
+            wx.showToast({ title: result.message || '删除失败', icon: 'none' })
+          }
+        } catch (e) {
+          wx.hideLoading()
+          console.error('删除单词失败:', e)
+          wx.showToast({ title: '删除失败', icon: 'none' })
+        }
+      }
     })
   },
 

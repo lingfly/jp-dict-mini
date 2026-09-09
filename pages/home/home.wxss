@@ -77,8 +77,8 @@
 .search-input {
   flex: 1;
   font-size: 14px;
-  line-height: 1.6;
-  min-height: 28px;
+  line-height: 22px;
+  min-height: 44px;
   max-height: 240px;
   padding: 0;
 }
@@ -310,6 +310,10 @@
 
 .popup-menu-item:active {
   background: #F5F7FA;
+}
+
+.popup-menu-item-danger {
+  color: #E64340;
 }
 
 .detail-content {
@@ -826,8 +830,8 @@
 }
 
 .jcaret {
-  width: 18px;
-  height: 18px;
+  width: 32px;
+  height: 32px;
   color: #9AA1AC;
   font-size: 16px;
   display: flex;
@@ -842,7 +846,7 @@
 }
 
 .jcaret-spacer {
-  width: 18px;
+  width: 32px;
   flex-shrink: 0;
 }
 
