@@ -55,6 +55,17 @@ Page({
     this.fetchLearningStatus()
   },
 
+  /** 下拉刷新：重新拉取当天复习队列与今日统计 */
+  async onPullDownRefresh() {
+    try {
+      this._lastFetchAt = Date.now()
+      await this.initReview()
+      await this.fetchLearningStatus()
+    } finally {
+      wx.stopPullDownRefresh()
+    }
+  },
+
   /** 加载释义折叠配置 */
   async loadCollapseConfig() {
     try {

@@ -60,6 +60,19 @@ Page({
     getApp().updateReviewBadge()
   },
 
+  /** 下拉刷新：重新拉取分类、当前词单与词单列表 */
+  async onPullDownRefresh() {
+    try {
+      await Promise.all([
+        this.loadCategories(),
+        this.loadCurrentWordList(),
+        this.loadWordLists()
+      ])
+    } finally {
+      wx.stopPullDownRefresh()
+    }
+  },
+
   /** 判断是否为管理员（userType 缺失时主动拉取当前用户信息） */
   async checkAdmin() {
     const app = getApp()
