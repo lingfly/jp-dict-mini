@@ -24,6 +24,9 @@ const USE_MOCK = false
 // 与前端 ts-fsrs 版本保持一致（package: ts-fsrs v5.4.1）
 const FSRS_VERSION = '5.4.1'
 
+// 后端业务状态码：单词不存在（卡片对应的单词已被删除/移出词单）
+const WORD_NOT_FOUND = 3001
+
 /**
  * 获取今天结束的毫秒时间戳（本地时区 23:59:59.999）
  * 与后端 due-count / due 接口的 endTs 参数保持一致
@@ -172,6 +175,12 @@ async function submitReview(payload) {
       responseTimeMs: payload.responseTimeMs,
       fsrsVersion: FSRS_VERSION
     })
+    // 单词不存在（3001）：卡片对应的单词已被删除/移出词单，后端不落库
+    // 静默返回，由页面直接跳过该卡片并继续下一张（request 层已对该码免弹错误提示）
+    if (res && res.code === WORD_NOT_FOUND) {
+      console.warn('[submitReview] 单词不存在，跳过该卡片:', payload.wordId, res.message)
+      return { code: WORD_NOT_FOUND, message: res.message, data: null }
+    }
     // FsrsReviewResultResponse：duplicated(幂等命中) / conflict(跨设备冲突) / card(库中最新状态)
     // 将库中最新 card（camelCase 平铺）转为 ts-fsrs 卡片结构，供页面在冲突时覆盖本地状态
     if (res && res.code === 200 && res.data) {
@@ -226,6 +235,7 @@ async function getLearningStatus() {
 
 module.exports = {
   USE_MOCK,
+  WORD_NOT_FOUND,
   getDueCards,
   submitReview,
   getLearningStatus

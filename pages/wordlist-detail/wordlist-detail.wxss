@@ -2,83 +2,114 @@
 .detail-page {
   min-height: 100vh;
   background: #F5F7FA;
-  padding: 16px;
-  padding-bottom: 100px;
+  padding: 0 16px 100px;
 }
 
-/* ===== 词单基本信息 ===== */
-.info-section {
-  padding: 20px;
-  margin-bottom: 16px;
-}
-
-.info-header {
+/* ===== 三个栏目：未选 / 已选 / 全部 ===== */
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
-  align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  padding: 10px 0;
+  background: #F5F7FA;
 }
 
-.info-name {
-  font-size: 22px;
-  font-weight: 700;
-  color: #303133;
+.tab {
   flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-/* 展开后完整显示（允许换行） */
-.info-name.expanded {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  word-break: break-all;
-}
-
-.info-category {
-  font-size: 11px;
-  padding: 2px 8px;
-  background: rgba(91, 140, 125, 0.1);
-  color: #5B8C7D;
-  border-radius: 10px;
-  flex-shrink: 0;
-}
-
-.info-desc {
-  font-size: 14px;
-  color: #909399;
-  line-height: 1.6;
-  margin-bottom: 8px;
-  display: block;
-}
-
-.info-meta {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  border-radius: 10px;
+  background: #fff;
+  color: #606266;
+  font-size: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
-.info-count {
-  font-size: 13px;
-  color: #5B8C7D;
-  font-weight: 500;
+.tab.active {
+  background: #5B8C7D;
+  color: #fff;
+  font-weight: 600;
 }
 
-.info-learned {
-  font-size: 13px;
-  color: #909399;
-  font-weight: 500;
+.tab-name {
+  font-size: 14px;
 }
 
-/* ===== 单词列表 ===== */
+.tab-num {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.tab.active .tab-num {
+  opacity: 0.92;
+}
+
+/* ===== 分组分区 ===== */
 .word-section {
   display: flex;
   flex-direction: column;
 }
 
+.sec {
+  margin-bottom: 10px;
+}
+
+.sec-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 2px;
+}
+
+.sec-head.collapsible:active {
+  opacity: 0.6;
+}
+
+.sec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 10px;
+}
+
+.sec-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.sec-count {
+  font-size: 12px;
+  color: #909399;
+}
+
+.sec-chev {
+  margin-left: auto;
+  width: 20px;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1;
+  color: #C0C4CC;
+  transform: rotate(90deg);
+  transition: transform 0.2s;
+}
+
+.sec-chev.up {
+  transform: rotate(-90deg);
+}
+
+.sec-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ===== 加载 / 空状态 ===== */
 .loading-state {
   display: flex;
   justify-content: center;
@@ -98,17 +129,14 @@
   font-size: 14px;
 }
 
-.word-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
+/* ===== 单词条目 ===== */
 .word-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .word-item.selected {
@@ -116,21 +144,52 @@
   border: 1px solid rgba(91, 140, 125, 0.3);
 }
 
+/* 定位到目标单词时的高亮脉冲 */
+.word-item.flash {
+  animation: word-flash 0.8s ease-out 2;
+}
+
+@keyframes word-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(91, 140, 125, 0.6);
+    background: rgba(91, 140, 125, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(91, 140, 125, 0);
+    background: rgba(91, 140, 125, 0.05);
+  }
+}
+
+/* 含选中单词但未展开的分组标题：高亮脉冲提示（不展开分组） */
+.sec-head.flash {
+  border-radius: 8px;
+  animation: sec-flash 0.9s ease-out 2;
+}
+
+@keyframes sec-flash {
+  0% {
+    background: rgba(91, 140, 125, 0.22);
+  }
+  100% {
+    background: rgba(91, 140, 125, 0);
+  }
+}
+
 /* 勾选框 */
 .word-checkbox {
-  margin-right: 10px;
+  margin-right: 8px;
   flex-shrink: 0;
 }
 
 .checkbox-icon {
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
   border-radius: 50%;
-  border: 2px solid #DCDFE6;
+  border: 1.5px solid #DCDFE6;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   color: transparent;
   transition: all 0.15s;
 }
@@ -156,13 +215,13 @@
 }
 
 .word-kanji {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: #303133;
 }
 
 .word-kana {
-  font-size: 12px;
+  font-size: 11px;
   color: #C0C4CC;
 }
 
@@ -173,32 +232,10 @@
   flex-shrink: 0;
 }
 
-.word-meaning {
-  font-size: 13px;
-  color: #909399;
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .word-arrow {
-  font-size: 20px;
+  font-size: 16px;
   color: #C0C4CC;
   font-weight: 300;
-}
-
-/* ===== 加载更多 ===== */
-.load-more {
-  display: flex;
-  justify-content: center;
-  padding: 20px 0;
-  color: #909399;
-  font-size: 13px;
-}
-
-.no-more {
-  color: #C0C4CC;
 }
 
 /* ===== 底部操作栏 ===== */
@@ -254,26 +291,4 @@
 
 .btn-label {
   font-size: 14px;
-}
-
-/* ===== 选择模式确认按钮 ===== */
-.bottom-confirm {
-  display: flex;
-  justify-content: center;
-}
-
-.confirm-btn {
-  width: 100%;
-  height: 48px;
-  background: #5B8C7D;
-  border-radius: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.confirm-text {
-  font-size: 16px;
-  font-weight: 600;
-  color: #fff;
 }

@@ -140,6 +140,16 @@ const wordlistGroupApi = {
     return get('/api/wordlist/group-content', params) // 需要 token
   },
 
+  // 获取词单全量内容（所有分组 + 所有单词，不分页）
+  // 返回 { groups: [{ id, groupName }], words: [{ id, kanji, kana, learningStatus, groupId }] }
+  // sort: kana（默认）/ romaji / addedAt，order: asc / desc
+  getAllContent(wordListId, sort, order) {
+    const params = { wordListId }
+    if (sort) params.sort = sort
+    if (order) params.order = order
+    return get('/api/wordlist/all-content', params) // 需要 token
+  },
+
   // 新建分组（sortOrder 用于升序排序：先创建的排在前面）
   create(wordListId, name, color, sortOrder) {
     return post(`/api/wordlist/groups?wordListId=${encodeURIComponent(wordListId)}`, {

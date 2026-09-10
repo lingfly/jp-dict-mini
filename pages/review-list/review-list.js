@@ -345,6 +345,23 @@ Page({
         log: result.log
       })
 
+      // 2.1 单词不存在（后端 3001：卡片对应单词已被删除/移出词单）
+      //     静默跳过该卡片：移出队列，不参与本地调度（避免短间隔卡被反复插回形成死循环）
+      if (res && res.code === dataSource.WORD_NOT_FOUND) {
+        console.warn('[handleScore] 单词不存在，直接跳过:', item.wordId)
+        this.queue.splice(this.queueIndex, 1)
+        this.updateStats()
+        const hasNextAfterSkip = await this.showCurrentCard()
+        this.updateBadgeLocally()
+        if (!hasNextAfterSkip) {
+          wx.showToast({
+            title: '今日复习完成',
+            icon: 'success'
+          })
+        }
+        return
+      }
+
       // 3. 处理后端返回（幂等/冲突），确定本次生效的卡片状态
       //    - 正常：后端 card 即本地提交的 newCard（仅持久化，不重算）
       //    - conflict：跨设备冲突，本地快照已过期，以库中最新 card 为准

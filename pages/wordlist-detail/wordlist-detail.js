@@ -1,30 +1,59 @@
 // pages/wordlist-detail/wordlist-detail.js
-const { wordlistApi, reviewApi, fsrsApi } = require('../../utils/api')
+// 词单详情：全量展示词单内单词，按分组分区展示，支持「未选 / 已选 / 全部」三个栏目切换
+const { wordlistApi, wordlistGroupApi, reviewApi, fsrsApi } = require('../../utils/api')
+
+// 未分组分区使用的固定 key
+const UNGROUPED_KEY = '__ungrouped__'
+// 分组标识色（/all-content 未返回颜色，按顺序循环取色）
+const GROUP_COLORS = ['#5B8C7D', '#4C8DAE', '#E6A23C', '#8B7CC8', '#D4756B', '#67A86A']
 
 Page({
   data: {
     wordListId: '',
-    wordList: null,
-    words: [],
-    page: 1,
-    size: 20,
-    total: 0,
     loading: false,
-    hasMore: true,
-    learningStatus: null,
+
+    /* 全量原始数据 */
+    groups: [],   // [{ id, name, color }]
+    words: [],    // [{ wordId, kanji, kana, learningStatus, groupId }]
+
+    /* 视图：按分组切分出的分区 */
+    sections: [],
+
+    /* 栏目：unselected 未选 / selected 已选 / all 全部 */
+    activeTab: 'unselected',
+    total: 0,             // 全部单词数
+    learnedCount: 0,      // 已选（已加入学习）
+    unselectedCount: 0,   // 未选
+    learnedPercent: 0,    // 已选百分比
+
+    /* 本次待加入学习的本地勾选 */
     selectedWordIds: [],
     displayLearnedCount: 0,  // 显示用的 n = 接口n + 当前勾选数
+    learningStatus: null,
     submitting: false,
-    nameExpanded: false  // 词单名称是否展开（过长时点击切换完整显示）
+
+    /* 高亮脉冲：可见的选中单词 + 含选中单词但未展开的分组 */
+    flashWordIds: [],
+    flashGroupIds: []
   },
 
   onLoad(options) {
     const wordListId = options.wordListId || ''
-    this.loadedPages = new Set()  // 每次进入页面重置已加载页码
+    this._expanded = {}   // 分组展开状态 { [groupId]: true }，默认收起
     this.setData({ wordListId })
     if (wordListId) {
       this.initAndLoad()
     }
+  },
+
+  onShow() {
+    if (this.data.wordListId) {
+      this.loadLearningStatus()
+    }
+  },
+
+  onUnload() {
+    if (this._flashTimer) clearTimeout(this._flashTimer)
   },
 
   /** 确定排序方式后加载数据：收藏夹按添加时间降序，其他词单按假名升序 */
@@ -34,7 +63,7 @@ Page({
       ? { sort: 'addedAt', order: 'desc' }
       : { sort: 'kana', order: 'asc' }
     this.loadDetail()
-    this.loadWords()
+    this.loadAllContent()
     this.loadLearningStatus()
   },
 
@@ -65,9 +94,15 @@ Page({
     })
   },
 
-  onShow() {
-    if (this.data.wordListId) {
-      this.loadLearningStatus()
+  /** 词单详情仅用于设置导航栏标题（顶部信息栏已移除） */
+  async loadDetail() {
+    try {
+      const res = await wordlistApi.getDetail(this.data.wordListId)
+      if (res.code === 200 && res.data && res.data.name) {
+        wx.setNavigationBarTitle({ title: res.data.name })
+      }
+    } catch (error) {
+      console.error('加载词单详情失败:', error)
     }
   },
 
@@ -75,7 +110,7 @@ Page({
     try {
       const res = await reviewApi.getLearningStatus()
       if (res.code === 200 && res.data) {
-        const baseN = res.data.newWordsLearned || 0
+        const baseN = this.getTodaySelectedCount(res.data)
         this.setData({
           learningStatus: res.data,
           displayLearnedCount: baseN + this.data.selectedWordIds.length
@@ -86,10 +121,120 @@ Page({
     }
   },
 
-  /** 更新显示数量 = 接口返回n + 当前勾选数 */
+  /** 今日已选单词数：优先取接口新增的 todaySelectedCount，兼容旧的 newWordsLearned */
+  getTodaySelectedCount(status) {
+    if (!status) return 0
+    const v = status.todaySelectedCount
+    if (v !== null && v !== undefined) return v
+    return status.newWordsLearned || 0
+  },
+
+  /** 加载词单全量内容（所有分组 + 所有单词，不分页） */
+  async loadAllContent() {
+    this.setData({ loading: true })
+    try {
+      const params = this.sortParams || {}
+      const res = await wordlistGroupApi.getAllContent(this.data.wordListId, params.sort, params.order)
+      if (res.code === 200 && res.data) {
+        const groups = (res.data.groups || []).map((g, i) => ({
+          id: String(g.id),
+          name: g.groupName || g.name || '未命名',
+          color: GROUP_COLORS[i % GROUP_COLORS.length]
+        }))
+        const words = (res.data.words || []).map(w => ({
+          wordId: String(w.id !== undefined && w.id !== null ? w.id : w.wordId),
+          kanji: w.kanji || w.kana || '',
+          kana: w.kana || '',
+          learningStatus: w.learningStatus || null,
+          groupId: w.groupId != null ? String(w.groupId) : null
+        }))
+        const total = words.length
+        const learnedCount = words.filter(w => w.learningStatus === 'learning').length
+        this.setData({
+          groups,
+          words,
+          total,
+          learnedCount,
+          unselectedCount: total - learnedCount,
+          learnedPercent: total > 0 ? Math.round(learnedCount * 100 / total) : 0
+        })
+        this.buildSections()
+      }
+    } catch (error) {
+      console.error('加载词单内容失败:', error)
+      wx.showToast({ title: '加载失败', icon: 'none' })
+    } finally {
+      this.setData({ loading: false })
+    }
+  },
+
+  /** 按当前栏目 + 分组归属切分出展示用的分区列表 */
+  buildSections(cb) {
+    const tab = this.data.activeTab
+    const { groups, words } = this.data
+    const groupIdSet = {}
+    groups.forEach(g => { groupIdSet[g.id] = true })
+
+    const byGroup = {}
+    const ungrouped = []
+    words.forEach(w => {
+      if (tab === 'selected' && w.learningStatus !== 'learning') return
+      if (tab === 'unselected' && w.learningStatus === 'learning') return
+      if (w.groupId && groupIdSet[w.groupId]) {
+        if (!byGroup[w.groupId]) byGroup[w.groupId] = []
+        byGroup[w.groupId].push(w)
+      } else {
+        ungrouped.push(w)
+      }
+    })
+
+    const sections = []
+    groups.forEach(g => {
+      const list = byGroup[g.id] || []
+      if (!list.length) return
+      sections.push({
+        id: g.id,
+        name: g.name,
+        color: g.color,
+        isGroup: true,
+        expanded: !!this._expanded[g.id],
+        count: list.length,
+        words: list
+      })
+    })
+    // 未分组单词直接展示在所有分组下方（不折叠）
+    if (ungrouped.length) {
+      sections.push({
+        id: UNGROUPED_KEY,
+        name: '未分组',
+        color: '#C0C4CC',
+        isGroup: false,
+        expanded: true,
+        count: ungrouped.length,
+        words: ungrouped
+      })
+    }
+    this.setData({ sections }, cb)
+  },
+
+  onTabTap(e) {
+    const tab = e.currentTarget.dataset.tab
+    if (tab === this.data.activeTab) return
+    this.setData({ activeTab: tab })
+    this.buildSections()
+  },
+
+  /** 分组下拉展开 / 收起 */
+  onToggleGroup(e) {
+    const id = e.currentTarget.dataset.id
+    if (id === UNGROUPED_KEY) return
+    this._expanded[id] = !this._expanded[id]
+    this.buildSections()
+  },
+
+  /** 更新显示数量 n = 今日已选（todaySelectedCount） + 本次勾选数 */
   updateDisplayCount() {
-    const status = this.data.learningStatus
-    const baseN = status ? (status.newWordsLearned || 0) : 0
+    const baseN = this.getTodaySelectedCount(this.data.learningStatus)
     this.setData({
       displayLearnedCount: baseN + this.data.selectedWordIds.length
     })
@@ -98,47 +243,207 @@ Page({
   getRemainCount() {
     const status = this.data.learningStatus
     if (!status) return 20
-    return Math.max(0, (status.dailyNewWords || 20) - (status.newWordsLearned || 0))
+    return Math.max(0, (status.dailyNewWords || 20) - this.getTodaySelectedCount(status))
   },
 
-  async loadDetail() {
-    try {
-      const res = await wordlistApi.getDetail(this.data.wordListId)
-      if (res.code === 200 && res.data) {
-        this.setData({ wordList: res.data })
-      }
-    } catch (error) {
-      console.error('加载词单详情失败:', error)
-    }
+  /** 获取本次应选数量：不超上限则按缺口选，超了每次20 */
+  getPickCount() {
+    const remain = this.getRemainCount()
+    return remain <= 0 ? 20 : remain
   },
 
-  async loadWords(isLoadMore = false) {
-    if (this.data.loading) return
-    if (isLoadMore && !this.data.hasMore) return
-    const page = isLoadMore ? this.data.page + 1 : 1
-    if (this.loadedPages.has(page)) {
-      // 该页已通过随机加载过，跳过 API 调用，只需更新 page 和 hasMore
-      this.setData({ page, hasMore: this.data.words.length < this.data.total })
+  /** 从未勾选 + 未在学的单词中取 N 个（顺序），每次重新替换之前的选择 */
+  startSequentialLearn() {
+    const count = this.getPickCount()
+    const picked = this.pickAvailableWords(count, false)
+    if (picked.length === 0) {
+      wx.showToast({ title: '没有更多可选单词', icon: 'none' })
       return
     }
-    this.setData({ loading: true })
-    try {
-      const res = await wordlistApi.getWords(this.data.wordListId, page, this.data.size, this.sortParams.sort, this.sortParams.order)
-      if (res.code === 200 && res.data) {
-        const records = (res.data.records || []).map(w => ({ ...w, wordId: String(w.id || w.wordId) }))
-        const newWords = isLoadMore ? [...this.data.words, ...records] : records
-        this.loadedPages.add(page)
-        this.setData({
-          words: newWords, page, total: res.data.total || 0,
-          hasMore: newWords.length < (res.data.total || 0)
-        })
-      }
-    } catch (error) {
-      console.error('加载单词列表失败:', error)
-      wx.showToast({ title: '加载失败', icon: 'none' })
-    } finally {
-      this.setData({ loading: false })
+    this.setData({ selectedWordIds: picked.map(w => w.wordId) })
+    this.updateDisplayCount()
+    this.revealPicked(picked)
+  },
+
+  /** 从未勾选 + 未在学的单词中取 N 个（随机），每次重新随机替换之前的选择 */
+  startRandomLearn() {
+    const count = this.getPickCount()
+    const picked = this.pickAvailableWords(count, true)
+    if (picked.length === 0) {
+      wx.showToast({ title: '没有更多可选单词', icon: 'none' })
+      return
     }
+    this.setData({ selectedWordIds: picked.map(w => w.wordId) })
+    this.updateDisplayCount()
+    this.revealPicked(picked)
+  },
+
+  /**
+   * 从「未勾选且未在学」的全量单词中取 N 个
+   * - random=false：从最前面的分组开始，按分组顺序依次取词；前面分组若已全部选完则自动
+   *                 跳到下一个分组，最后取未分组单词（组内保持当前排序）
+   * - random=true ：按分组分桶（未分组单独一桶），桶内先随机打乱，再跨桶轮流取词，
+   *                 保证选出的单词在各分组间分布更平均（避免集中在某个分组）
+   * @param {Number} count 取词数量
+   * @param {Boolean} random 是否随机
+   */
+  pickAvailableWords(count, random) {
+    const selectedSet = new Set(this.data.selectedWordIds.map(String))
+    const available = this.data.words.filter(w =>
+      !selectedSet.has(String(w.wordId)) && w.learningStatus !== 'learning')
+
+    if (!random) {
+      return this.sortByGroupOrder(available).slice(0, count)
+    }
+
+    // 按分组分桶：groupId 为空归入「未分组」桶
+    const buckets = {}
+    const order = []
+    available.forEach(w => {
+      const key = w.groupId ? String(w.groupId) : UNGROUPED_KEY
+      if (!buckets[key]) {
+        buckets[key] = []
+        order.push(key)
+      }
+      buckets[key].push(w)
+    })
+
+    // 桶顺序随机 + 桶内随机打乱
+    const keys = this.shuffleArray(order)
+    keys.forEach(k => { buckets[k] = this.shuffleArray(buckets[k]) })
+
+    // 跨桶轮流取词，直到凑够 count 或全部取完
+    const picked = []
+    let round = 0
+    while (picked.length < count) {
+      let added = false
+      for (let i = 0; i < keys.length && picked.length < count; i++) {
+        const bucket = buckets[keys[i]]
+        if (round < bucket.length) {
+          picked.push(bucket[round])
+          added = true
+        }
+      }
+      if (!added) break
+      round++
+    }
+    return picked
+  },
+
+  /**
+   * 按分组顺序重排单词：分组按其在词单中的顺序排列，未分组单词排在最后；
+   * 组内保持传入时的相对顺序。分组已无可用单词时会自然被跳过。
+   */
+  sortByGroupOrder(list) {
+    const groupIdSet = {}
+    const byGroup = {}
+    const ungrouped = []
+    this.data.groups.forEach(g => { groupIdSet[g.id] = true })
+
+    list.forEach(w => {
+      if (w.groupId && groupIdSet[w.groupId]) {
+        if (!byGroup[w.groupId]) byGroup[w.groupId] = []
+        byGroup[w.groupId].push(w)
+      } else {
+        ungrouped.push(w)
+      }
+    })
+
+    const ordered = []
+    this.data.groups.forEach(g => {
+      const arr = byGroup[g.id]
+      if (arr && arr.length) ordered.push(...arr)
+    })
+    ordered.push(...ungrouped)
+    return ordered
+  },
+
+  /**
+   * 选词后的高亮与定位：
+   * - 只展开「列表中最靠前的被选中单词」所在的分组（其余分组保持原状），并滚动定位到该单词
+   * - 其余被选中单词：所在分组已展开 → 高亮对应单词；分组未展开 → 只脉冲高亮分组标题
+   */
+  revealPicked(picked) {
+    const groupIdSet = {}
+    this.data.groups.forEach(g => { groupIdSet[g.id] = true })
+
+    // 定位目标：渲染顺序最靠前的被选中单词；仅展开它所在的分组
+    const first = this.firstInDisplayOrder(picked)
+    const firstKey = (first.groupId && groupIdSet[first.groupId]) ? first.groupId : UNGROUPED_KEY
+    if (firstKey !== UNGROUPED_KEY) this._expanded[firstKey] = true
+
+    // 被选中的都是「未选」单词，若当前停留在「已选」栏目则切回「未选」以便看到选中项
+    if (this.data.activeTab === 'selected') {
+      this.setData({ activeTab: 'unselected' })
+    }
+
+    this.buildSections(() => {
+      // 已展开的分区（未分组恒为展开）
+      const expandedMap = {}
+      expandedMap[UNGROUPED_KEY] = true
+      this.data.groups.forEach(g => { expandedMap[g.id] = !!this._expanded[g.id] })
+
+      const flashWordIds = []
+      const flashGroupIds = []
+      const seenGroup = {}
+      picked.forEach(w => {
+        const key = (w.groupId && groupIdSet[w.groupId]) ? w.groupId : UNGROUPED_KEY
+        if (expandedMap[key]) {
+          // 分组已展开：高亮对应单词
+          flashWordIds.push(String(w.wordId))
+        } else if (!seenGroup[key]) {
+          // 分组未展开：不展开，只高亮分组标题
+          seenGroup[key] = true
+          flashGroupIds.push(key)
+        }
+      })
+
+      this.flash(flashWordIds, flashGroupIds)
+      setTimeout(() => this.scrollToWord(String(first.wordId)), 50)
+    })
+  },
+
+  /** 高亮脉冲：可见的选中单词 + 含选中单词但未展开的分组标题 */
+  flash(flashWordIds, flashGroupIds) {
+    if (this._flashTimer) clearTimeout(this._flashTimer)
+    // 先清空再设置，保证重复选中同一目标时动画能重新播放
+    this.setData({ flashWordIds: [], flashGroupIds: [] }, () => {
+      this.setData({
+        flashWordIds: flashWordIds || [],
+        flashGroupIds: flashGroupIds || []
+      })
+    })
+    this._flashTimer = setTimeout(() => {
+      this._flashTimer = null
+      this.setData({ flashWordIds: [], flashGroupIds: [] })
+    }, 1800)
+  },
+
+  /** 取渲染顺序最靠前的单词：先按分组顺序，再按单词在词单内的顺序 */
+  firstInDisplayOrder(list) {
+    if (!list || !list.length) return null
+    const groupRank = {}
+    this.data.groups.forEach((g, i) => { groupRank[g.id] = i })
+    const wordIndex = {}
+    this.data.words.forEach((w, i) => { wordIndex[String(w.wordId)] = i })
+    const ungroupedRank = this.data.groups.length
+
+    const rankOf = (w) => {
+      const g = (w.groupId && groupRank[w.groupId] !== undefined) ? groupRank[w.groupId] : ungroupedRank
+      const i = wordIndex[String(w.wordId)] || 0
+      return g * 100000 + i
+    }
+
+    let best = list[0]
+    let bestRank = rankOf(best)
+    for (let i = 1; i < list.length; i++) {
+      const r = rankOf(list[i])
+      if (r < bestRank) {
+        best = list[i]
+        bestRank = r
+      }
+    }
+    return best
   },
 
   shuffleArray(arr) {
@@ -150,193 +455,47 @@ Page({
     return s
   },
 
-  /** 获取本次应选数量：不超上限则按缺口选，超了每次20 */
-  getPickCount() {
-    const remain = this.getRemainCount()
-    return remain <= 0 ? 20 : remain
-  },
-
-  /** 从未勾选+未在学的单词中取 N 个（顺序），每次重新替换之前的选择 */
-  async startSequentialLearn() {
-    const count = this.getPickCount()
-    const { newIds, firstPickIndex } = await this.pickAvailableWords(count, false)
-    if (newIds.length === 0) {
-      wx.showToast({ title: '没有更多可选单词', icon: 'none' })
-      return
-    }
-    this.setData({ selectedWordIds: newIds })
-    this.updateDisplayCount()
-    this.scrollToWord(firstPickIndex)
-  },
-
-  /** 从未勾选+未在学的单词中取 N 个（随机），每次重新随机替换之前的选择 */
-  async startRandomLearn() {
-    const count = this.getPickCount()
-    wx.showLoading({ title: '加载中...' })
-    const { newIds, firstPickIndex } = await this.pickAvailableWords(count, true)
-    wx.hideLoading()
-    if (newIds.length === 0) {
-      wx.showToast({ title: '没有更多可选单词', icon: 'none' })
-      return
-    }
-    this.setData({ selectedWordIds: newIds })
-    this.updateDisplayCount()
-    this.scrollToWord(firstPickIndex)
-  },
-
-  /** 从未勾选+未在学的单词中凑 count 个，不够则加载更多页
-   *  random=true 时：随机加载 n>3 页（非顺序），再从全局池中随机选
-   *  random=false 时：按顺序逐页加载
-   *  返回 { newIds, firstPickIndex } */
-  async pickAvailableWords(count, random) {
-    const selectedSet = new Set(this.data.selectedWordIds)
-    const isAvailable = w => !selectedSet.has(String(w.wordId)) && w.learningStatus !== 'learning'
-
-    let words = [...this.data.words]
-    let available = words.filter(isAvailable)
-
-    if (random) {
-      // ========== 随机模式：随机加载多页 ==========
-      const totalPages = Math.ceil(this.data.total / this.data.size)
-      if (totalPages <= 1) {
-        // 只有一页，直接用现有数据随机选
-        const picked = this.shuffleArray(available).slice(0, count)
-        const newIds = picked.map(w => String(w.wordId))
-        let firstPickIndex = newIds.length > 0 ? words.findIndex(w => String(w.wordId) === newIds[0]) : -1
-        return { newIds, firstPickIndex }
-      }
-
-      // 需要加载的页数：至少 4 页，但不超过总页数；至少覆盖 count 个单词
-      const MIN_RANDOM_PAGES = 4
-      const pagesNeeded = Math.max(MIN_RANDOM_PAGES, Math.ceil(count / this.data.size))
-      const pagesToLoad = Math.min(pagesNeeded, totalPages)
-
-      // 生成候选页码：1..totalPages 中排除已加载的页，随机打乱后取前 pagesToLoad 个
-      const unloadedPages = []
-      for (let i = 1; i <= totalPages; i++) {
-        if (!this.loadedPages.has(i)) unloadedPages.push(i)
-      }
-      const shuffledPages = this.shuffleArray(unloadedPages)
-      const targetPages = shuffledPages.slice(0, Math.min(pagesToLoad, unloadedPages.length))
-
-      if (targetPages.length > 0) {
-        // 并行加载所有目标页
-        const pageResults = await Promise.all(
-          targetPages.map(async (p) => {
-            try {
-              const res = await wordlistApi.getWords(this.data.wordListId, p, this.data.size, this.sortParams.sort, this.sortParams.order)
-              if (res.code === 200 && res.data) {
-                const records = (res.data.records || []).map(w => ({ ...w, wordId: String(w.id || w.wordId) }))
-                return { page: p, records }
-              }
-            } catch (e) { /* skip failed page */ }
-            return null
-          })
-        )
-
-        // 将加载结果插入 words（按页码排序），并标记已加载
-        const pageMap = {} // page -> records
-        for (const pr of pageResults) {
-          if (pr && pr.records.length > 0) {
-            pageMap[pr.page] = pr.records
-            this.loadedPages.add(pr.page)
-          }
-        }
-
-        // 重建 words：按页码顺序合并已有数据和新增页数据
-        words = this.mergeWordsByPage(words, pageMap)
-        available = words.filter(isAvailable)
-      }
-    } else {
-      // ========== 顺序模式：逐页加载直到凑够 ==========
-      let p = this.data.page
-      let hasMore = this.data.hasMore
-
-      while (available.length < count && hasMore) {
-        p++
-        if (this.loadedPages.has(p)) {
-          // 已加载过，直接用缓存数据
-          hasMore = this.data.words.length < this.data.total
-          available = words.filter(isAvailable)
-          continue
-        }
-        try {
-          const res = await wordlistApi.getWords(this.data.wordListId, p, this.data.size, this.sortParams.sort, this.sortParams.order)
-          if (res.code === 200 && res.data) {
-            const records = (res.data.records || []).map(w => ({ ...w, wordId: String(w.id || w.wordId) }))
-            words = [...words, ...records]
-            this.loadedPages.add(p)
-            hasMore = words.length < (res.data.total || 0)
-            available = words.filter(isAvailable)
-          } else { break }
-        } catch (e) { break }
-      }
-    }
-
-    // 更新 words 到 data（如果 words 有变化）
-    if (words.length > this.data.words.length) {
-      this.setData({ words })
-    }
-
-    const picked = random ? this.shuffleArray(available).slice(0, count) : available.slice(0, count)
-    const newIds = picked.map(w => String(w.wordId))
-
-    // 找到第一个被选中的在 words 中的索引
-    let firstPickIndex = -1
-    if (newIds.length > 0) {
-      firstPickIndex = words.findIndex(w => String(w.wordId) === newIds[0])
-    }
-
-    return { newIds, firstPickIndex }
-  },
-
   /**
-   * 将随机加载的页数据按页码合并到现有 words 数组中
-   * existingWords: 当前已顺序加载的单词列表（按页码连续）
-   * pageMap: { pageNum: [records] } 新加载的页数据
-   * 返回按页码全局排序的新数组
+   * 滚动定位到指定单词，使其显示在吸顶栏目下方
+   * 随机选词会同时展开多个分组：页面高度变化大、节点渲染慢，
+   * 因此取不到位置时重试，取到位置滚动后再校正几次，直到位置稳定
+   * @param {String} wordId  目标单词 id
+   * @param {Number} attempt 元素未渲染时的重试次数
+   * @param {Number} correct 滚动后的校正次数
    */
-  mergeWordsByPage(existingWords, pageMap) {
-    const size = this.data.size
-
-    // 如果没有新增页，直接返回
-    const newPageNums = Object.keys(pageMap).map(Number)
-    if (newPageNums.length === 0) return existingWords
-
-    // 按页码从大到小插入，避免索引偏移
-    const result = [...existingWords]
-    const sortedNewPages = newPageNums.sort((a, b) => b - a) // 降序
-
-    for (const pageNum of sortedNewPages) {
-      const records = pageMap[pageNum]
-      // 该页在全局列表中的起始索引
-      const insertIndex = (pageNum - 1) * size
-      if (insertIndex >= result.length) {
-        result.push(...records)
-      } else {
-        result.splice(insertIndex, 0, ...records)
-      }
-    }
-
-    return result
-  },
-
-  /** 滚动到指定单词位置 */
-  scrollToWord(index) {
-    if (index < 0) return
-    // 使用 createSelectorQuery 获取元素位置并滚动
+  scrollToWord(wordId, attempt = 0, correct = 0) {
     const query = wx.createSelectorQuery()
-    query.selectAll('.word-item').boundingClientRect()
+    query.select('#word-' + wordId).boundingClientRect()
+    query.select('.tabs').boundingClientRect()
     query.selectViewport().scrollOffset()
     query.exec((res) => {
-      if (!res || !res[0] || !res[1]) return
-      const items = res[0]
-      const scrollTop = res[1].scrollTop
-      if (index < items.length) {
+      const rect = res && res[0]
+      const tabsRect = res && res[1]
+      const viewport = res && res[2]
+
+      // 目标节点还没渲染出来（分组刚展开），稍后重试
+      if (!rect || !viewport) {
+        if (attempt < 10) {
+          setTimeout(() => this.scrollToWord(wordId, attempt + 1, correct), 100)
+        }
+        return
+      }
+
+      // 吸顶栏目高度，避免目标被栏目遮挡
+      const offset = (tabsRect && tabsRect.height ? tabsRect.height : 56) + 8
+      const current = viewport.scrollTop
+      const target = Math.max(0, current + rect.top - offset)
+      // 首次平滑滚动，后续校正直接跳转，避免画面抖动
+      if (Math.abs(target - current) >= 2) {
         wx.pageScrollTo({
-          scrollTop: scrollTop + items[index].top - items[0].top,
-          duration: 300
+          scrollTop: target,
+          duration: correct === 0 ? 260 : 0
         })
+      }
+
+      // 其余分组可能还在展开、页面高度仍在变化，再校正几次
+      if (correct < 3) {
+        setTimeout(() => this.scrollToWord(wordId, 0, correct + 1), 240)
       }
     })
   },
@@ -352,11 +511,6 @@ Page({
 
   goWordDetail(e) {
     wx.navigateTo({ url: `/pages/word-detail/word-detail?wordId=${e.currentTarget.dataset.wordId}` })
-  },
-
-  /** 切换词单名称展开/收起（过长时点击查看全称） */
-  toggleNameExpand() {
-    this.setData({ nameExpanded: !this.data.nameExpanded })
   },
 
   onCheckboxTap(e) {
@@ -401,11 +555,10 @@ Page({
           icon: 'none'
         })
         // 刷新页面数据
-        this.loadedPages = new Set()
-        this.setData({ selectedWordIds: [], page: 1, words: [] })
+        this.setData({ selectedWordIds: [] })
         await this.loadLearningStatus()
         this.loadDetail()
-        this.loadWords()
+        this.loadAllContent()
       } else {
         wx.showToast({ title: res.message || '提交失败', icon: 'none' })
       }
@@ -420,10 +573,7 @@ Page({
 
   onPullDownRefresh() {
     this.loadDetail()
-    this.loadWords().then(() => wx.stopPullDownRefresh())
-  },
-
-  onReachBottom() {
-    this.loadWords(true)
+    this.loadLearningStatus()
+    this.loadAllContent().then(() => wx.stopPullDownRefresh())
   }
 })
