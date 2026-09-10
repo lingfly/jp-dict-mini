@@ -1,5 +1,5 @@
 // pages/wordlist/wordlist.js
-const { wordlistApi } = require('../../utils/api')
+const { wordlistApi, authApi } = require('../../utils/api')
 const { createFabDrag } = require('../../utils/fabDrag')
 
 Page({
@@ -24,7 +24,8 @@ Page({
     categoryLabels: [],      // 分类标签列表（用于 picker 展示）
     createCategoryIndex: 0,  // 选中的分类索引
     fabLeft: null,           // 悬浮按钮位置（px）
-    fabTop: null
+    fabTop: null,
+    isAdmin: false           // 是否管理员（可编辑/分组管理系统预设词单）
   },
 
   onLoad() {
@@ -53,9 +54,32 @@ Page({
   onFabTouchEnd(e) { this._fabDrag.touchEnd(e) },
 
   onShow() {
+    this.checkAdmin()
     this.loadCurrentWordList()
     // 退出词单详情页后回到 tabBar 页面，刷新复习角标（加词后角标在此可靠更新）
     getApp().updateReviewBadge()
+  },
+
+  /** 判断是否为管理员（userType 缺失时主动拉取当前用户信息） */
+  async checkAdmin() {
+    const app = getApp()
+    let userInfo = app.globalData.userInfo || wx.getStorageSync('userInfo')
+    if (!userInfo || userInfo.userType == null) {
+      try {
+        const res = await authApi.getCurrentUser()
+        if (res.code === 200 && res.data) {
+          userInfo = res.data
+          app.globalData.userInfo = userInfo
+          wx.setStorageSync('userInfo', userInfo)
+        }
+      } catch (e) {
+        console.error('获取用户信息失败:', e)
+      }
+    }
+    const isAdmin = !!(userInfo && userInfo.userType === 1)
+    if (this.data.isAdmin !== isAdmin) {
+      this.setData({ isAdmin })
+    }
   },
 
   /** 加载正在学习的词单（通过 /current 接口） */
@@ -200,15 +224,17 @@ Page({
       && String(this.data.currentWordList.id) === String(id)
     const isMine = !!wordList.isMine
     const isDefault = !!wordList.isDefault
+    // 管理员可对非本人创建的系统预设词单执行"分组管理/编辑"
+    const canManage = (isMine || this.data.isAdmin) && !isDefault
     let itemCount
     if (isCurrent) {
-      if (!isMine) itemCount = 2          // 收藏 / 取消学习
-      else if (!isDefault) itemCount = 4  // 分组管理 / 编辑 / 删除 / 取消学习
-      else itemCount = 1                  // 取消学习
+      if (!isMine) itemCount = canManage ? 4 : 2  // [分组管理 / 编辑] / 收藏 / 取消学习
+      else if (!isDefault) itemCount = 4          // 分组管理 / 编辑 / 删除 / 取消学习
+      else itemCount = 1                          // 取消学习
     } else {
-      if (!isMine) itemCount = 2          // 收藏 / 设为当前学习词单
-      else if (!isDefault) itemCount = 4  // 分组管理 / 编辑 / 删除 / 设为当前学习词单
-      else itemCount = 1                  // 设为当前学习词单
+      if (!isMine) itemCount = canManage ? 4 : 2  // [分组管理 / 编辑] / 收藏 / 设为当前学习词单
+      else if (!isDefault) itemCount = 4          // 分组管理 / 编辑 / 删除 / 设为当前学习词单
+      else itemCount = 1                          // 设为当前学习词单
     }
 
     const ITEM_HEIGHT = 43   // 单项高度（12+12 padding + 行高）
@@ -323,10 +349,14 @@ Page({
   /** 打开编辑弹窗（复用创建弹窗，预填词单数据） */
   openEditDialog({ id, wordList }) {
     const info = wordList || {}
-    // 计算分类索引
+    // 计算分类索引（优先按 code 匹配，其次按分类名匹配，兼容非本人词单缺少 category 的情况）
     let categoryIndex = 0
+    const cats = this.data.categories || []
     if (info.category) {
-      const idx = this.data.categories.findIndex(c => c.code === info.category)
+      const idx = cats.findIndex(c => c.code === info.category)
+      if (idx > -1) categoryIndex = idx
+    } else if (info.categoryLabel) {
+      const idx = cats.findIndex(c => c.label === info.categoryLabel)
       if (idx > -1) categoryIndex = idx
     }
     this.setData({
