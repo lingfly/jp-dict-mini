@@ -541,9 +541,9 @@ const correctionApi = {
     return formPost(`/api/correction/${correctionId}/approve`, data)
   },
 
-  // 驳回纠错
+  // 驳回纠错（后端 reason 为 @RequestParam 且必填，需放在 query 上）
   reject(correctionId, reason) {
-    return post(`/api/correction/${correctionId}/reject`, { reason })
+    return request(`/api/correction/${correctionId}/reject?reason=${encodeURIComponent(reason || '')}`, 'POST', {})
   }
 }
 

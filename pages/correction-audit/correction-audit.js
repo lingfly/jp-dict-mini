@@ -1,5 +1,18 @@
 // pages/correction-audit/correction-audit.js
 const { correctionApi } = require('../../utils/api')
+const accentUtil = require('../../utils/accent')
+
+/** 补充音调展示字段（后端 accent 为数组，需转文本并判断是否变更） */
+function decorateItem(item) {
+  if (!item) return item
+  const hasCorrection = item.correctionAccent != null
+  return {
+    ...item,
+    wordAccentText: accentUtil.toText(item.wordAccent),
+    correctionAccentText: accentUtil.toText(hasCorrection ? item.correctionAccent : item.wordAccent),
+    accentChanged: hasCorrection && !accentUtil.equals(item.correctionAccent, item.wordAccent)
+  }
+}
 
 Page({
   data: {
@@ -23,7 +36,7 @@ Page({
     try {
       const res = await correctionApi.listPending()
       if (res.code === 200) {
-        this.setData({ list: res.data || [] })
+        this.setData({ list: (res.data || []).map(decorateItem) })
       } else {
         wx.showToast({ title: res.message || '加载失败', icon: 'none' })
       }

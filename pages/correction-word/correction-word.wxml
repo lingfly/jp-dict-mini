@@ -17,7 +17,9 @@
     </view>
     <view class="form-item">
       <text class="form-label">音调</text>
-      <input class="form-input" value="{{wordForm.accent}}" data-field="accent" bindinput="onWordInput" type="number" placeholder="音调数字，如 0、1" />
+      <input class="form-input {{accentError ? 'has-error' : ''}}" value="{{wordForm.accent}}" data-field="accent" bindinput="onWordInput" bindblur="onAccentBlur" placeholder="如 0,2 或 0、2" />
+      <text wx:if="{{accentError}}" class="form-error">{{accentError}}</text>
+      <text wx:else class="form-hint">多个音调可用半角逗号「,」、顿号「、」、全角逗号「，」或空格分隔</text>
     </view>
     <view class="form-item">
       <text class="form-label">词性</text>

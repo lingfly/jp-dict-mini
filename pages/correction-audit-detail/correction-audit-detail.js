@@ -1,5 +1,6 @@
 // pages/correction-audit-detail/correction-audit-detail.js
 const { correctionApi } = require('../../utils/api')
+const accentUtil = require('../../utils/accent')
 
 Page({
   data: {
@@ -13,13 +14,15 @@ Page({
       wordType: '',
       remark: ''
     },
+    // 音调校验提示
+    editAccentError: '',
     submitting: false
   },
 
   onLoad(options) {
     if (options.data) {
       try {
-        const item = JSON.parse(decodeURIComponent(options.data))
+        const item = this.decorateItem(JSON.parse(decodeURIComponent(options.data)))
         this.setData({ item })
         this.initEditForm(item)
       } catch (e) {
@@ -29,13 +32,25 @@ Page({
     }
   },
 
+  /** 补充音调展示字段（后端 accent 为数组，需转文本并判断是否变更） */
+  decorateItem(item) {
+    if (!item) return item
+    const hasCorrection = item.correctionAccent != null
+    return {
+      ...item,
+      wordAccentText: accentUtil.toText(item.wordAccent),
+      correctionAccentText: accentUtil.toText(hasCorrection ? item.correctionAccent : item.wordAccent),
+      accentChanged: hasCorrection && !accentUtil.equals(item.correctionAccent, item.wordAccent)
+    }
+  },
+
   /** 初始化编辑表单 */
   initEditForm(item) {
     this.setData({
       editForm: {
         kanji: item.correctionKanji || item.wordKanji || '',
         kana: item.correctionKana || item.wordKana || '',
-        accent: item.correctionAccent != null ? String(item.correctionAccent) : (item.wordAccent != null ? String(item.wordAccent) : ''),
+        accent: accentUtil.toText(item.correctionAccent != null ? item.correctionAccent : item.wordAccent),
         wordType: item.correctionWordType || item.wordWordType || '',
         remark: item.remark || ''
       }
@@ -47,10 +62,24 @@ Page({
     this.setData({ showEdit: !this.data.showEdit })
   },
 
-  /** 编辑表单输入 */
+  /** 编辑表单输入（音调实时校验） */
   onEditInput(e) {
     const field = e.currentTarget.dataset.field
-    this.setData({ [`editForm.${field}`]: e.detail.value })
+    const value = e.detail.value
+    const patch = { [`editForm.${field}`]: value }
+    if (field === 'accent') {
+      patch.editAccentError = accentUtil.validate(value).message
+    }
+    this.setData(patch)
+  },
+
+  /** 音调输入失焦：不合规时提醒 */
+  onEditAccentBlur(e) {
+    const { ok, message } = accentUtil.validate(e.detail.value)
+    this.setData({ editAccentError: ok ? '' : message })
+    if (!ok) {
+      wx.showToast({ title: message, icon: 'none', duration: 3000 })
+    }
   },
 
   /** 审核通过 */
@@ -58,6 +87,12 @@ Page({
     const { item, editForm } = this.data
     if (!item) return
     if (this.data.submitting) return
+    const accentCheck = accentUtil.validate(editForm.accent)
+    if (!accentCheck.ok) {
+      this.setData({ editAccentError: accentCheck.message })
+      wx.showToast({ title: accentCheck.message, icon: 'none', duration: 3000 })
+      return
+    }
 
     this.setData({ submitting: true })
     wx.showLoading({ title: '提交中...', mask: true })
@@ -65,7 +100,7 @@ Page({
       const data = {
         kanji: editForm.kanji.trim() || undefined,
         kana: editForm.kana.trim() || undefined,
-        accent: editForm.accent ? parseInt(editForm.accent) : undefined,
+        accent: accentUtil.toParam(accentCheck.list),
         wordType: editForm.wordType || undefined,
         remark: editForm.remark || undefined
       }
@@ -87,7 +122,7 @@ Page({
     }
   },
 
-  /** 拒绝 */
+  /** 拒绝（后端要求驳回原因非空） */
   reject() {
     const { item } = this.data
     if (!item) return
@@ -95,13 +130,19 @@ Page({
 
     wx.showModal({
       title: '驳回纠错',
-      content: '确认驳回此纠错？',
+      editable: true,
+      placeholderText: '请输入驳回原因',
       success: async (modalRes) => {
         if (!modalRes.confirm) return
+        const reason = (modalRes.content || '').trim()
+        if (!reason) {
+          wx.showToast({ title: '请填写驳回原因', icon: 'none' })
+          return
+        }
         this.setData({ submitting: true })
         wx.showLoading({ title: '处理中...', mask: true })
         try {
-          const res = await correctionApi.reject(item.id, '')
+          const res = await correctionApi.reject(item.id, reason)
           wx.hideLoading()
           if (res.code === 200) {
             wx.showToast({ title: '已驳回', icon: 'success' })

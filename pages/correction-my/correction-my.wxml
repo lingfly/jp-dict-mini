@@ -40,12 +40,12 @@
           <text class="status-tag status-{{item.status}}">{{item.status === 'pending' ? '待处理' : item.status === 'approved' ? '已采纳' : '已拒绝'}}</text>
         </view>
 
-        <view wx:if="{{item.correctionKanji || item.correctionKana || item.correctionAccent != null || item.correctionWordType}}" class="correction-row">
+        <view wx:if="{{item.correctionKanji || item.correctionKana || item.correctionAccentText || item.correctionWordType}}" class="correction-row">
           <text class="correction-label">纠错内容</text>
           <view class="correction-tags">
             <text wx:if="{{item.correctionKanji && item.correctionKanji !== item.wordKanji}}" class="change-tag">汉字: {{item.correctionKanji}}</text>
             <text wx:if="{{item.correctionKana && item.correctionKana !== item.wordKana}}" class="change-tag">假名: {{item.correctionKana}}</text>
-            <text wx:if="{{item.correctionAccent != null && item.correctionAccent !== item.wordAccent}}" class="change-tag">音调: {{item.correctionAccent}}</text>
+            <text wx:if="{{item.accentChanged}}" class="change-tag">音调: {{item.correctionAccentText}}</text>
             <text wx:if="{{item.correctionWordType && item.correctionWordType !== item.wordWordType}}" class="change-tag">词性: {{item.correctionWordTypeCn}}</text>
           </view>
         </view>

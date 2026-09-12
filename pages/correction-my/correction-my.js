@@ -1,5 +1,6 @@
 // pages/correction-my/correction-my.js
 const { correctionApi } = require('../../utils/api')
+const accentUtil = require('../../utils/accent')
 
 // 词性 value → 中文 label 映射
 const WORD_TYPE_MAP = {
@@ -52,12 +53,16 @@ function translateWordType(typeStr) {
     .join('、')
 }
 
-/** 为单词纠错列表项补充中文词性字段 */
+/** 为单词纠错列表项补充中文词性字段与音调展示字段 */
 function formatWordItem(item) {
+  const hasCorrection = item.correctionAccent != null
   return {
     ...item,
     wordWordTypeCn: translateWordType(item.wordWordType),
-    correctionWordTypeCn: translateWordType(item.correctionWordType)
+    correctionWordTypeCn: translateWordType(item.correctionWordType),
+    wordAccentText: accentUtil.toText(item.wordAccent),
+    correctionAccentText: accentUtil.toText(hasCorrection ? item.correctionAccent : item.wordAccent),
+    accentChanged: hasCorrection && !accentUtil.equals(item.correctionAccent, item.wordAccent)
   }
 }
 

@@ -24,7 +24,7 @@ const DEMO_WORDS = [
     id: 101,
     kanji: '桜',
     kana: 'さくら',
-    accent: 0,
+    accent: [0],
     jlptLevel: 'N3',
     wordType: '名词',
     definitions: [
@@ -44,7 +44,7 @@ const DEMO_WORDS = [
     id: 102,
     kanji: '綺麗',
     kana: 'きれい',
-    accent: 1,
+    accent: [1],
     jlptLevel: 'N4',
     wordType: '形容动词',
     definitions: [
@@ -64,7 +64,7 @@ const DEMO_WORDS = [
     id: 103,
     kanji: '頑張る',
     kana: 'がんばる',
-    accent: 3,
+    accent: [3],
     jlptLevel: 'N4',
     wordType: '动词',
     definitions: [
@@ -84,7 +84,7 @@ const DEMO_WORDS = [
     id: 104,
     kanji: '図書館',
     kana: 'としょかん',
-    accent: 3,
+    accent: [3],
     jlptLevel: 'N4',
     wordType: '名词',
     definitions: [
@@ -104,7 +104,7 @@ const DEMO_WORDS = [
     id: 105,
     kanji: '美味しい',
     kana: 'おいしい',
-    accent: 0,
+    accent: [0],
     jlptLevel: 'N5',
     wordType: '形容词',
     definitions: [
@@ -124,7 +124,7 @@ const DEMO_WORDS = [
     id: 106,
     kanji: '手紙',
     kana: 'てがみ',
-    accent: 0,
+    accent: [0],
     jlptLevel: 'N4',
     wordType: '名词',
     definitions: [
@@ -144,7 +144,7 @@ const DEMO_WORDS = [
     id: 107,
     kanji: '約束',
     kana: 'やくそく',
-    accent: 0,
+    accent: [0],
     jlptLevel: 'N3',
     wordType: '名词',
     definitions: [
@@ -164,7 +164,7 @@ const DEMO_WORDS = [
     id: 108,
     kanji: '経験',
     kana: 'けいけん',
-    accent: 0,
+    accent: [0],
     jlptLevel: 'N3',
     wordType: '名词',
     definitions: [
@@ -184,7 +184,7 @@ const DEMO_WORDS = [
     id: 109,
     kanji: '大切',
     kana: 'たいせつ',
-    accent: 0,
+    accent: [0],
     jlptLevel: 'N3',
     wordType: '形容动词',
     definitions: [
@@ -204,7 +204,7 @@ const DEMO_WORDS = [
     id: 110,
     kanji: '忘れる',
     kana: 'わすれる',
-    accent: 0,
+    accent: [0],
     jlptLevel: 'N4',
     wordType: '动词',
     definitions: [

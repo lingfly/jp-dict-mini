@@ -40,9 +40,9 @@
     <!-- 音调 -->
     <view class="compare-row">
       <text class="compare-label">音调</text>
-      <text class="compare-original">{{item.wordAccent}}</text>
+      <text class="compare-original">{{item.wordAccentText}}</text>
       <text class="compare-arrow">→</text>
-      <text class="compare-correction {{item.correctionAccent !== item.wordAccent ? 'changed' : ''}}">{{item.correctionAccent != null ? item.correctionAccent : item.wordAccent}}</text>
+      <text class="compare-correction {{item.accentChanged ? 'changed' : ''}}">{{item.correctionAccentText}}</text>
     </view>
 
     <!-- 词性 -->

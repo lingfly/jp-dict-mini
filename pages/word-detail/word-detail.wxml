@@ -35,7 +35,7 @@
         <view class="word-main-row">
           <view class="word-title-wrap">
             <text selectable="{{true}}" class="word-main jp-text">{{wordDetail.word.kanji || wordDetail.word.kana}}</text>
-            <text wx:if="{{wordDetail.word.accent !== null && wordDetail.word.accent !== undefined}}" class="word-accent">{{helper.toCircle(wordDetail.word.accent)}}</text>
+            <text wx:if="{{wordDetail.word.accent !== null && wordDetail.word.accent !== undefined}}" class="word-accent">{{helper.toCircleList(wordDetail.word.accent)}}</text>
           </view>
           <view wx:if="{{wordDetail.wordAudios.length > 0}}" class="audio-btn" data-audio-id="{{wordDetail.wordAudios[0].audioId}}" bindtap="playAudio">
             🔊

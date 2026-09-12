@@ -14,7 +14,21 @@ function toCircle(num) {
   return '' + num
 }
 
+// 音调数组转圆圈数字，如 [0,2] → "⓪②"（兼容单个数字）
+function toCircleList(list) {
+  if (list === null || list === undefined) return ''
+  if (list.length === undefined) return toCircle(list)
+  var circleNums = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
+  var out = ''
+  for (var i = 0; i < list.length; i++) {
+    var n = list[i]
+    out += (n >= 0 && n <= 10) ? circleNums[n] : ('' + n)
+  }
+  return out
+}
+
 module.exports = {
   includes: includes,
-  toCircle: toCircle
+  toCircle: toCircle,
+  toCircleList: toCircleList
 }

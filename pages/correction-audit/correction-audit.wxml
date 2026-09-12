@@ -27,7 +27,7 @@
       <view class="audit-summary">
         <text wx:if="{{item.correctionKanji && item.correctionKanji !== item.wordKanji}}" class="change-tag">汉字</text>
         <text wx:if="{{item.correctionKana && item.correctionKana !== item.wordKana}}" class="change-tag">假名</text>
-        <text wx:if="{{item.correctionAccent != null && item.correctionAccent !== item.wordAccent}}" class="change-tag">音调</text>
+        <text wx:if="{{item.accentChanged}}" class="change-tag">音调</text>
         <text wx:if="{{item.correctionWordType && item.correctionWordType !== item.wordWordType}}" class="change-tag">词性</text>
       </view>
       <view class="audit-arrow">›</view>

@@ -54,6 +54,28 @@
   box-sizing: border-box;
 }
 
+/* 音调校验不通过 */
+.form-input.has-error {
+  background: #FEF0F0;
+  box-shadow: inset 0 0 0 1px #F56C6C;
+}
+
+.form-error {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: #F56C6C;
+}
+
+.form-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: #909399;
+}
+
 .form-textarea {
   width: 100%;
   min-height: 80px;

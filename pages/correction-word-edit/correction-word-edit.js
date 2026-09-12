@@ -1,5 +1,6 @@
 // pages/correction-word-edit/correction-word-edit.js
 const { correctionApi } = require('../../utils/api')
+const accentUtil = require('../../utils/accent')
 
 Page({
   data: {
@@ -13,6 +14,8 @@ Page({
       wordType: '',
       remark: ''
     },
+    // 音调校验提示
+    accentError: '',
     // 词性多选
     selectedWordTypes: [],
     selectedWordTypeLabels: [],
@@ -141,7 +144,7 @@ Page({
       wordForm: {
         kanji: item.correctionKanji || item.wordKanji || '',
         kana: item.correctionKana || item.wordKana || '',
-        accent: item.correctionAccent != null ? String(item.correctionAccent) : (item.wordAccent != null ? String(item.wordAccent) : ''),
+        accent: accentUtil.toText(item.correctionAccent != null ? item.correctionAccent : item.wordAccent),
         wordType: existingValues.join(','),
         remark: item.remark || ''
       }
@@ -162,10 +165,24 @@ Page({
     this.setData({ wordTypeGroups: groups })
   },
 
-  /** 单词表单输入 */
+  /** 单词表单输入（音调实时校验） */
   onWordInput(e) {
     const field = e.currentTarget.dataset.field
-    this.setData({ [`wordForm.${field}`]: e.detail.value })
+    const value = e.detail.value
+    const patch = { [`wordForm.${field}`]: value }
+    if (field === 'accent') {
+      patch.accentError = accentUtil.validate(value).message
+    }
+    this.setData(patch)
+  },
+
+  /** 音调输入失焦：不合规时提醒 */
+  onAccentBlur(e) {
+    const { ok, message } = accentUtil.validate(e.detail.value)
+    this.setData({ accentError: ok ? '' : message })
+    if (!ok) {
+      wx.showToast({ title: message, icon: 'none', duration: 3000 })
+    }
   },
 
   /** 切换词性下拉 */
@@ -207,6 +224,12 @@ Page({
       wx.showToast({ title: '请输入假名', icon: 'none' })
       return
     }
+    const accentCheck = accentUtil.validate(wordForm.accent)
+    if (!accentCheck.ok) {
+      this.setData({ accentError: accentCheck.message })
+      wx.showToast({ title: accentCheck.message, icon: 'none', duration: 3000 })
+      return
+    }
 
     this.setData({ submitting: true })
     wx.showLoading({ title: '提交中...', mask: true })
@@ -214,7 +237,8 @@ Page({
       const data = {
         kanji: wordForm.kanji.trim(),
         kana: wordForm.kana.trim(),
-        accent: wordForm.accent ? parseInt(wordForm.accent) : undefined,
+        // JSON body（WordCorrectionRequest.accent 为 List<Integer>），需传数组
+        accent: accentUtil.toParam(accentCheck.list, true),
         wordType: wordForm.wordType || undefined,
         remark: wordForm.remark || undefined
       }
@@ -227,7 +251,7 @@ Page({
           ...original,
           correctionKanji: wordForm.kanji.trim(),
           correctionKana: wordForm.kana.trim(),
-          correctionAccent: wordForm.accent ? parseInt(wordForm.accent) : null,
+          correctionAccent: accentCheck.list.length > 0 ? accentCheck.list : null,
           correctionWordType: wordForm.wordType || '',
           remark: wordForm.remark || ''
         }

@@ -88,7 +88,7 @@
         <view class="result-meta">
           <text wx:if="{{result.word.wordType}}">{{result.word.wordType}}</text>
           <text wx:if="{{result.word.jlptLevel}}"> · {{result.word.jlptLevel}}</text>
-          <text wx:if="{{result.word.accent !== null && result.word.accent !== undefined}}"> · {{result.word.accent}}调</text>
+          <text wx:if="{{result.word.accent !== null && result.word.accent !== undefined}}"> · {{helper.toCircleList(result.word.accent)}}调</text>
         </view>
         <!-- 第一条释义摘要 -->
         <view wx:if="{{result.definitions && result.definitions.length > 0}}" class="result-def-preview">
@@ -115,7 +115,7 @@
         <view class="word-main-row">
           <view class="word-title-wrap">
             <text class="word-main jp-text">{{currentWord.word.kanji || currentWord.word.kana}}</text>
-            <text wx:if="{{currentWord.word.accent !== null && currentWord.word.accent !== undefined}}" class="word-accent">{{helper.toCircle(currentWord.word.accent)}}</text>
+            <text wx:if="{{currentWord.word.accent !== null && currentWord.word.accent !== undefined}}" class="word-accent">{{helper.toCircleList(currentWord.word.accent)}}</text>
           </view>
           <view wx:if="{{currentWord.auditStatus === 'submitted'}}" class="submitted-badge">已提交</view>
           <view wx:elif="{{currentWord.auditStatus === 'approved'}}" class="approved-badge">已采纳</view>
@@ -200,8 +200,22 @@
     return num !== undefined ? String(num) : ''
   }
 
+  // 音调数组转圆圈数字，如 [0,2] → "⓪②"（兼容单个数字）
+  function toCircleList(list) {
+    if (list === null || list === undefined) return ''
+    if (list.length === undefined) return toCircle(list)
+    var circles = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩']
+    var out = ''
+    for (var i = 0; i < list.length; i++) {
+      var n = list[i]
+      out += (n >= 0 && n <= 10) ? circles[n] : ('' + n)
+    }
+    return out
+  }
+
   module.exports = {
     includes: includes,
-    toCircle: toCircle
+    toCircle: toCircle,
+    toCircleList: toCircleList
   }
 </wxs>
