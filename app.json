@@ -14,7 +14,6 @@
     "pages/profile/profile",
     "pages/review-forecast/review-forecast",
     "pages/settings/settings",
-    "pages/login/login",
     "pages/reset-password/reset-password",
     "pages/new-word-audit/new-word-audit",
     "pages/correction-audit/correction-audit",
