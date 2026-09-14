@@ -182,19 +182,16 @@ Page({
         const data = res.data
         const dueCount = data.dueCount || 0
         this.setData({ dueCount })
-        console.log('[fetchLearningStatus] 刷新角标:', dueCount)
 
         // 更新 tabBar 角标
         if (dueCount > 0) {
           wx.setTabBarBadge({
             index: 2, // 复习 tab 是第3个（0-based index: 2）
-            text: formatBadgeText(dueCount),
-            fail: (err) => console.error('[fetchLearningStatus] setTabBarBadge 失败:', err)
+            text: formatBadgeText(dueCount)
           })
         } else {
           wx.removeTabBarBadge({
-            index: 2,
-            fail: (err) => console.error('[fetchLearningStatus] removeTabBarBadge 失败:', err)
+            index: 2
           })
         }
       }

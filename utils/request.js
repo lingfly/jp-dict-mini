@@ -20,6 +20,23 @@ function showErrorToast(title) {
 }
 
 /**
+ * 上报微信「实时日志」，用于排查审核期间 / 线上的请求问题
+ * 查看路径：微信公众平台 → We分析 → 性能质量 → 实时日志 → 小程序日志（可按时间/微信号/页面筛选）
+ * 说明：仅真机上报（开发者工具不上报），开发版/体验版不计入配额，此处只在出错时上报
+ */
+function reportRequestIssue(level, tag, url, extra) {
+  try {
+    if (!wx.getRealtimeLogManager) return
+    const log = wx.getRealtimeLogManager()
+    if (!log) return
+    const fn = log[level] || log.error
+    fn.call(log, `${tag} ${getApiBaseUrl()}${url} | env=${config.envVersion} | ${extra || ''}`)
+  } catch (e) {
+    // 日志上报失败不影响主流程
+  }
+}
+
+/**
  * 设置基础 URL
  */
 function setApiBaseUrl(url) {
@@ -101,6 +118,7 @@ function request(url, method = 'GET', data = {}, needAuth = true, timeout = 6000
           // 检查业务状态码
           if (res.data && res.data.code !== undefined && res.data.code !== 200) {
             // 业务错误，显示后端返回的错误信息
+            reportRequestIssue('warn', `[业务码${res.data.code}]`, url, (res.data && res.data.message) || '')
             showErrorToast(res.data.message || '操作失败')
           }
           // 无论业务状态码是什么，都返回完整数据，让调用方自行判断
@@ -108,6 +126,7 @@ function request(url, method = 'GET', data = {}, needAuth = true, timeout = 6000
         } else if (res.statusCode === 401) {
           // token 失效，清除登录信息并尝试重新登录
           console.log('token 已失效，重新登录')
+          reportRequestIssue('warn', '[401]', url, 'token 失效，尝试重新登录')
 
           // 清除缓存的 token
           _cachedToken = null
@@ -130,12 +149,14 @@ function request(url, method = 'GET', data = {}, needAuth = true, timeout = 6000
             reject(new Error('登录已过期，请重新打开小程序'))
           }
         } else {
+          reportRequestIssue('warn', `[HTTP${res.statusCode}]`, url, (res.data && res.data.message) || '')
           showErrorToast(res.data.message || '请求失败')
           reject(res)
         }
       },
       fail: (err) => {
         console.error('请求失败:', url, err)
+        reportRequestIssue('error', '[网络错误]', url, (err && (err.errMsg || err.message)) || '')
         showErrorToast('网络错误')
         reject(err)
       }
@@ -207,11 +228,13 @@ function formPost(url, data = {}, needAuth = true) {
           // 检查业务状态码
           if (res.data && res.data.code !== undefined && res.data.code !== 200) {
             // 业务错误，显示后端返回的错误信息
+            reportRequestIssue('warn', `[业务码${res.data.code}]`, url, (res.data && res.data.message) || '')
             showErrorToast(res.data.message || '操作失败')
           }
           // 无论业务状态码是什么，都返回完整数据，让调用方自行判断
           resolve(res.data)
         } else if (res.statusCode === 401) {
+          reportRequestIssue('warn', '[401]', url, 'token 失效，尝试重新登录')
           _cachedToken = null
           wx.removeStorageSync('token')
           if (app && app.clearLoginInfo) {
@@ -227,12 +250,14 @@ function formPost(url, data = {}, needAuth = true) {
             reject(new Error('登录已过期，请重新打开小程序'))
           }
         } else {
+          reportRequestIssue('warn', `[HTTP${res.statusCode}]`, url, (res.data && res.data.message) || '')
           showErrorToast(res.data.message || '请求失败')
           reject(res)
         }
       },
       fail: (err) => {
         console.error('请求失败:', url, err)
+        reportRequestIssue('error', '[网络错误]', url, (err && (err.errMsg || err.message)) || '')
         showErrorToast('网络错误')
         reject(err)
       }
