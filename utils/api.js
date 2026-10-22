@@ -11,11 +11,6 @@ const { get, post, put, formPost, request } = require('./request')
  * 词单相关 API（需要认证）
  */
 const wordlistApi = {
-  // 获取可用词单
-  getAvailable() {
-    return get('/api/wordlist/available') // 需要 token
-  },
-
   // 查询词单列表（支持分类、关键字、我的词单筛选）
   list(params) {
     return get('/api/wordlist/list', params) // 需要 token
@@ -79,15 +74,6 @@ const wordlistApi = {
     return post('/api/wordlist/unfavorite-list', { wordListId }) // 需要 token
   },
 
-  // 获取词单单词列表（支持指定排序）
-  // sort: addedAt（添加时间）/ kana（假名），order: asc / desc
-  getWords(wordListId, page, size, sort, order) {
-    const params = { wordListId, page, size }
-    if (sort) params.sort = sort
-    if (order) params.order = order
-    return get('/api/wordlist/words', params) // 需要 token
-  },
-
   // 获取默认词单（收藏夹）
   getDefault() {
     return get('/api/wordlist/default') // 需要 token
@@ -113,24 +99,15 @@ const wordlistApi = {
 /**
  * 词单分组 API（需要认证）
  * 对应后端 WordListController：
- * - GET    /api/wordlist/groups?wordListId=                    获取分组列表
- * - GET    /api/wordlist/group-words?wordListId=&groupId=      获取分组内单词
+ * - GET    /api/wordlist/group-content?wordListId=&groupId=    分组内容（分组列表 + 单词，一次取回）
+ * - GET    /api/wordlist/all-content?wordListId=               词单全量内容（不分页）
  * - POST   /api/wordlist/groups?wordListId=                    创建分组
  * - PUT    /api/wordlist/groups?wordListId=&groupId=           更新分组
  * - DELETE /api/wordlist/groups?wordListId=&groupId=           删除分组
  * - PUT    /api/wordlist/word-group?wordListId=&groupId=       移动单词到分组
+ * - PUT    /api/wordlist/groups/sort-order?wordListId=         批量设置分组排序
  */
 const wordlistGroupApi = {
-  // 获取分组列表
-  list(wordListId) {
-    return get('/api/wordlist/groups', { wordListId }) // 需要 token
-  },
-
-  // 获取分组内的单词列表（分页）
-  getGroupWords(wordListId, groupId, page = 1, size = 20) {
-    return get('/api/wordlist/group-words', { wordListId, groupId, page, size }) // 需要 token
-  },
-
   // 获取词单分组内容（一次性返回分组 + 单词）
   // 只传 wordListId：返回所有分组（含 wordCount）+ 未分组单词
   // 传 groupId：返回该分组下的单词
@@ -206,19 +183,9 @@ const fsrsApi = {
     return post('/api/fsrs/review', data) // 需要 token
   },
 
-  // 添加单个新词（创建 FSRS 学习卡，幂等：已存在返回已有卡片）
-  addCard(wordId) {
-    return post('/api/fsrs/card', { wordId }) // 需要 token
-  },
-
   // 批量添加新词（创建 FSRS 学习卡，幂等：已存在的跳过）
   addCards(wordIds) {
     return post('/api/fsrs/cards', { wordIds }) // 需要 token
-  },
-
-  // 查询某单词的 FSRS 卡片状态
-  getCard(wordId) {
-    return get(`/api/fsrs/card/${wordId}`) // 需要 token
   },
 
   // 查询当天所有需要复习的单词卡片
@@ -240,17 +207,13 @@ const fsrsApi = {
 
 /**
  * 复习相关 API（需要认证）
- * 注意：以下为旧接口（/api/review/*），新流程统一走 fsrsApi
+ * 仅保留 /api/review/* 中仍在用的三条：取下一词、提交结果、查学习进度。
+ * 到期卡查询已统一走 fsrsApi（getDueCards / getDueCount）。
  */
 const reviewApi = {
   // 获取下一个单词（实时查询）
   getNextWord() {
     return get('/api/review/next-word') // 需要 token
-  },
-
-  // 批量获取当天待复习卡片（新词 + 到期卡，含 FSRS 状态）
-  getDueCards() {
-    return get('/api/review/due-cards') // 需要 token
   },
 
   // 提交复习结果（rating 0-3，card/log 为 FSRS 新状态）
@@ -261,21 +224,6 @@ const reviewApi = {
   // 获取学习状态
   getLearningStatus() {
     return get('/api/review/learning-status') // 需要 token
-  },
-
-  // 获取待复习单词列表（分页）
-  getDueWords(page, size) {
-    return get('/api/review/due', { page, size }) // 需要 token
-  },
-
-  // 获取新词列表
-  getNewWords(limit) {
-    return get('/api/review/new', { limit }) // 需要 token
-  },
-
-  // 选择新词
-  selectNewWords(wordListId, wordIds) {
-    return post('/api/review/select-new-words', { wordListId, wordIds }) // 需要 token
   }
 }
 
@@ -319,7 +267,7 @@ const audioApi = {
  * AI 查词 API
  */
 const aiDictApi = {
-  // 构造查词请求体（同步与异步接口共用）
+  // 构造查词请求体（submitAsyncQuery 内部使用）
   buildQueryData(word, thinking, reasoningEffort, model, temperature) {
     const data = { word }
     // 如果 thinking 为 true，才传递 thinking 和 reasoningEffort
@@ -330,13 +278,6 @@ const aiDictApi = {
     if (model) data.model = model
     if (temperature !== null && temperature !== undefined) data.temperature = temperature
     return data
-  },
-
-  // 同步查词（返回 AiDictQueryResult: { logId, results: [...] }）
-  query(word, thinking, reasoningEffort, model, temperature) {
-    const data = this.buildQueryData(word, thinking, reasoningEffort, model, temperature)
-    const timeout = 300000
-    return post('/api/ai-dict/query', data, true, timeout)
   },
 
   // 异步查词提交（返回 AiDictAsyncSubmitResult: { logId }）
@@ -358,17 +299,13 @@ const aiDictApi = {
   // 反馈：不符合预期
   markIncorrect(logId) {
     return post('/api/ai-dict/feedback/incorrect', { logId })
-  },
-
-  // SSE 流式查词 URL
-  getStreamUrl(word, token) {
-    const app = getApp()
-    return `${app.globalData.apiBaseUrl}/api/ai-dict/stream?word=${encodeURIComponent(word)}&token=${encodeURIComponent(token)}`
   }
 }
 
 /**
  * 认证相关 API
+ * 本项目只走微信静默登录，不做账号密码 / 验证码 / 注册流程。
+ * 登出为纯本地行为（app.clearLoginInfo），无需调用后端。
  */
 const authApi = {
   // 微信登录（不需要 token）
@@ -376,56 +313,17 @@ const authApi = {
     return post('/api/auth/login/wechat', data, false) // 登录接口不需要 token
   },
 
-  // 发送验证码（不需要 token）
-  sendCode(data) {
-    return post('/api/auth/send-code', data, false)
-  },
-
-  // 注册（不需要 token）
-  register(data) {
-    return post('/api/auth/register', data, false)
-  },
-
-  // 密码登录（不需要 token）
-  loginByPassword(data) {
-    return post('/api/auth/login/password', data, false)
-  },
-
-  // 验证码登录（不需要 token）
-  loginByCode(data) {
-    return post('/api/auth/login/code', data, false)
-  },
-
-  // 重置密码（不需要 token）
-  resetPassword(data) {
-    return post('/api/auth/reset-password', data, false)
-  },
-
   // 获取当前用户信息（需要 token）
   getCurrentUser() {
     return get('/api/auth/current-user') // 需要 token
-  },
-
-  // 登出（需要 token）
-  logout() {
-    return post('/api/auth/logout') // 需要 token
   }
 }
 
 /**
  * 用户相关 API（需要认证）
+ * 个人资料只读：当前用户信息统一取 authApi.getCurrentUser()，改资料请加新接口。
  */
 const userApi = {
-  // 获取用户信息
-  getProfile() {
-    return get('/api/user/profile') // 需要 token
-  },
-
-  // 更新用户信息
-  updateProfile(data) {
-    return post('/api/user/profile', data) // 需要 token
-  },
-
   // 获取学习配置
   getLearningConfig() {
     return get('/api/user/learning-config') // 需要 token
@@ -561,10 +459,7 @@ const adminApi = {
     return get(`/api/admin/correction/definition/${correctionId}`)
   },
 
-  // 管理员修改纠错明细（增删改 items）
-  updateDefinitionCorrection(correctionId, data) {
-    return put(`/api/admin/correction/definition/${correctionId}`, data)
-  },
+  // 注：管理员「修改纠错明细」（PUT .../definition/{id}）因审核页只做采纳/拒绝、无调用方，已随 #002 移除
 
   // 采纳释义纠错（真正修改 word_definition）
   approveDefinitionCorrection(correctionId, data) {

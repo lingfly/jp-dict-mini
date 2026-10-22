@@ -209,8 +209,9 @@ Page({
    * 返回首页
    */
   goHome() {
+    // 首页是 tabBar 页，必须用 switchTab（navigateTo 会报 "can not navigateTo a tabbar page"）
     wx.switchTab({
-      url: '/pages/index/index'
+      url: '/pages/home/home'
     })
   }
 })

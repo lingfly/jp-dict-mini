@@ -3,7 +3,6 @@ capability: review-scheduling
 status: active
 owned_paths:
   - pages/review-list/
-  - pages/review-learn/
   - pages/learn/
   - pages/review-forecast/
   - utils/fsrs/

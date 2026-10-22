@@ -27,19 +27,22 @@
 
 | 模块 | 接口数 | 典型接口 | 当前超时 |
 |------|--------|----------|----------|
-| `wordlistApi` | 17 | `available`、`detail`、`words` | 60s |
+| `wordlistApi` | 15 | `list`、`detail`、`update-relations` | 60s |
 | `correctionApi` | 12 | `word`（表单）、`definition` | 60s / 微信默认 |
-| `wordlistGroupApi` | 9 | `groups`、`all-content` | 60s |
-| `userApi` | 8 | `profile`、`learning-config` | 60s |
-| `authApi` | 8 | `login/wechat`、`send-code` | 60s |
-| `reviewApi` | 7 | `next-word`、`submit` | 60s |
-| `fsrsApi` | 7 | `due`、`due-count`、`review` | 60s |
-| `aiDictApi` | 5 | `query-async` + `query-result`（实际在用）、`query`（**无调用方**，300s） | 60s |
-| `adminApi` | 5 | 审核列表 | 60s |
+| `wordlistGroupApi` | 7 | `group-content`、`all-content` | 60s |
+| `userApi` | 6 | `learning-config` 系列 | 60s |
+| `aiDictApi` | 5 | `query-async` + `query-result`、`feedback/*` | 60s |
+| `fsrsApi` | 5 | `due`、`due-count`、`review` | 60s |
 | `wordApi` | 4 | `search`、`detail`、`batch` | 60s |
+| `adminApi` | 4 | 审核列表 | 60s |
+| `reviewApi` | 3 | `next-word`、`submit`、`learning-status` | 60s |
 | `feedbackApi` | 3 | `feedback` | 60s |
+| `authApi` | 2 | `login/wechat`、`current-user` | 60s |
 | `audioApi` | 1 | `base64` | 60s |
-| **合计** | **86** | | **仅 1 个非默认** |
+| **合计** | **67** | | **无显式非默认超时的调用方** |
+
+> 本表计数为 **`#002` 清理后**的值（原 88 个，删除 21 个零调用方封装，见 `changes/002-remove-unused-api/`）。
+> 其中 `aiDictApi.query` 被删后，`request.js` 的 `TIMEOUTS.AI_QUERY`（300s）与 `/api/ai-dict/query` 匹配规则**保留但暂无入口**；本变更的"超时时长不变"约束未受影响。
 
 ### 2.2 调用方
 
