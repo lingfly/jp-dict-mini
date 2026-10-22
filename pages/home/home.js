@@ -29,6 +29,9 @@ Page({
     // AI 查词
     showAiSearch: false,
     aiStreaming: false,
+    aiStatus: '',        // '' | generating | failed
+    aiPhaseText: '',     // 等待期间的阶段文案
+    aiError: '',         // 失败原因（内联展示，不再弹 toast）
     aiFeedbackDone: false,  // 防止重复提交反馈
     aiFeedbackType: '',     // 反馈类型：'correct' 符合预期 / 'incorrect' 不符合预期 / '' 未反馈
     isAiResult: false,      // 当前搜索结果是否来自 AI 查词
@@ -74,8 +77,14 @@ Page({
   },
 
   onShow() {
+    this._visible = true
     // 返回首页时重新加载配置，确保设置修改后能及时生效
     this.loadCollapseConfig()
+  },
+
+  onHide() {
+    // 只记录可见性：AI 查词轮询不中断（#001 方案 A），但提示不能弹到别的页面
+    this._visible = false
   },
 
   /** 加载释义折叠配置及 AI 查词次数限制 */
@@ -200,10 +209,7 @@ Page({
       }
     } catch (error) {
       console.error('查询失败:', error)
-      wx.showToast({
-        title: '查询失败',
-        icon: 'none'
-      })
+      // 请求层已弹「请求超时，请重试」；关键词保留，用户可直接再点「查询」重试
     } finally {
       this.setData({ loading: false })
     }
@@ -706,7 +712,12 @@ Page({
       return
     }
 
-    this.setData({ aiStreaming: true })
+    this.setData({
+      aiStreaming: true,
+      aiStatus: 'generating',
+      aiPhaseText: '正在提交查询…',
+      aiError: ''
+    })
 
     try {
       const { aiDictModel, aiDictTemperature, aiDictThinking, aiDictReasoningEffort } = this.data
@@ -720,6 +731,7 @@ Page({
         throw new Error(submitRes.message || '提交查询失败')
       }
       const logId = submitRes.data.logId
+      this.setData({ aiPhaseText: '已提交，生成中…' })
 
       // 2. 轮询查询结果
       const asyncRes = await this.pollAiQueryResult(logId)
@@ -728,8 +740,12 @@ Page({
         const { status, results, errorMessage } = asyncRes.data
 
         if (status === 'failed') {
-          this.setData({ aiStreaming: false })
-          wx.showToast({ title: errorMessage || 'AI查词失败', icon: 'none' })
+          this.setData({
+            aiStreaming: false,
+            aiStatus: 'failed',
+            aiPhaseText: '',
+            aiError: errorMessage || 'AI 查词失败，请重试'
+          })
           return
         }
 
@@ -744,6 +760,9 @@ Page({
             searchResults: processed,
             showAiSearch: false,
             aiStreaming: false,
+            aiStatus: '',
+            aiPhaseText: '',
+            aiError: '',
             isAiResult: true,
             hasMoreResults: false,
             currentPage: 1,
@@ -761,48 +780,69 @@ Page({
             this.setData({ recentSearches: recent })
           }
         } else {
-          this.setData({ aiStreaming: false })
-          wx.showToast({ title: 'AI 未找到相关释义', icon: 'none' })
+          this.setData({
+            aiStreaming: false,
+            aiStatus: 'failed',
+            aiPhaseText: '',
+            aiError: 'AI 未找到相关释义，换个关键词试试'
+          })
         }
       } else {
         throw new Error(asyncRes.message || '查询结果获取失败')
       }
     } catch (error) {
       console.error('AI查词失败:', error)
-      this.setData({ aiStreaming: false })
-      wx.showToast({ title: 'AI查词失败', icon: 'none' })
+      // 请求层已提示过超时/断网；这里把原因留在页面上，切页回来也能看到（AC-16）
+      this.setData({
+        aiStreaming: false,
+        aiStatus: 'failed',
+        aiPhaseText: '',
+        aiError: (error && error.message) || 'AI 查词失败，请重试'
+      })
     }
   },
 
   /**
    * 轮询异步查词结果
    * 单次轮询为短请求，规避 iOS 上 wx.request 60s 超时上限
+   *
+   * #001：改为截止时间制 + 容忍单次失败
+   *   - 总时长钉死 5 分钟，避免单次 60s 超时把总时长拖长
+   *   - 单次请求失败不终止，连续失败 3 次才放弃（AC-17）
    * @param {Long} logId 查询 ID
    * @returns {Promise} 最终结果（status=success 或 failed）
    */
   async pollAiQueryResult(logId) {
-    const POLL_INTERVAL = 2000  // 轮询间隔 2s
-    const MAX_ATTEMPTS = 150     // 最多轮询 150 次（约 5 分钟）
+    const POLL_INTERVAL = 2000
+    const TOTAL_TIMEOUT = 5 * 60 * 1000
+    const MAX_CONSECUTIVE_FAILURES = 3
 
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const res = await aiDictApi.queryAsyncResult(logId)
+    const deadline = Date.now() + TOTAL_TIMEOUT
+    let consecutiveFailures = 0
 
-      // 非 200 或异常，稍后重试
-      if (res.code !== 200 || !res.data || !res.data.status) {
-        await new Promise(r => setTimeout(r, POLL_INTERVAL))
-        continue
+    while (Date.now() < deadline && consecutiveFailures < MAX_CONSECUTIVE_FAILURES) {
+      try {
+        const res = await aiDictApi.queryAsyncResult(logId)
+        // 只要拿到响应就认为网络是通的
+        consecutiveFailures = 0
+
+        if (res.code === 200 && res.data && res.data.status) {
+          if (res.data.status === 'success' || res.data.status === 'failed') {
+            return res
+          }
+        }
+      } catch (e) {
+        consecutiveFailures++
+        console.warn('轮询失败，继续重试:', consecutiveFailures, e && e.message)
       }
 
-      const status = res.data.status
-      if (status === 'success' || status === 'failed') {
-        return res
-      }
-      // processing：继续轮询
-      await new Promise(r => setTimeout(r, POLL_INTERVAL))
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL))
     }
 
-    // 超时：抛出错误
-    throw new Error('查询超时，请稍后重试')
+    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+      throw new Error('网络不稳定，AI 查词中断，请稍后重试')
+    }
+    throw new Error('AI 查词超时，请稍后重试')
   },
 
   async addToReview() {

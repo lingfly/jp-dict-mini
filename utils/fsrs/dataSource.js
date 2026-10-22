@@ -152,8 +152,9 @@ async function getDueCards() {
       }
     }
   } catch (e) {
-    console.error('获取待复习卡片失败，使用临时数据:', e)
-    return mockStore.getDueCards()
+    // 不能回退到 mock：拉取失败要如实报错，否则用户看到的是假队列（AC-07）
+    console.error('获取待复习卡片失败:', e)
+    throw e
   }
 }
 
@@ -192,8 +193,10 @@ async function submitReview(payload) {
     }
     return res
   } catch (e) {
-    console.error('提交复习结果失败，使用临时数据:', e)
-    return mockStore.submitReview(payload)
+    // 不能回退到 mock：否则网络超时会被当成"提交成功"，卡片被移出队列但后端没有记录
+    // 由调用方停留在当前卡片并提示重试（#001 AC-07）
+    console.error('提交复习结果失败:', e)
+    throw e
   }
 }
 

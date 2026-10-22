@@ -62,6 +62,9 @@
       </view>
     </view>
 
+    <!-- 提交失败：停留当前卡片，直接再点评分即可重试 -->
+    <view wx:if="{{submitError}}" class="submit-error">{{submitError}}</view>
+
     <!-- 评分按钮 -->
     <view wx:if="{{showAnswer}}" class="score-buttons">
       <view class="score-btn forget" bindtap="handleScore" data-score="0">

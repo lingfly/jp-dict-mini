@@ -975,3 +975,16 @@
 .join-go.disabled {
   background: #C3CCE8;
 }
+
+
+/* AI 查词失败提示（#001：切页回来也能看到状态） */
+.ai-error {
+  margin: 10px 20px 0;
+  padding: 10px 14px;
+  background: #FFF4E5;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #8A5A1F;
+  line-height: 1.4;
+  text-align: center;
+}

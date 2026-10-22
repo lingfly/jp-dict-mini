@@ -97,6 +97,12 @@
       <text>加载中...</text>
     </view>
 
+    <!-- 加载失败：复用下拉刷新重试 -->
+    <view wx:elif="{{loadError}}" class="list-error">
+      <text class="list-error-text">{{loadError}}</text>
+      <text class="list-error-hint">下拉刷新可重试</text>
+    </view>
+
     <!-- 其他词单 -->
     <view wx:elif="{{wordLists.length > 0}}">
       <text wx:if="{{mineOnly && currentWordList}}" class="section-title">其他词单</text>

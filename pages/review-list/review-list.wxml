@@ -6,6 +6,12 @@
     <text>加载中...</text>
   </view>
 
+  <!-- 加载失败：复用下拉刷新重试 -->
+  <view wx:elif="{{loadError}}" class="list-error">
+    <text class="list-error-text">{{loadError}}</text>
+    <text class="list-error-hint">下拉刷新可重试</text>
+  </view>
+
   <!-- 无复习任务时：显示今日状态 + 开始按钮 -->
   <view wx:elif="{{!currentWord && !loading}}" class="idle-state">
     <view class="idle-card card">
@@ -120,6 +126,9 @@
       <text class="blank-tap-hint">点击空白处显示答案</text>
     </view>
   </view>
+
+  <!-- 提交失败：停留当前卡片，直接再点评分重试 -->
+  <view wx:if="{{submitError}}" class="submit-error">{{submitError}}</view>
 
   <!-- 评分按钮 — 固定悬浮底部 -->
   <view wx:if="{{showAnswer}}" class="score-bar">

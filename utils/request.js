@@ -1,51 +1,110 @@
 /**
- * 封装 wx.request，支持 token 认证
+ * 统一请求层：超时集中管理、错误分类、401 并发治理
+ *
+ * 规范：#001 接口超时治理
+ *   specs/changes/001-api-timeout/spec.md
+ *
+ * 关键约束（改代码前先看）：
+ *   - 超时值只在 TIMEOUTS 里改，页面不传具体数字
+ *   - 任何超时都不自动重试；只有 401 换 token 后重试一次
+ *   - 失败提示统一走 notifyOnce，页面不要再弹第二个 toast
+ *   - 上报的 path 必须去掉 query，避免搜索词/用户 ID 进日志
  */
 
-// 用缓存存储 apiBaseUrl 和 token，避免依赖 getApp() 的模块加载时序问题
 const config = require('./config')
+
+// 超时值集中管理（毫秒）
+const TIMEOUTS = {
+  DEFAULT: 60000,
+  AI_QUERY: 300000
+}
+
+// 慢请求阈值：超过即上报，用于后续判断是否要分级超时
+const SLOW_THRESHOLD = 5000
+
+// 轮询类请求失败不弹 toast：由发起方自己决定怎么提示，避免弹到别的页面（AC-16）
+const SILENT_PATHS = [/^\/api\/ai-dict\/query-result/]
+
+function isSilent(url) {
+  const p = toPath(url)
+  return SILENT_PATHS.some((re) => re.test(p))
+}
+
+const MESSAGES = {
+  TIMEOUT: '请求超时，请重试',
+  OFFLINE: '网络不可用，请检查连接',
+  SERVER: '服务繁忙，请稍后重试',
+  NETWORK: '网络错误，请稍后重试',
+  AUTH: '登录已失效，请重新打开小程序'
+}
+
+// 用缓存存储 apiBaseUrl 和 token，避免依赖 getApp() 的模块加载时序问题
 let _cachedApiBaseUrl = config.apiBaseUrl
 let _cachedToken = wx.getStorageSync('token') || null
 
-/**
- * 统一的错误提示（全局异常消息），集中控制停留时长
- * icon: 'none' 时 duration 生效（默认 1500ms），这里延长到 3000ms 便于阅读
- */
-function showErrorToast(title) {
-  wx.showToast({
-    title: title || '操作失败',
-    icon: 'none',
-    duration: 3000
-  })
+// toast 去重：1 秒内相同文案只弹一次
+let _lastToast = { message: '', at: 0 }
+
+function notifyOnce(message) {
+  const title = message || '操作失败'
+  const now = Date.now()
+  if (title === _lastToast.message && now - _lastToast.at < 1000) return
+  _lastToast = { message: title, at: now }
+  wx.showToast({ title, icon: 'none', duration: 3000 })
+}
+
+/** 去掉 query string（AC-12：日志里不能出现搜索词、用户 ID） */
+function toPath(url) {
+  const s = String(url || '')
+  const i = s.indexOf('?')
+  return i >= 0 ? s.slice(0, i) : s
 }
 
 /**
- * 上报微信「实时日志」，用于排查审核期间 / 线上的请求问题
- * 查看路径：微信公众平台 → We分析 → 性能质量 → 实时日志 → 小程序日志（可按时间/微信号/页面筛选）
- * 说明：仅真机上报（开发者工具不上报），开发版/体验版不计入配额，此处只在出错时上报
+ * 结构化上报微信「实时日志」
+ * 查看：微信公众平台 → We分析 → 性能质量 → 实时日志
  */
-function reportRequestIssue(level, tag, url, extra) {
+function report(level, kind, url, fields) {
   try {
     if (!wx.getRealtimeLogManager) return
     const log = wx.getRealtimeLogManager()
     if (!log) return
+
+    const parts = [`${kind} path=${toPath(url)}`]
+    Object.keys(fields || {}).forEach((key) => {
+      const value = fields[key]
+      if (value !== undefined && value !== null && value !== '') {
+        parts.push(`${key}=${value}`)
+      }
+    })
+    parts.push(`env=${config.envVersion}`)
+
     const fn = log[level] || log.error
-    fn.call(log, `${tag} ${getApiBaseUrl()}${url} | env=${config.envVersion} | ${extra || ''}`)
+    fn.call(log, parts.join(' '))
   } catch (e) {
     // 日志上报失败不影响主流程
   }
 }
 
-/**
- * 设置基础 URL
- */
+function makeRequestError(type, message, extra) {
+  const err = new Error(message || MESSAGES[type] || '请求失败')
+  err.name = 'RequestError'
+  err.type = type
+  if (extra) Object.assign(err, extra)
+  return err
+}
+
+/** 解析本次请求的超时值：显式传入 > AI 查词 > 默认 */
+function resolveTimeout(url, explicit) {
+  if (explicit) return explicit
+  if (/^\/api\/ai-dict\/query(\?|$)/.test(toPath(url))) return TIMEOUTS.AI_QUERY
+  return TIMEOUTS.DEFAULT
+}
+
 function setApiBaseUrl(url) {
   _cachedApiBaseUrl = url
 }
 
-/**
- * 获取 App 实例（懒加载）
- */
 function getAppInstance() {
   try {
     return getApp()
@@ -54,25 +113,18 @@ function getAppInstance() {
   }
 }
 
-/**
- * 获取 token（优先从 app.globalData，fallback 到 storage 缓存）
- */
 function getToken() {
   const app = getAppInstance()
   if (app && app.globalData && app.globalData.token) {
     _cachedToken = app.globalData.token
     return app.globalData.token
   }
-  // fallback：从本地缓存读取（handle app.js require 时序问题）
   if (!_cachedToken) {
     _cachedToken = wx.getStorageSync('token') || null
   }
   return _cachedToken
 }
 
-/**
- * 获取 API 基础 URL（优先从 app.globalData，fallback 到缓存）
- */
 function getApiBaseUrl() {
   const app = getAppInstance()
   if (app && app.globalData && app.globalData.apiBaseUrl) {
@@ -83,196 +135,230 @@ function getApiBaseUrl() {
 }
 
 /**
- * 发送请求
- * @param {String} url - 请求路径
- * @param {String} method - 请求方法
- * @param {Object} data - 请求数据
- * @param {Boolean} needAuth - 是否需要认证（默认 true）
- * @param {Number} timeout - 超时时间（毫秒，默认 60000）
- * @returns {Promise}
+ * 401 处理（AC-08 / AC-09 / AC-10 / AC-11）
+ *
+ * 三条分支：
+ *   1. 已经因为 401 重试过一次 → 停止，提示重新打开
+ *   2. 本请求携带的 token 与当前 token 不同（别人已刷新）→ 直接用新 token 重试
+ *   3. 否则 → 清理登录信息 → 单例重登 → 用原 timeout 重试一次
  */
-function request(url, method = 'GET', data = {}, needAuth = true, timeout = 60000) {
+function handle401(ctx) {
+  const { url, method, data, needAuth, limit, retried, sentToken, resolve, reject } = ctx
   const app = getAppInstance()
+  const currentToken = getToken()
+
+  // 分支 1：重试后仍是 401
+  if (retried) {
+    const err = makeRequestError('AUTH', MESSAGES.AUTH, { url: toPath(url), timeout: limit })
+    report('error', '[REQ]', url, { type: 'AUTH', detail: 'retry-still-401', timeout: limit })
+    notifyOnce(err.message)
+    reject(err)
+    return
+  }
+
+  // 分支 2：token 已被刷新（或正在刷新）
+  if (sentToken && sentToken !== currentToken) {
+    const wait = currentToken
+      ? Promise.resolve()
+      : (app && app.autoWechatLogin
+        ? app.autoWechatLogin()
+        : Promise.reject(new Error('login unavailable')))
+
+    wait
+      .then(() => request(url, method, data, needAuth, limit, true))
+      .then(resolve)
+      .catch(() => {
+        const err = makeRequestError('AUTH', MESSAGES.AUTH, { url: toPath(url) })
+        reject(err)
+      })
+    return
+  }
+
+  // 分支 3：本次 token 就是当前 token，确实过期了
+  _cachedToken = null
+  wx.removeStorageSync('token')
+  if (app && app.clearLoginInfo) {
+    app.clearLoginInfo()
+  }
+
+  if (!app || !app.autoWechatLogin) {
+    const err = makeRequestError('AUTH', MESSAGES.AUTH, { url: toPath(url) })
+    notifyOnce(err.message)
+    reject(err)
+    return
+  }
+
+  app.autoWechatLogin()
+    .then(() => {
+      // 登录若静默失败，token 仍为空 → 不再重试，直接报错
+      if (!getToken()) {
+        throw makeRequestError('AUTH', MESSAGES.AUTH, { url: toPath(url) })
+      }
+      return request(url, method, data, needAuth, limit, true)
+    })
+    .then(resolve)
+    .catch(() => {
+      const err = makeRequestError('AUTH', MESSAGES.AUTH, { url: toPath(url), timeout: limit })
+      report('error', '[REQ]', url, { type: 'AUTH', detail: 'login-failed', timeout: limit })
+      notifyOnce(err.message)
+      reject(err)
+    })
+}
+
+/** 统一处理 success 回调 */
+function handleSuccess(res, ctx) {
+  const { url, method, data, needAuth, limit, retried, sentToken, resolve, reject, startedAt } = ctx
+  const duration = Date.now() - startedAt
+
+  if (res.statusCode === 200) {
+    const body = res.data
+
+    if (body && body.code !== undefined && body.code !== 200) {
+      // 业务错误：请求层提示一次，页面不要再弹
+      report('warn', '[BIZ]', url, { code: body.code, dur: duration })
+      if (!isSilent(url)) notifyOnce(body.message || '操作失败')
+    } else if (duration > SLOW_THRESHOLD) {
+      report('warn', '[SLOW]', url, { dur: duration, timeout: limit })
+    }
+
+    // 无论业务码如何都返回完整数据，让调用方自行判断（保持旧行为）
+    resolve(body)
+    return
+  }
+
+  if (res.statusCode === 401) {
+    handle401({ url, method, data, needAuth, limit, retried, sentToken, resolve, reject })
+    return
+  }
+
+  if (res.statusCode >= 500) {
+    const err = makeRequestError('SERVER', MESSAGES.SERVER, {
+      url: toPath(url),
+      statusCode: res.statusCode,
+      duration,
+      timeout: limit
+    })
+    report('error', '[REQ]', url, { type: 'SERVER', status: res.statusCode, dur: duration, timeout: limit })
+    if (!isSilent(url)) notifyOnce(err.message)
+    reject(err)
+    return
+  }
+
+  const message = (res.data && res.data.message) || '请求失败'
+  const err = makeRequestError('CLIENT', message, {
+    url: toPath(url),
+    statusCode: res.statusCode,
+    duration,
+    timeout: limit
+  })
+  report('warn', '[REQ]', url, { type: 'CLIENT', status: res.statusCode, dur: duration, timeout: limit })
+  if (!isSilent(url)) notifyOnce(message)
+  reject(err)
+}
+
+/** 统一处理 fail 回调 */
+function handleFail(err, ctx) {
+  const { url, limit, reject, startedAt } = ctx
+  const duration = Date.now() - startedAt
+  const msg = (err && err.errMsg) || ''
+
+  let type = 'NETWORK'
+  if (/timeout/i.test(msg)) {
+    type = 'TIMEOUT'
+  } else if (/ERR_INTERNET|network|offline|disconnected/i.test(msg)) {
+    type = 'OFFLINE'
+  }
+
+  const requestError = makeRequestError(type, MESSAGES[type], {
+    url: toPath(url),
+    duration,
+    timeout: limit,
+    errMsg: msg
+  })
+
+  report('error', '[REQ]', url, { type, dur: duration, timeout: limit, detail: msg })
+  if (!isSilent(url)) notifyOnce(requestError.message)
+  reject(requestError)
+}
+
+/**
+ * 发送请求
+ * @param {String} url 请求路径
+ * @param {String} method 方法
+ * @param {Object} data 数据
+ * @param {Boolean} needAuth 是否需要 token
+ * @param {Number} timeout 超时（不传则按 TIMEOUTS 规则）
+ * @param {Boolean} retried 是否已因 401 重试过（内部使用）
+ */
+function request(url, method = 'GET', data = {}, needAuth = true, timeout, retried = false) {
+  const limit = resolveTimeout(url, timeout)
+  const sentToken = needAuth ? getToken() : null
+  const startedAt = Date.now()
 
   return new Promise((resolve, reject) => {
-    const header = {
-      'Content-Type': 'application/json'
+    const header = { 'Content-Type': 'application/json' }
+    if (needAuth && sentToken) {
+      header['Authorization'] = `Bearer ${sentToken}`
     }
-
-    // 添加 Authorization token
-    const token = getToken()
-    if (needAuth && token) {
-      header['Authorization'] = `Bearer ${token}`
-    }
-
-    const baseUrl = getApiBaseUrl()
 
     wx.request({
-      url: `${baseUrl}${url}`,
-      method: method,
-      data: data,
-      header: header,
-      timeout: timeout,
-      success: (res) => {
-        if (res.statusCode === 200) {
-          // 检查业务状态码
-          if (res.data && res.data.code !== undefined && res.data.code !== 200) {
-            // 业务错误，显示后端返回的错误信息
-            reportRequestIssue('warn', `[业务码${res.data.code}]`, url, (res.data && res.data.message) || '')
-            showErrorToast(res.data.message || '操作失败')
-          }
-          // 无论业务状态码是什么，都返回完整数据，让调用方自行判断
-          resolve(res.data)
-        } else if (res.statusCode === 401) {
-          // token 失效，清除登录信息并尝试重新登录
-          console.log('token 已失效，重新登录')
-          reportRequestIssue('warn', '[401]', url, 'token 失效，尝试重新登录')
-
-          // 清除缓存的 token
-          _cachedToken = null
-          wx.removeStorageSync('token')
-
-          if (app && app.clearLoginInfo) {
-            app.clearLoginInfo()
-          }
-
-          // 自动重新登录（仅在 app 可用时），无感登录，不提示用户
-          if (app && app.autoWechatLogin) {
-            app.autoWechatLogin().then(() => {
-              console.log('重新登录成功，重试请求')
-              request(url, method, data, needAuth).then(resolve).catch(reject)
-            }).catch(() => {
-              reject(new Error('重新登录失败'))
-            })
-          } else {
-            // app 不可用，直接返回错误让调用方处理
-            reject(new Error('登录已过期，请重新打开小程序'))
-          }
-        } else {
-          reportRequestIssue('warn', `[HTTP${res.statusCode}]`, url, (res.data && res.data.message) || '')
-          showErrorToast(res.data.message || '请求失败')
-          reject(res)
-        }
-      },
-      fail: (err) => {
-        console.error('请求失败:', url, err)
-        reportRequestIssue('error', '[网络错误]', url, (err && (err.errMsg || err.message)) || '')
-        showErrorToast('网络错误')
-        reject(err)
-      }
+      url: `${getApiBaseUrl()}${url}`,
+      method,
+      data,
+      header,
+      timeout: limit,
+      success: (res) => handleSuccess(res, { url, method, data, needAuth, limit, retried, sentToken, resolve, reject, startedAt }),
+      fail: (err) => handleFail(err, { url, limit, reject, startedAt })
     })
   })
 }
 
-/**
- * GET 请求
- * @param {String} url - 请求路径
- * @param {Object} data - 请求参数
- * @param {Boolean} needAuth - 是否需要认证（默认 true）
- */
-function get(url, data = {}, needAuth = true) {
-  // GET 请求将参数拼接到 URL
+/** GET：参数拼到 URL */
+function get(url, data = {}, needAuth = true, timeout) {
   const params = Object.keys(data)
-    .filter(key => data[key] !== undefined && data[key] !== null)
-    .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
+    .filter((key) => data[key] !== undefined && data[key] !== null)
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
     .join('&')
 
   const fullUrl = params ? `${url}?${params}` : url
-  return request(fullUrl, 'GET', {}, needAuth)
+  return request(fullUrl, 'GET', {}, needAuth, timeout)
 }
 
-/**
- * POST 请求
- * @param {String} url - 请求路径
- * @param {Object} data - 请求数据
- * @param {Boolean} needAuth - 是否需要认证（默认 true）
- * @param {Number} timeout - 超时时间（毫秒，默认 60000）
- */
-function post(url, data = {}, needAuth = true, timeout = 60000) {
+function post(url, data = {}, needAuth = true, timeout) {
   return request(url, 'POST', data, needAuth, timeout)
 }
 
-/**
- * POST 表单请求（multipart/form-data）
- * @param {String} url - 请求路径
- * @param {Object} data - 表单数据
- * @param {Boolean} needAuth - 是否需要认证（默认 true）
- */
-function formPost(url, data = {}, needAuth = true) {
-  const app = getAppInstance()
-
-  return new Promise((resolve, reject) => {
-    const header = {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    const token = getToken()
-    if (needAuth && token) {
-      header['Authorization'] = `Bearer ${token}`
-    }
-
-    // 将对象转为 URL 编码的 form data 字符串
-    const formData = Object.keys(data)
-      .filter(key => data[key] !== undefined && data[key] !== null)
-      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
-      .join('&')
-
-    const baseUrl = getApiBaseUrl()
-
-    wx.request({
-      url: `${baseUrl}${url}`,
-      method: 'POST',
-      data: formData,
-      header: header,
-      success: (res) => {
-        if (res.statusCode === 200) {
-          // 检查业务状态码
-          if (res.data && res.data.code !== undefined && res.data.code !== 200) {
-            // 业务错误，显示后端返回的错误信息
-            reportRequestIssue('warn', `[业务码${res.data.code}]`, url, (res.data && res.data.message) || '')
-            showErrorToast(res.data.message || '操作失败')
-          }
-          // 无论业务状态码是什么，都返回完整数据，让调用方自行判断
-          resolve(res.data)
-        } else if (res.statusCode === 401) {
-          reportRequestIssue('warn', '[401]', url, 'token 失效，尝试重新登录')
-          _cachedToken = null
-          wx.removeStorageSync('token')
-          if (app && app.clearLoginInfo) {
-            app.clearLoginInfo()
-          }
-          if (app && app.autoWechatLogin) {
-            app.autoWechatLogin().then(() => {
-              formPost(url, data, needAuth).then(resolve).catch(reject)
-            }).catch(() => {
-              reject(new Error('重新登录失败'))
-            })
-          } else {
-            reject(new Error('登录已过期，请重新打开小程序'))
-          }
-        } else {
-          reportRequestIssue('warn', `[HTTP${res.statusCode}]`, url, (res.data && res.data.message) || '')
-          showErrorToast(res.data.message || '请求失败')
-          reject(res)
-        }
-      },
-      fail: (err) => {
-        console.error('请求失败:', url, err)
-        reportRequestIssue('error', '[网络错误]', url, (err && (err.errMsg || err.message)) || '')
-        showErrorToast('网络错误')
-        reject(err)
-      }
-    })
-  })
+function put(url, data = {}, needAuth = true, timeout) {
+  return request(url, 'PUT', data, needAuth, timeout)
 }
 
-/**
- * PUT 请求
- * @param {String} url - 请求路径
- * @param {Object} data - 请求数据
- * @param {Boolean} needAuth - 是否需要认证（默认 true）
- */
-function put(url, data = {}, needAuth = true) {
-  return request(url, 'PUT', data, needAuth)
+/** 表单提交（application/x-www-form-urlencoded） */
+function formPost(url, data = {}, needAuth = true, timeout) {
+  const limit = resolveTimeout(url, timeout)
+  const sentToken = needAuth ? getToken() : null
+  const startedAt = Date.now()
+
+  return new Promise((resolve, reject) => {
+    const header = { 'Content-Type': 'application/x-www-form-urlencoded' }
+    if (needAuth && sentToken) {
+      header['Authorization'] = `Bearer ${sentToken}`
+    }
+
+    const formData = Object.keys(data)
+      .filter((key) => data[key] !== undefined && data[key] !== null)
+      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
+      .join('&')
+
+    wx.request({
+      url: `${getApiBaseUrl()}${url}`,
+      method: 'POST',
+      data: formData,
+      header,
+      timeout: limit,
+      success: (res) => handleSuccess(res, { url, method: 'POST', data, needAuth, limit, retried: false, sentToken, resolve, reject, startedAt }),
+      fail: (err) => handleFail(err, { url, limit, reject, startedAt })
+    })
+  })
 }
 
 module.exports = {
@@ -281,5 +367,6 @@ module.exports = {
   post,
   formPost,
   put,
-  setApiBaseUrl
+  setApiBaseUrl,
+  TIMEOUTS
 }

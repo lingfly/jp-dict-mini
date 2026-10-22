@@ -14,7 +14,9 @@ Page({
       remaining: 0
     },
     progressPercent: 0,
-    startTime: 0 // 记录开始时间，用于计算响应时间
+    startTime: 0, // 记录开始时间，用于计算响应时间
+    submitError: '',      // 提交失败提示（失败后停留当前卡片，可直接重试）
+    firstResponseTime: 0  // 首次评分耗时；重试时沿用，避免把网络等待算进去
   },
 
   onLoad() {
@@ -132,10 +134,10 @@ Page({
     const score = parseInt(e.currentTarget.dataset.score)
     if (!this.data.currentWord) return
 
-    // 计算响应时间
-    const responseTimeMs = Date.now() - this.data.startTime
+    // 首次评分的真实耗时；失败重试时沿用，不把超时等待算进去（AC-15）
+    const responseTimeMs = this.data.firstResponseTime || (Date.now() - this.data.startTime)
 
-    this.setData({ loading: true })
+    this.setData({ loading: true, submitError: '', firstResponseTime: responseTimeMs })
 
     try {
       const res = await reviewApi.submitReview({
@@ -145,8 +147,8 @@ Page({
       })
 
       if (res.code === 200) {
-        // 重置答案显示状态
-        this.setData({ showAnswer: false })
+        // 重置答案显示状态与重试计时
+        this.setData({ showAnswer: false, firstResponseTime: 0 })
 
         // 获取下一个单词
         const hasNext = await this.fetchNextWord()
@@ -157,17 +159,12 @@ Page({
           })
         }
       } else {
-        wx.showToast({
-          title: res.message || '提交失败',
-          icon: 'none'
-        })
+        this.setData({ submitError: res.message || '提交失败，请重新选择' })
       }
     } catch (error) {
       console.error('提交评分失败:', error)
-      wx.showToast({
-        title: '提交失败',
-        icon: 'none'
-      })
+      // 卡片不跳，再点评分即重试；文案与 spec 界面契约保持一致（AC-07）
+      this.setData({ submitError: '提交超时，请重新选择' })
     } finally {
       this.setData({ loading: false })
     }

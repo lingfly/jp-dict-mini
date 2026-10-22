@@ -10,6 +10,9 @@ const WORD_DETAIL_BATCH_SIZE = 20
 Page({
   data: {
     loading: false,
+    loadError: '',
+    submitError: '',      // 提交失败提示（失败后停留当前卡片）
+    firstResponseTime: 0, // 首次评分耗时；重试时沿用，避免把等待算进去
     showAnswer: false,
     currentWord: null,
     wordDetail: null, // 完整单词详情（含 definitions/examples）
@@ -83,7 +86,7 @@ Page({
    */
   async initReview() {
     this._lastQueueRefreshAt = Date.now()
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadError: '' })
 
     try {
       const res = await dataSource.getDueCards()
@@ -108,10 +111,8 @@ Page({
       // 角标由 onShow 统一刷新一次，避免 due-count 重复请求
     } catch (error) {
       console.error('初始化复习失败:', error)
-      wx.showToast({
-        title: '加载失败',
-        icon: 'none'
-      })
+      // 请求层已提示原因；首行只写结果，次行引导下拉刷新（AC-07）
+      this.setData({ loadError: '加载失败' })
     } finally {
       this.setData({ loading: false })
     }
@@ -332,9 +333,10 @@ Page({
 
     const item = this.queue[this.queueIndex]
     const now = new Date()
-    const responseTimeMs = Date.now() - this.data.startTime
+    // 首次评分的真实耗时；失败重试时沿用（AC-15）
+    const responseTimeMs = this.data.firstResponseTime || (Date.now() - this.data.startTime)
 
-    this.setData({ loading: true })
+    this.setData({ loading: true, submitError: '', firstResponseTime: responseTimeMs })
 
     try {
       // 1. FSRS 计算新状态
@@ -420,6 +422,7 @@ Page({
       this.updateStats()
 
       // 4. 展示下一张卡片
+      this.setData({ submitError: '', firstResponseTime: 0 })
       const hasNext = await this.showCurrentCard()
 
       // 评分成功：用本地队列剩余数更新角标（不请求后端 due-count）
@@ -433,10 +436,8 @@ Page({
       }
     } catch (error) {
       console.error('提交评分失败:', error)
-      wx.showToast({
-        title: '提交失败',
-        icon: 'none'
-      })
+      // 请求层已提示原因；卡片留在原位，直接再点评分即可重试（AC-07）
+      this.setData({ submitError: (error && error.message) || '提交失败，请重新选择' })
     } finally {
       this.setData({ loading: false })
     }

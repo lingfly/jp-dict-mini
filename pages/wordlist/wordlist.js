@@ -6,6 +6,7 @@ Page({
   data: {
     searchKeyword: '',
     loading: false,
+    loadError: '',
     wordLists: [],
     categories: [],
     activeCategory: '',
@@ -122,7 +123,7 @@ Page({
   },
 
   async loadWordLists() {
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadError: '' })
     try {
       const params = {}
       if (this.data.mineOnly) {
@@ -147,11 +148,12 @@ Page({
         }
         this.setData({ wordLists: filtered })
       } else {
-        wx.showToast({ title: res.message || '加载失败', icon: 'none' })
+        this.setData({ loadError: res.message || '加载失败' })
       }
     } catch (error) {
       console.error('加载词单列表失败:', error)
-      wx.showToast({ title: '加载失败', icon: 'none' })
+      // 请求层已提示原因，这里只落状态（次行引导下拉刷新）
+      this.setData({ loadError: '加载失败' })
     } finally {
       this.setData({ loading: false })
     }

@@ -16,6 +16,8 @@ Page({
     },
     // 音调校验提示
     accentError: '',
+    // 提交失败提示（失败后保留已填内容，可直接再点提交）
+    submitError: '',
     // 词性多选
     selectedWordTypes: [],        // 选中 value 列表（用于提交）
     selectedWordTypeLabels: [],   // 选中 label 列表（用于显示）
@@ -251,7 +253,7 @@ Page({
       return
     }
 
-    this.setData({ submitting: true })
+    this.setData({ submitting: true, submitError: '' })
     wx.showLoading({ title: '提交中...', mask: true })
     try {
       const data = {
@@ -269,14 +271,13 @@ Page({
         // 成功后保持 submitting=true，禁止在返回前的 1.5s 内再次点击
         setTimeout(() => wx.navigateBack(), 1500)
       } else {
-        wx.showToast({ title: res.message || '提交失败', icon: 'none' })
-        this.setData({ submitting: false })
+        this.setData({ submitError: res.message || '提交失败，请重试', submitting: false })
       }
     } catch (e) {
       wx.hideLoading()
       console.error('提交单词纠错失败:', e)
-      wx.showToast({ title: '提交失败', icon: 'none' })
-      this.setData({ submitting: false })
+      // 请求层已提示原因；保留已填内容，复用「提交纠错」按钮重试（AC-07）
+      this.setData({ submitError: (e && e.message) || '提交失败，请重试', submitting: false })
     }
   }
 })

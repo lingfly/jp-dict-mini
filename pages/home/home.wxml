@@ -88,8 +88,9 @@
     <view class="ai-search-entry ai-search-inline {{aiStreaming || aiQueryExhausted ? 'ai-disabled' : ''}}" bindtap="startAiSearch">
       <text wx:if="{{!aiStreaming}}" class="ai-search-icon">✨</text>
       <text wx:else class="ai-search-loading"></text>
-      <text class="ai-search-text">{{aiStreaming ? 'AI 查询中...' : (aiQueryExhausted ? 'AI 查词 · 今日次数已用完' : (aiQueryLimit > 0 ? 'AI 查词 · 今日已用 ' + aiQueryUsedToday + ' / ' + aiQueryLimit + ' 次' : 'AI 查词'))}}</text>
+      <text class="ai-search-text">{{aiStreaming ? (aiPhaseText || 'AI 查询中...') : (aiQueryExhausted ? 'AI 查词 · 今日次数已用完' : (aiQueryLimit > 0 ? 'AI 查词 · 今日已用 ' + aiQueryUsedToday + ' / ' + aiQueryLimit + ' 次' : 'AI 查词'))}}</text>
     </view>
+    <view wx:if="{{aiStatus === 'failed' && aiError}}" class="ai-error">{{aiError}}</view>
   </view>
 
   <!-- 无搜索结果 + AI 查词 -->
@@ -100,8 +101,9 @@
     <view class="ai-search-entry {{aiStreaming || aiQueryExhausted ? 'ai-disabled' : ''}}" bindtap="startAiSearch">
       <text wx:if="{{!aiStreaming}}" class="ai-search-icon">✨</text>
       <text wx:else class="ai-search-loading"></text>
-      <text class="ai-search-text">{{aiStreaming ? 'AI 查询中...' : (aiQueryExhausted ? 'AI 查词 · 今日次数已用完' : (aiQueryLimit > 0 ? 'AI 查词 · 今日已用 ' + aiQueryUsedToday + ' / ' + aiQueryLimit + ' 次' : 'AI 查词'))}}</text>
+      <text class="ai-search-text">{{aiStreaming ? (aiPhaseText || 'AI 查询中...') : (aiQueryExhausted ? 'AI 查词 · 今日次数已用完' : (aiQueryLimit > 0 ? 'AI 查词 · 今日已用 ' + aiQueryUsedToday + ' / ' + aiQueryLimit + ' 次' : 'AI 查词'))}}</text>
     </view>
+    <view wx:if="{{aiStatus === 'failed' && aiError}}" class="ai-error">{{aiError}}</view>
   </view>
 
   <!-- 单词详情 -->
