@@ -11,3 +11,4 @@ project.private.config.json
 
 # 本地调试配置（不提交 localhost）
 utils/config.local.js
+.workbuddy
