@@ -3,6 +3,7 @@ const { wordApi, userApi } = require('../../utils/api')
 const fsrs = require('../../utils/fsrs/fsrs')
 const dataSource = require('../../utils/fsrs/dataSource')
 const { formatBadgeText } = require('../../utils/badge')
+const { createReviewTimer } = require('../../utils/reviewTimer')
 
 // 单词详情批量预取大小：避免复习时逐词查询详情，按批一次拉取
 const WORD_DETAIL_BATCH_SIZE = 20
@@ -26,7 +27,7 @@ Page({
       remaining: 0
     },
     progressPercent: 0,
-    startTime: 0,
+    // 响应计时不在 data：由 this.timer 持有（utils/reviewTimer.js），生命周期切换不触发 setData
     collapseDefinitionOnReview: false,
     showMenu: false,
     ratingPreviews: [] // 四级评分对应的下次复习时间
@@ -40,11 +41,15 @@ Page({
   wordDetailCache: {}, // 单词详情缓存 { wordId: WordDetailResponse }，按批预取复用
 
   onLoad() {
+    this.timer = createReviewTimer()
     this.loadCollapseConfig()
     this.initReview()
   },
 
   onShow() {
+    // 从其他页面 / 后台回来：恢复计时，离开期间不计入响应时间（#003 AC-02）
+    if (this.timer) this.timer.resume()
+
     // 有新词加入复习 → 复习列表已变化，重新向后端拉取队列
     const app = getApp()
     if (app.globalData.reviewListChangedAt > (this._lastQueueRefreshAt || 0)) {
@@ -56,6 +61,11 @@ Page({
     if (this._lastFetchAt && now - this._lastFetchAt < 3000) return
     this._lastFetchAt = now
     this.fetchLearningStatus()
+  },
+
+  onHide() {
+    // 切 tab、进入纠错页、小程序退到后台：暂停计时（#003 AC-01）
+    if (this.timer) this.timer.pause()
   },
 
   /** 下拉刷新：重新拉取当天复习队列与今日统计 */
@@ -146,8 +156,8 @@ Page({
     }
 
     if (!currentWord) {
-      // 单词详情获取失败，跳过这张卡
-      this.queue.splice(this.queueIndex, 1)
+      // 单词详情获取失败，跳过这张卡（与 3001 走同一收尾路径，避免统计与计时不一致）
+      this.skipCurrentCard()
       return this.showCurrentCard()
     }
 
@@ -159,6 +169,9 @@ Page({
     // 预计算四级评分对应的下次复习时间（用于评分按钮下方展示）
     const ratingPreviews = fsrs.getRatingPreviews(item.fsrsCard, new Date())
 
+    // 新卡开始计时（页面不可见时也安全：隐藏起点从此刻算起）
+    this.timer.start()
+
     this.setData({
       currentWord,
       wordDetail,
@@ -166,10 +179,26 @@ Page({
       wordType: item.type,
       hint: '',
       showAnswer: false,
-      startTime: Date.now(),
       ratingPreviews
     })
     return true
+  },
+
+  /**
+   * 跳过当前卡片（单词不存在 3001 / 详情获取失败）
+   *
+   * 三件事必须一起做，漏一件都会让后续数据出错（#003 AC-06 / AC-07）：
+   * 1. 移出队列 —— 不参与本地 FSRS 调度，避免短间隔卡被反复插回形成死循环
+   * 2. completedCount++ —— 跳过也是"处理完"，分子 +1 进度条才能收敛到 100%
+   * 3. 清 firstResponseTime —— 它只在提交成功时才清，不清就会让下一张沿用上一张的耗时
+   */
+  skipCurrentCard() {
+    if (this.queueIndex < this.queue.length) {
+      this.queue.splice(this.queueIndex, 1)
+    }
+    this.completedCount++
+    this.setData({ firstResponseTime: 0 })
+    this.updateStats()
   },
 
   /**
@@ -297,6 +326,10 @@ Page({
 
   /**
    * 切换答案显示
+   *
+   * 注意：这里故意不碰计时器。看答案（读释义、例句、展开义项）属于同一次作答，
+   * 计入 responseTimeMs，仅受 60s 上限约束（#003 AC-05）。
+   * 依据：Anki 的计时区间是「题目出现 → 按评分键」，作答时长不参与 FSRS 调度。
    */
   toggleAnswer() {
     // 根据配置决定释义是否默认展开
@@ -333,8 +366,9 @@ Page({
 
     const item = this.queue[this.queueIndex]
     const now = new Date()
-    // 首次评分的真实耗时；失败重试时沿用（AC-15）
-    const responseTimeMs = this.data.firstResponseTime || (Date.now() - this.data.startTime)
+    // 首次评分的真实耗时；失败重试时沿用（#001 AC-15）
+    // 已扣除页面不可见时长并截断到 60s（#003 AC-03 / AC-04）
+    const responseTimeMs = this.data.firstResponseTime || this.timer.elapsed()
 
     this.setData({ loading: true, submitError: '', firstResponseTime: responseTimeMs })
 
@@ -359,8 +393,7 @@ Page({
       //     静默跳过该卡片：移出队列，不参与本地调度（避免短间隔卡被反复插回形成死循环）
       if (res && res.code === dataSource.WORD_NOT_FOUND) {
         console.warn('[handleScore] 单词不存在，直接跳过:', item.wordId)
-        this.queue.splice(this.queueIndex, 1)
-        this.updateStats()
+        this.skipCurrentCard()
         const hasNextAfterSkip = await this.showCurrentCard()
         this.updateBadgeLocally()
         if (!hasNextAfterSkip) {

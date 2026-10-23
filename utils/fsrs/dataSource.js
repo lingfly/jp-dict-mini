@@ -177,7 +177,7 @@ async function submitReview(payload) {
       fsrsVersion: FSRS_VERSION
     })
     // 单词不存在（3001）：卡片对应的单词已被删除/移出词单，后端不落库
-    // 静默返回，由页面直接跳过该卡片并继续下一张（request 层已对该码免弹错误提示）
+    // 静默返回：request 层已按「路径 + 业务码」免弹提示（#003 AC-06），页面跳过该卡继续下一张
     if (res && res.code === WORD_NOT_FOUND) {
       console.warn('[submitReview] 单词不存在，跳过该卡片:', payload.wordId, res.message)
       return { code: WORD_NOT_FOUND, message: res.message, data: null }

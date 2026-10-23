@@ -25,9 +25,19 @@ const SLOW_THRESHOLD = 5000
 // 轮询类请求失败不弹 toast：由发起方自己决定怎么提示，避免弹到别的页面（AC-16）
 const SILENT_PATHS = [/^\/api\/ai-dict\/query-result/]
 
+// 业务码级静默：路径 + code 精确匹配（#003 AC-06）
+// 3001 = 单词不存在 / 已移出词单，复习页会静默跳过该卡，再弹 toast 会自相矛盾
+const SILENT_BIZ = [{ path: /^\/api\/fsrs\/review$/, codes: [3001] }]
+
 function isSilent(url) {
   const p = toPath(url)
   return SILENT_PATHS.some((re) => re.test(p))
+}
+
+function isSilentBiz(url, code) {
+  const p = toPath(url)
+  const n = Number(code)
+  return SILENT_BIZ.some((rule) => rule.path.test(p) && rule.codes.indexOf(n) !== -1)
 }
 
 const MESSAGES = {
@@ -214,9 +224,9 @@ function handleSuccess(res, ctx) {
     const body = res.data
 
     if (body && body.code !== undefined && body.code !== 200) {
-      // 业务错误：请求层提示一次，页面不要再弹
+      // 业务错误：请求层提示一次，页面不要再弹（除非该路径的该业务码约定静默）
       report('warn', '[BIZ]', url, { code: body.code, dur: duration })
-      if (!isSilent(url)) notifyOnce(body.message || '操作失败')
+      if (!isSilent(url) && !isSilentBiz(url, body.code)) notifyOnce(body.message || '操作失败')
     } else if (duration > SLOW_THRESHOLD) {
       report('warn', '[SLOW]', url, { dur: duration, timeout: limit })
     }
