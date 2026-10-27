@@ -198,8 +198,11 @@ const fsrsApi = {
     return get('/api/fsrs/due-count', { endTs }) // 需要 token
   },
 
-  // 查询未来 15 天（含今天）每天需要复习的单词数
-  // 返回 List<{ date: "yyyy-MM-dd", count: int }>
+  // 学习统计（路径沿用旧名，语义已扩展；#005）
+  // 返回 { code, data: { days: [{ date, due, durationSeconds,
+  //   cognitive: { easy, good, hard, forgot }, reviewAndNew: { review, newLearned } }] } }
+  // days 固定 106 项（今天前 90 + 今天 + 今天后 15，升序，今天下标 90）；
+  // 未来日的 cognitive / reviewAndNew / durationSeconds 为 null，历史日的 due 为 null
   getDueForecast() {
     return get('/api/fsrs/due-forecast') // 需要 token
   }

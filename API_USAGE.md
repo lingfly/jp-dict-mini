@@ -168,11 +168,11 @@
 
 ---
 
-## 11. 学习情况（`pages/review-forecast/review-forecast`）
+## 11. 学习统计（`pages/review-forecast/review-forecast`）
 
 | 接口 | 代码位置 | 页面功能点 |
 |---|---|---|
-| `GET /api/fsrs/due-forecast` | `review-forecast.js:91` | 未来 15 天（含今天）堆叠柱状图 + 今日图例（新学/复习/待复习/忘记/模糊） |
+| `GET /api/fsrs/due-forecast` | `review-forecast.js`（`loadStats`） | 106 天（前 90 + 今天 + 后 15）数据；顶部切换「认知情况」（简单/认识/模糊/忘记/待学 五段堆叠）与「新学复习」（新学/复习/待学 三段堆叠）；一屏 7 天可横向滑动，初始今天居中；点击某列在下方详情卡展示该日各项与学习时长（未来日只给待学，其余「—」） |
 
 ---
 

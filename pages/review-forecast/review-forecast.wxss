@@ -3,6 +3,35 @@
   padding: 16px;
   min-height: 100vh;
   background: #F5F7FA;
+  box-sizing: border-box;
+}
+
+/* 图表切换：认知情况 / 新学复习 */
+.seg-control {
+  display: flex;
+  padding: 4rpx;
+  margin-bottom: 16px;
+  background: #FFFFFF;
+  border-radius: 12rpx;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.seg-item {
+  flex: 1;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: #606266;
+  border-radius: 10rpx;
+  transition: all 0.2s;
+}
+
+.seg-item-active {
+  background: #5B8C7D;
+  color: #FFFFFF;
+  font-weight: 600;
 }
 
 .chart-card {
@@ -56,7 +85,13 @@
   flex-shrink: 0;
 }
 
-/* 绘图区：顶部/底部边框 + 中间 8 条横线（间隔 80rpx）+ 列间竖线 */
+/* 选中列：整列浅绿底（含柱下方标签），点击命中也落在这里 */
+.bar-col-active {
+  background: rgba(91, 140, 125, 0.10);
+  border-radius: 8rpx 8rpx 0 0;
+}
+
+/* 绘图区：顶部/底部边框 + 中间横线 + 列间竖线 */
 .bar-area {
   width: 100%;
   height: 720rpx;
@@ -78,31 +113,41 @@
   min-width: 4rpx;
 }
 
-/* 段色：自下而上 新学(绿) / 复习(绿) / 模糊(黄) / 待学(浅黄) / 忘记(红) */
-.seg-new {
-  background: #A8C7BD;
-  border-radius: 4rpx 4rpx 0 0;
+/* 认知图自下而上：简单(深绿) / 认识(中绿) / 模糊(黄) / 忘记(红) / 待学(灰)
+   段与段之间不留圆角：柱顶是动态的最上一段，无法用 CSS 选中，统一直角最稳 */
+.seg-easy {
+  background: #5B8C7D;
 }
 
-.seg-review {
-  background: #5B8C7D;
+.seg-good {
+  background: #8FB5A8;
 }
 
 .seg-hard {
   background: #E6A23C;
 }
 
+.seg-forgot {
+  background: #E15A5A;
+}
+
 .seg-due {
   background: #C0C4CC;
 }
 
-.seg-forgot {
-  background: #E15A5A;
+/* 新学复习图自下而上：新学(浅绿) / 复习(深绿) */
+.seg-new {
+  background: #A8C7BD;
+}
+
+.seg-review {
+  background: #5B8C7D;
 }
 
 /* 横坐标竖排标签 */
 .bar-label {
   margin-top: 12rpx;
+  padding-bottom: 8rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -120,19 +165,13 @@
   font-weight: 600;
 }
 
-/* 图例 */
+/* 图例：只说明颜色含义，不放数字 */
 .legend {
   margin-top: 32rpx;
-  padding: 0 16rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.legend-row {
+  padding: 0 8rpx;
   display: flex;
   flex-wrap: wrap;
-  gap: 32rpx;
+  gap: 24rpx 32rpx;
 }
 
 .legend-item {
@@ -148,6 +187,26 @@
   flex-shrink: 0;
 }
 
+.dot-easy {
+  background: #5B8C7D;
+}
+
+.dot-good {
+  background: #8FB5A8;
+}
+
+.dot-hard {
+  background: #E6A23C;
+}
+
+.dot-forgot {
+  background: #E15A5A;
+}
+
+.dot-due {
+  background: #C0C4CC;
+}
+
 .dot-new {
   background: #A8C7BD;
 }
@@ -156,26 +215,107 @@
   background: #5B8C7D;
 }
 
-.dot-hard {
-  background: #E6A23C;
-}
-
-.dot-due {
-  background: #C0C4CC;
-}
-
-.dot-forgot {
-  background: #E15A5A;
-}
-
 .legend-text {
   font-size: 22rpx;
   color: #606266;
 }
 
+/* 详情卡：常驻，随点击切换 */
+.detail-card {
+  margin-top: 16px;
+  padding: 24rpx;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.detail-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #F0F2F5;
+}
+
+.detail-date {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #303133;
+}
+
+.detail-relative {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+.detail-grid {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 20rpx 0 8rpx;
+}
+
+.detail-item {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 0;
+  box-sizing: border-box;
+}
+
+.detail-label {
+  font-size: 22rpx;
+  color: #909399;
+}
+
+.detail-value {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #303133;
+  line-height: 1.2;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #F0F2F5;
+}
+
+.detail-row .detail-value {
+  font-size: 28rpx;
+  color: #606266;
+  font-weight: 500;
+}
+
+.detail-hint {
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #E6A23C;
+  text-align: center;
+}
+
+/* 空态 / 错误态 */
 .chart-empty {
   padding: 48px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24rpx;
   text-align: center;
   color: #909399;
   font-size: 14px;
+}
+
+.chart-empty-text {
+  font-size: 28rpx;
+  color: #909399;
+}
+
+.retry-btn {
+  width: 200rpx;
+  height: 68rpx;
+  font-size: 28rpx;
 }
