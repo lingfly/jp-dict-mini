@@ -357,6 +357,11 @@ const userApi = {
       aiDictThinking,
       aiDictReasoningEffort
     }) // 需要 token
+  },
+
+  // 更新 FSRS 参数（#004）：部分更新，只传要改的字段；两项全传即同时修改
+  updateFsrsConfig(patch) {
+    return put('/api/user/learning-config/fsrs-config', patch) // 需要 token
   }
 }
 

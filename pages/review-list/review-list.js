@@ -42,8 +42,10 @@ Page({
 
   onLoad() {
     this.timer = createReviewTimer()
-    this.loadCollapseConfig()
-    this.initReview()
+    // 参数未就绪前不展示可评分卡片：先占住 loading，避免闪现"今日已完成"（#004 AC-02 / AC-04）
+    this._booting = true
+    this.setData({ loading: true })
+    this.bootstrap()
   },
 
   onShow() {
@@ -51,8 +53,9 @@ Page({
     if (this.timer) this.timer.resume()
 
     // 有新词加入复习 → 复习列表已变化，重新向后端拉取队列
+    // 首次启动由 bootstrap 串行拉取，这里不重复请求
     const app = getApp()
-    if (app.globalData.reviewListChangedAt > (this._lastQueueRefreshAt || 0)) {
+    if (!this._booting && app.globalData.reviewListChangedAt > (this._lastQueueRefreshAt || 0)) {
       this.initReview()
     }
 
@@ -79,15 +82,37 @@ Page({
     }
   },
 
-  /** 加载释义折叠配置 */
-  async loadCollapseConfig() {
+  /**
+   * 首屏启动：登录 → 学习配置（FSRS 参数 + 释义折叠）→ 拉取当日队列
+   * 串行是必须的：先有参数，才能算首卡的评分预览与调度（#004 AC-01 / AC-02）
+   */
+  async bootstrap() {
     try {
+      await this.loadLearningConfig()
+      await this.initReview()
+    } finally {
+      this._booting = false
+    }
+  },
+
+  /**
+   * 加载学习配置：应用 FSRS 参数与复习时释义折叠
+   * 请求失败时保留本机缓存/默认参数继续出卡，不阻塞复习（#004 AC-04 / AC-14）
+   */
+  async loadLearningConfig() {
+    try {
+      await getApp().waitForLogin()
       const res = await userApi.getLearningConfig()
-      if (res.code === 200 && res.data) {
+      if (res && res.code === 200 && res.data) {
+        fsrs.applyServerConfig(res.data)
         this.setData({ collapseDefinitionOnReview: res.data.collapseDefinitionOnReview === 1 })
+        return
       }
+      // 非 200：请求层已统一提示；参数保持缓存/默认
+      console.error('[review-list] 学习配置返回异常，沿用本机参数:', res && res.code)
     } catch (e) {
-      console.error('加载释义折叠配置失败:', e)
+      // 网络失败：参数用缓存/默认，卡片列表失败会走既有错误态
+      console.error('[review-list] 加载学习配置失败，沿用本机参数:', e)
     }
   },
 

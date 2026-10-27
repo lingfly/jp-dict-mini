@@ -1,5 +1,7 @@
 // pages/settings/settings.js
 const { userApi } = require('../../utils/api')
+const fsrs = require('../../utils/fsrs/fsrs')
+const fsrsParams = require('../../utils/fsrs/params')
 const app = getApp()
 
 Page({
@@ -21,12 +23,34 @@ Page({
     tempModelIndex: 0,
     reasoningEffortOptions: ['low', 'medium', 'high', 'xhigh', 'max'],
     showReasoningPicker: false,
-    tempReasoningIndex: 0
+    tempReasoningIndex: 0,
+    // FSRS 用户参数（#004）：先按缓存/默认渲染，服务端返回后覆盖
+    fsrsRetention: 0.9,
+    fsrsMaximumInterval: 36500,
+    fsrsRetentionIndex: 2,
+    fsrsIntervalIndex: 5,
+    retentionLabels: fsrsParams.RETENTION_LABELS,
+    intervalLabels: fsrsParams.INTERVAL_LABELS,
+    showRetentionPicker: false,
+    tempRetentionIndex: 2,
+    showIntervalPicker: false,
+    tempIntervalIndex: 5
   },
 
   onLoad() {
     this.checkAdmin()
+    this.syncFsrsView(fsrsParams.getCurrent())
     this.loadConfig()
+  },
+
+  /** 把 FSRS 参数同步到界面（值 + picker 下标） */
+  syncFsrsView(parameters) {
+    this.setData({
+      fsrsRetention: parameters.requestRetention,
+      fsrsMaximumInterval: parameters.maximumInterval,
+      fsrsRetentionIndex: fsrsParams.indexOfRetention(parameters.requestRetention),
+      fsrsIntervalIndex: fsrsParams.indexOfInterval(parameters.maximumInterval)
+    })
   },
 
   checkAdmin() {
@@ -52,9 +76,12 @@ Page({
           },
           loading: false
         })
+        // 应用服务端 FSRS 参数；字段缺失/非法会逐项回落默认（#004 AC-13）
+        this.syncFsrsView(fsrs.applyServerConfig(res.data))
       }
     } catch (error) {
       console.error('加载学习配置失败:', error)
+      // 保留 onLoad 时按缓存/默认渲染的 FSRS 参数，不阻塞页面
       this.setData({ loading: false })
     }
   },
@@ -276,5 +303,113 @@ Page({
     } catch (error) {
       console.error('更新推理强度失败:', error)
     }
+  },
+
+  // ===== FSRS 参数（#004）=====
+
+  /**
+   * 提交参数：部分更新，只传本次改动的字段
+   * 失败时提示由 request.js 统一给出；本方法不重复 toast，也不改显示值
+   * @param {Object} patch 发给后端的字段（1~2 项）
+   * @param {Object} nextValues 保存成功后的完整本机参数
+   * @returns {Promise<Boolean>}
+   */
+  async saveFsrsPatch(patch, nextValues) {
+    try {
+      const res = await userApi.updateFsrsConfig(patch)
+      if (res && res.code === 200) {
+        this.syncFsrsView(fsrs.applyLocalParameters(nextValues))
+        return true
+      }
+      return false
+    } catch (e) {
+      // 网络失败：显示值保持不变即为回滚
+      console.error('更新 FSRS 参数失败:', e)
+      return false
+    }
+  },
+
+  // 显示目标保持率选择器
+  showRetentionPicker() {
+    this.setData({
+      showRetentionPicker: true,
+      tempRetentionIndex: this.data.fsrsRetentionIndex
+    })
+  },
+
+  onRetentionPickerChange(e) {
+    this.setData({ tempRetentionIndex: e.detail.value[0] })
+  },
+
+  cancelRetentionPicker() {
+    this.setData({ showRetentionPicker: false })
+  },
+
+  // 确认目标保持率：只提交本项
+  async confirmRetentionPicker() {
+    const index = this.data.tempRetentionIndex
+    const value = fsrsParams.RETENTION_VALUES[index]
+    this.setData({ showRetentionPicker: false })
+    if (value === undefined || value === this.data.fsrsRetention) return
+
+    const nextValues = Object.assign({}, fsrs.getParameters(), { requestRetention: value })
+    const ok = await this.saveFsrsPatch({ fsrsRequestRetention: value }, nextValues)
+    if (ok) {
+      wx.showToast({ title: '已更新', icon: 'success' })
+    }
+  },
+
+  // 显示最大间隔选择器
+  showIntervalPicker() {
+    this.setData({
+      showIntervalPicker: true,
+      tempIntervalIndex: this.data.fsrsIntervalIndex
+    })
+  },
+
+  onIntervalPickerChange(e) {
+    this.setData({ tempIntervalIndex: e.detail.value[0] })
+  },
+
+  cancelIntervalPicker() {
+    this.setData({ showIntervalPicker: false })
+  },
+
+  // 确认最大间隔：只提交本项
+  async confirmIntervalPicker() {
+    const index = this.data.tempIntervalIndex
+    const value = fsrsParams.INTERVAL_VALUES[index]
+    this.setData({ showIntervalPicker: false })
+    if (value === undefined || value === this.data.fsrsMaximumInterval) return
+
+    const nextValues = Object.assign({}, fsrs.getParameters(), { maximumInterval: value })
+    const ok = await this.saveFsrsPatch({ fsrsMaximumInterval: value }, nextValues)
+    if (ok) {
+      wx.showToast({ title: '已更新', icon: 'success' })
+    }
+  },
+
+  // 恢复默认：显式提交两项（部分更新接口下必须两项都传）
+  onRestoreFsrsDefaults() {
+    wx.showModal({
+      title: '恢复默认',
+      content: '将目标保持率、最大间隔恢复为默认值（90% / 不限）？已排好的到期日不会改变。',
+      confirmText: '恢复',
+      cancelText: '取消',
+      success: async (res) => {
+        if (!res.confirm) return
+        const defaults = fsrsParams.DEFAULTS
+        const ok = await this.saveFsrsPatch(
+          {
+            fsrsRequestRetention: defaults.requestRetention,
+            fsrsMaximumInterval: defaults.maximumInterval
+          },
+          defaults
+        )
+        if (ok) {
+          wx.showToast({ title: '已恢复默认', icon: 'success' })
+        }
+      }
+    })
   }
 })

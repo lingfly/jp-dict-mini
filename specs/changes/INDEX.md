@@ -10,3 +10,4 @@
 | 001 | `001-api-timeout` | 接口超时治理 | L2 | approved | 2026-10-22 | — |
 | 002 | `002-remove-unused-api` | 清理 api.js 无调用方的接口封装与空壳页面 | L2 | approved | 2026-10-22 | — |
 | 003 | `003-review-response-time` | 复习响应时间口径（扣除离开时长 + 上限 + 3001 收尾） | L2 | approved | 2026-10-22 | — |
+| 004 | `004-fsrs-user-parameters` | FSRS 参数可配置（保持率 / 最大间隔，参数存后端） | L3 | approved | 2026-10-26 | — |

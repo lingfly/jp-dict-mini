@@ -164,6 +164,7 @@
 | `PUT /api/user/learning-config/collapse-definition-on-query` | `settings.js:99` | 「查词时释义折叠」开关 |
 | `PUT /api/user/learning-config/collapse-definition-on-review` | `settings.js:114` | 「复习时释义折叠」开关 |
 | `PUT /api/user/learning-config/ai-dict-config` | `settings.js:153` / `176` / `202` / `222` / `266` | AI 查词配置：模型选择、温度、思维模式、推理强度（每次改动四项全量提交） |
+| `PUT /api/user/learning-config/fsrs-config` | `settings.js`（`confirmRetentionPicker` / `confirmIntervalPicker` / `onRestoreFsrsDefaults`） | FSRS 参数：目标保持率 / 最大间隔（**部分更新**，只传改动项；恢复默认传两项） |
 
 ---
 

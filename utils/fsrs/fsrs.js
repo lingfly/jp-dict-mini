@@ -7,8 +7,10 @@
  * - 短间隔（Learning/Relearning）的"多少分钟后复习"改为"多少张卡片后复习"：
  *   1 分钟 = 1 卡片，偏移量 = Math.round((newCard.due - now) / 60000)
  * - 卡片状态字段（due/last_review）统一为毫秒时间戳，便于 JSON 存储与上报
+ * - 用户可配参数（保持率 / 最大间隔）统一从 params.js 取，参数变化后重建调度器（#004）
  */
 const lib = require('./index.js')
+const params = require('./params')
 
 const { fsrs, createEmptyCard, Rating, State } = lib
 
@@ -23,20 +25,62 @@ const RATING_MAP = {
 let _scheduler = null
 
 /**
+ * 用当前用户参数构建调度器
+ * 保持率 / 最大间隔来自 params.js；其余参数仍是固定值（#004 非目标）
+ */
+function buildScheduler() {
+  const current = params.getCurrent()
+  return fsrs({
+    enable_fuzz: true,
+    enable_short_term: true,
+    request_retention: current.requestRetention,
+    maximum_interval: current.maximumInterval,
+    learning_steps: ['1m', '10m'],
+    relearning_steps: ['10m']
+  })
+}
+
+/**
  * 获取 FSRS 调度器单例
  */
 function getScheduler() {
   if (!_scheduler) {
-    _scheduler = fsrs({
-      enable_fuzz: true,
-      enable_short_term: true,
-      request_retention: 0.9,
-      maximum_interval: 36500,
-      learning_steps: ['1m', '10m'],
-      relearning_steps: ['10m']
-    })
+    _scheduler = buildScheduler()
   }
   return _scheduler
+}
+
+/**
+ * 参数变化后重建调度器（下一次预览/评分使用新参数）
+ */
+function resetScheduler() {
+  _scheduler = null
+}
+
+/**
+ * 应用服务端 learning-config（字段缺失/非法回落默认）
+ * @param {Object} configData GET /api/user/learning-config 的 data
+ * @returns {{ requestRetention: Number, maximumInterval: Number }}
+ */
+function applyServerConfig(configData) {
+  const applied = params.applyServerConfig(configData)
+  resetScheduler()
+  return applied
+}
+
+/**
+ * 应用本机已确认的参数（设置页保存成功后调用）
+ * @param {{ requestRetention: Number, maximumInterval: Number }} raw
+ */
+function applyLocalParameters(raw) {
+  const applied = params.applyLocal(raw)
+  resetScheduler()
+  return applied
+}
+
+/** 当前生效参数 */
+function getParameters() {
+  return params.getCurrent()
 }
 
 /**
@@ -161,5 +205,8 @@ module.exports = {
   createCard,
   scheduleNext,
   calcCardOffset,
-  getRatingPreviews
+  getRatingPreviews,
+  applyServerConfig,
+  applyLocalParameters,
+  getParameters
 }
