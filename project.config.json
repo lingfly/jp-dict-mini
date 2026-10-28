@@ -1,7 +1,12 @@
 {
   "description": "日语背单词小程序",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "scripts"
+      }
+    ],
     "include": []
   },
   "compileType": "miniprogram",

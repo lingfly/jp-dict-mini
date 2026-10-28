@@ -1,6 +1,9 @@
-#!/usr/bin/env node
 /**
  * spec.js — 规范库体检工具（零依赖，Node 内置模块）
+ *
+ * 注意：本文件不要加 shebang（#!/usr/bin/env node）。
+ * 微信开发者工具会把项目目录下的 .js 当成小程序源码解析，shebang 会直接报
+ * "非法的文件 invalid file"，导致预览/上传构建失败。统一用 `node scripts/spec.js ...` 调用。
  *
  * 用法：
  *   node scripts/spec.js new <slug> [--level L1|L2|L3] [--title "标题"]
