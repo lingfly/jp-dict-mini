@@ -236,10 +236,30 @@ async function getLearningStatus() {
   }
 }
 
+/**
+ * 获取今日认知情况（复习完成页用；#008）
+ * GET /api/fsrs/due-forecast/today
+ * 返回：{ code, data: { date, due, durationSeconds, cognitive, reviewAndNew } }
+ * 失败时返回 { code: 0, data: null }，由页面决定降级展示（不弹错，请求层已提示）
+ */
+async function getTodayCognitive() {
+  if (USE_MOCK) {
+    // mock 分支未提供该接口：返回空数据，页面走"保留现有完成态"的降级路径
+    return { code: 0, data: null }
+  }
+  try {
+    return await fsrsApi.getTodayCognitive()
+  } catch (e) {
+    console.error('获取今日认知情况失败:', e)
+    return { code: 0, data: null }
+  }
+}
+
 module.exports = {
   USE_MOCK,
   WORD_NOT_FOUND,
   getDueCards,
   submitReview,
-  getLearningStatus
+  getLearningStatus,
+  getTodayCognitive
 }

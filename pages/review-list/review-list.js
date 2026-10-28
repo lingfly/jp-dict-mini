@@ -30,7 +30,9 @@ Page({
     // 响应计时不在 data：由 this.timer 持有（utils/reviewTimer.js），生命周期切换不触发 setData
     collapseDefinitionOnReview: false,
     showMenu: false,
-    ratingPreviews: [] // 四级评分对应的下次复习时间
+    ratingPreviews: [], // 四级评分对应的下次复习时间
+    todayView: null, // 今日复习详情（#008）：null = 尚未就绪
+    todayLoading: false // 今日详情取数中：用「加载中...」占位，避免闪旧完成页（#008 AC-12）
   },
 
   // 本地 FSRS 队列调度状态
@@ -121,7 +123,11 @@ Page({
    */
   async initReview() {
     this._lastQueueRefreshAt = Date.now()
-    this.setData({ loading: true, loadError: '' })
+    // 新的一轮复习：重置今日详情状态（#008 AC-01 / AC-05 / AC-11）
+    this._todayLoaded = false
+    this._dueRetried = false
+    this._todayDateRetried = false
+    this.setData({ loading: true, loadError: '', todayView: null })
 
     try {
       const res = await dataSource.getDueCards()
@@ -137,9 +143,10 @@ Page({
 
       this.updateStats()
 
-      // 队列为空 → 显示空闲/完成态
+      // 队列为空 → 显示空闲/完成态，并尝试展示今日复习详情（#008 触发点①）
       if (this.queue.length === 0) {
         this.setData({ currentWord: null, wordDetail: null })
+        this.loadTodayDetail()
       } else {
         await this.showCurrentCard()
       }
@@ -340,11 +347,155 @@ Page({
   },
 
   /**
+   * 加载今日复习详情（#008 AC-01）
+   * 只在本地队列清空的完成态调用；同一完成态最多请求一次（AC-11）
+   */
+  async loadTodayDetail() {
+    // 被"due > 0 静默重拉"消费掉的一次调用：避免 拉空 → 查今日 → 再拉空 的循环
+    if (this._todaySuppressOnce) {
+      this._todaySuppressOnce = false
+      return
+    }
+    if (this._todayLoading || this._todayLoaded) return
+    this._todayLoading = true
+    // 先占位再 await：保证 initReview 把 loading 置 false 时不会闪到兜底分支（AC-12）
+    this.setData({ todayLoading: true, todayView: null })
+
+    try {
+      let res = await dataSource.getTodayCognitive()
+      let data = res && res.code === 200 ? res.data : null
+
+      // 跨零点：返回日期与本地不一致时重拉一次（AC-05）
+      if (data && data.date && data.date !== this.localDateKey() && !this._todayDateRetried) {
+        this._todayDateRetried = true
+        res = await dataSource.getTodayCognitive()
+        data = res && res.code === 200 ? res.data : null
+      }
+
+      // 取不到：版式照旧，数值为空（AC-04）
+      if (!data) {
+        this._todayLoaded = true
+        this.setData({ todayView: this.buildEmptyTodayView() })
+        return
+      }
+
+      // 后端仍有待学：先重拉队列，有卡就直接复习（AC-02）
+      const due = Number(data.due) || 0
+      if (due > 0) {
+        this.setData({ dueCount: due })
+        if (!this._dueRetried) {
+          this._dueRetried = true
+          this._todaySuppressOnce = true
+          await this.initReview()
+          const remaining = this.queue.length - this.queueIndex
+          if (remaining > 0) return
+        }
+        // due > 0 但无卡可出：统计口径缺陷，留痕后仍展示详情（AC-13）
+        console.warn('[review-list] due > 0 但无卡可出，疑似统计口径缺陷（仍展示今日详情）:', {
+          due,
+          date: data.date,
+          queueLength: this.queue.length
+        })
+      }
+
+      this._todayLoaded = true
+      this.setData({ todayView: this.buildTodayView(data) })
+    } catch (e) {
+      console.error('[review-list] 加载今日复习详情失败:', e)
+      this._todayLoaded = true
+      this.setData({ todayView: this.buildEmptyTodayView() })
+    } finally {
+      this._todayLoading = false
+      this.setData({ todayLoading: false })
+    }
+  },
+
+  /**
+   * 详情接口失败时的空数据视图：版式与成功态一致，数值为「—」（#008 AC-04）
+   */
+  buildEmptyTodayView() {
+    const placeholder = '—'
+    return {
+      dateText: this.localDateKey().replace(/-/g, '/'),
+      empty: false,
+      noData: true,
+      rows: [
+        { key: 'easy', icon: '😎', label: '简单', value: placeholder, percent: 0, color: '#409EFF' },
+        { key: 'good', icon: '🙂', label: '认识', value: placeholder, percent: 0, color: '#5B8C7D' },
+        { key: 'hard', icon: '😐', label: '模糊', value: placeholder, percent: 0, color: '#E6A23C' },
+        { key: 'forgot', icon: '😕', label: '忘记', value: placeholder, percent: 0, color: '#F56C6C' }
+      ],
+      newLearned: placeholder,
+      review: placeholder,
+      durationText: placeholder
+    }
+  },
+
+  /**
+   * 接口日项 → 页面派生数据（#008 AC-06 ~ AC-10）
+   */
+  buildTodayView(data) {
+    const cognitive = data.cognitive || {}
+    const easy = Number(cognitive.easy) || 0
+    const good = Number(cognitive.good) || 0
+    const hard = Number(cognitive.hard) || 0
+    const forgot = Number(cognitive.forgot) || 0
+    const sum = easy + good + hard + forgot
+    // 条长按四档之和归一；和为 0 时不绘制填充（AC-07）
+    const percentOf = (value) => (sum > 0 ? Math.round((value / sum) * 1000) / 10 : 0)
+    const reviewAndNew = data.reviewAndNew || {}
+
+    return {
+      dateText: this.formatDateSlash(data.date),
+      empty: sum === 0,
+      rows: [
+        { key: 'easy', icon: '😎', label: '简单', value: easy, percent: percentOf(easy), color: '#409EFF' },
+        { key: 'good', icon: '🙂', label: '认识', value: good, percent: percentOf(good), color: '#5B8C7D' },
+        { key: 'hard', icon: '😐', label: '模糊', value: hard, percent: percentOf(hard), color: '#E6A23C' },
+        { key: 'forgot', icon: '😕', label: '忘记', value: forgot, percent: percentOf(forgot), color: '#F56C6C' }
+      ],
+      newLearned: Number(reviewAndNew.newLearned) || 0,
+      review: Number(reviewAndNew.review) || 0,
+      durationText: this.formatDurationText(Number(data.durationSeconds) || 0)
+    }
+  },
+
+  /** 接口日期 yyyy-MM-dd → yyyy/MM/dd（#008：日期用斜杠） */
+  formatDateSlash(isoDate) {
+    if (isoDate && /^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+      return isoDate.replace(/-/g, '/')
+    }
+    return this.localDateKey().replace(/-/g, '/')
+  },
+
+  /** 本地当天 yyyy-MM-dd，用于与接口 date 比对（AC-05） */
+  localDateKey() {
+    const now = new Date()
+    const pad = (n) => (n < 10 ? `0${n}` : `${n}`)
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+  },
+
+  /** 时长文案：0:00 / 0:25 / 17:05 / 1:11:45（#008 AC-08） */
+  formatDurationText(totalSeconds) {
+    const total = Math.max(0, Math.floor(totalSeconds || 0))
+    const hours = Math.floor(total / 3600)
+    const minutes = Math.floor((total % 3600) / 60)
+    const seconds = total % 60
+    const pad = (n) => (n < 10 ? `0${n}` : `${n}`)
+    if (hours > 0) return `${hours}:${pad(minutes)}:${pad(seconds)}`
+    return `${minutes}:${pad(seconds)}`
+  },
+
+  /**
    * 点击下方空白处（问题阶段）显示答案
    */
   onCardTap() {
     // 只在未显示答案时响应，避免答案阶段误触发
     if (!this.data.showAnswer) {
+      // 触感确认（#006 AC-09）：与评分同档，单次 light；空白区本身不变色
+      if (wx.vibrateShort) {
+        wx.vibrateShort({ type: 'light' })
+      }
       this.toggleAnswer()
     }
   },
@@ -389,6 +540,13 @@ Page({
     const rating = parseInt(e.currentTarget.dataset.score) // 0=忘记 1=模糊 2=认识 3=简单
     if (this.queueIndex >= this.queue.length) return
 
+    // 触感确认（#006 AC-02 / AC-03 / AC-04）
+    // 只用 short + light 的单次反馈：长震与双震是"收到消息"的手感，这里要的是"点到了"
+    // 不支持震动的环境用存在性判断跳过，失败不影响评分
+    if (wx.vibrateShort) {
+      wx.vibrateShort({ type: 'light' })
+    }
+
     const item = this.queue[this.queueIndex]
     const now = new Date()
     // 首次评分的真实耗时；失败重试时沿用（#001 AC-15）
@@ -426,6 +584,8 @@ Page({
             title: '今日复习完成',
             icon: 'success'
           })
+          // 完成态：加载今日复习详情（#008 触发点③）
+          this.loadTodayDetail()
         }
         return
       }
@@ -491,6 +651,8 @@ Page({
           title: '今日复习完成',
           icon: 'success'
         })
+        // 完成态：加载今日复习详情（#008 触发点②）
+        this.loadTodayDetail()
       }
     } catch (error) {
       console.error('提交评分失败:', error)

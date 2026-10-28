@@ -41,6 +41,8 @@
 - **不修** `pages/learn/learn.js:213` 跳转 `/pages/index/index`（该页不存在，属独立 bug，另立需求）。
 - 明确**不改**的既有行为：`reviewApi.getNextWord` / `submitReview` / `getLearningStatus` 看似"旧接口"，但 `learn`、`profile`、`wordlist-detail` 仍在调用，**保留**。
 
+> **2026-10-28 注记（#006）**：`pages/learn` 已按用户指令下线，`reviewApi.getNextWord` / `submitReview` 随之失去唯一调用方并删除，`reviewApi` 现仅剩 `getLearningStatus`（`profile` / `wordlist-detail` 仍在用）。上文为当时的判断，保留原文以便追溯。
+
 ## 4. 用户与场景
 
 | 角色 | 场景 | 现在怎么做 | 期望怎么做 |

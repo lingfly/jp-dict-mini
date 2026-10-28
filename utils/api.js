@@ -205,25 +205,23 @@ const fsrsApi = {
   // 未来日的 cognitive / reviewAndNew / durationSeconds 为 null，历史日的 due 为 null
   getDueForecast() {
     return get('/api/fsrs/due-forecast') // 需要 token
+  },
+
+  // 今日认知情况（完成页用；#008）
+  // 返回 { code, data: { date, due, durationSeconds,
+  //   cognitive: { easy, good, hard, forgot }, reviewAndNew: { review, newLearned } } }
+  // data 直接是日项对象，不含 days 数组；与主接口中 date == 今天 的元素逐字段相等
+  getTodayCognitive() {
+    return get('/api/fsrs/due-forecast/today') // 需要 token
   }
 }
 
 /**
  * 复习相关 API（需要认证）
- * 仅保留 /api/review/* 中仍在用的三条：取下一词、提交结果、查学习进度。
- * 到期卡查询已统一走 fsrsApi（getDueCards / getDueCount）。
+ * 仅保留 /api/review/* 中仍在用的 1 条：查学习进度（「我的」「词单详情」在用）。
+ * 取下一词 / 提交结果随旧学习页一起下线（#006），现行走 fsrsApi（getDueCards / getDueCount / submitReview / getDueForecast）。
  */
 const reviewApi = {
-  // 获取下一个单词（实时查询）
-  getNextWord() {
-    return get('/api/review/next-word') // 需要 token
-  },
-
-  // 提交复习结果（rating 0-3，card/log 为 FSRS 新状态）
-  submitReview(data) {
-    return post('/api/review/submit', data) // 需要 token
-  },
-
   // 获取学习状态
   getLearningStatus() {
     return get('/api/review/learning-status') // 需要 token
@@ -454,6 +452,32 @@ const correctionApi = {
 }
 
 /**
+ * AI 查词审核 API（需要认证 + 管理员权限）
+ * 页面 pages/new-word-audit 使用；URL 统一在此声明（宪法 C-01）
+ */
+const aiAuditApi = {
+  // 审核列表（status 分 tab，page 从 1 开始，size 为每页条数）
+  list(params) {
+    return get('/api/ai-dict/audit/list', params) // 需要 token + 管理员权限
+  },
+
+  // 采纳某条结果（selectedIndex 为 results 数组下标）
+  approve(data) {
+    return post('/api/ai-dict/audit/approve', data) // 需要 token + 管理员权限
+  },
+
+  // 驳回某条结果
+  reject(data) {
+    return post('/api/ai-dict/audit/reject', data) // 需要 token + 管理员权限
+  },
+
+  // 覆盖已存在单词的全部释义与例句（用本次 AI 生成的数据替换）
+  approveOverride(data) {
+    return post('/api/ai-dict/audit/approve-override', data) // 需要 token + 管理员权限
+  }
+}
+
+/**
  * 管理员相关 API（需要认证 + 管理员权限）
  */
 const adminApi = {
@@ -492,5 +516,6 @@ module.exports = {
   aiDictApi,
   feedbackApi,
   correctionApi,
+  aiAuditApi,
   adminApi
 }

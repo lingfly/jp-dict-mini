@@ -12,20 +12,66 @@
     <text class="list-error-hint">下拉刷新可重试</text>
   </view>
 
-  <!-- 无复习任务时：显示今日状态 + 开始按钮 -->
+  <!-- 无复习任务时：今日复习详情（#008）或原有空闲/完成态 -->
   <view wx:elif="{{!currentWord && !loading}}" class="idle-state">
-    <view class="idle-card card">
+    <!-- 今日复习详情（AC-03）；接口失败时同版式、数值为「—」（AC-04） -->
+    <view wx:if="{{todayView}}" class="today-card card">
+      <text class="today-date">{{todayView.dateText}}</text>
+
+      <!-- 四档全 0：只说明今天没有复习记录（AC-10） -->
+      <view wx:if="{{todayView.empty}}" class="today-empty">
+        <text class="today-empty-text">今日暂无复习记录</text>
+      </view>
+
+      <block wx:else>
+        <view class="today-rows">
+          <view wx:for="{{todayView.rows}}" wx:key="key" class="today-row">
+            <text class="today-icon">{{item.icon}}</text>
+            <view class="today-bar-wrap">
+              <view class="today-bar" style="width: {{item.percent}}%; background: {{item.color}};"></view>
+            </view>
+            <view class="today-row-value">
+              <text class="today-row-num">{{item.value}}</text>
+              <text class="today-row-label">{{item.label}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="today-split">
+          <view class="today-split-col">
+            <text class="today-split-num">{{todayView.newLearned}}</text>
+            <text class="today-split-label">新学</text>
+          </view>
+          <view class="today-split-divider"></view>
+          <view class="today-split-col">
+            <text class="today-split-num">{{todayView.review}}</text>
+            <text class="today-split-label">复习</text>
+          </view>
+          <view class="today-split-divider"></view>
+          <view class="today-split-col">
+            <text class="today-split-num">{{todayView.durationText}}</text>
+            <text class="today-split-label">时长</text>
+          </view>
+        </view>
+
+        <text class="today-done">今日复习完成</text>
+      </block>
+    </view>
+
+    <!-- 详情取数中：只显示加载占位，不闪旧完成页（AC-12） -->
+    <view wx:elif="{{todayLoading}}" class="today-loading">
+      <text>加载中...</text>
+    </view>
+
+    <!-- 极端兜底：due > 0 且详情未就绪时保留「开始复习」入口 -->
+    <view wx:elif="{{dueCount > 0}}" class="idle-card card">
       <view class="idle-icon">📚</view>
       <text class="idle-title">今日复习</text>
       <text class="idle-count">{{dueCount}}</text>
       <text class="idle-desc">个单词待复习</text>
-      <button wx:if="{{dueCount > 0}}" class="start-btn btn btn-primary" bindtap="startReview">
+      <button class="start-btn btn btn-primary" bindtap="startReview">
         开始复习
       </button>
-      <view wx:else class="done-state">
-        <view class="done-icon">✓</view>
-        <text class="done-text">今日复习已完成</text>
-      </view>
     </view>
   </view>
 
@@ -132,19 +178,20 @@
 
   <!-- 评分按钮 — 固定悬浮底部 -->
   <view wx:if="{{showAnswer}}" class="score-bar">
-    <view class="score-btn forget" bindtap="handleScore" data-score="0">
+    <!-- 按下加深由 hover-class 提供：真机上 :active 会延迟甚至不触发（#006 AC-01） -->
+    <view class="score-btn forget" hover-class="score-btn-hover-forget" hover-start-time="0" hover-stay-time="100" bindtap="handleScore" data-score="0">
       <text class="score-label">忘记</text>
       <text class="score-next">{{ratingPreviews[0].text}}</text>
     </view>
-    <view class="score-btn vague" bindtap="handleScore" data-score="1">
+    <view class="score-btn vague" hover-class="score-btn-hover-vague" hover-start-time="0" hover-stay-time="100" bindtap="handleScore" data-score="1">
       <text class="score-label">模糊</text>
       <text class="score-next">{{ratingPreviews[1].text}}</text>
     </view>
-    <view class="score-btn know" bindtap="handleScore" data-score="2">
+    <view class="score-btn know" hover-class="score-btn-hover-know" hover-start-time="0" hover-stay-time="100" bindtap="handleScore" data-score="2">
       <text class="score-label">认识</text>
       <text class="score-next">{{ratingPreviews[2].text}}</text>
     </view>
-    <view class="score-btn easy" bindtap="handleScore" data-score="3">
+    <view class="score-btn easy" hover-class="score-btn-hover-easy" hover-start-time="0" hover-stay-time="100" bindtap="handleScore" data-score="3">
       <text class="score-label">简单</text>
       <text class="score-next">{{ratingPreviews[3].text}}</text>
     </view>

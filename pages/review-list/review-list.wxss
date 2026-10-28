@@ -65,30 +65,130 @@
   font-size: 16px;
 }
 
-/* 已完成状态 */
-.done-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.done-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  border: 3px solid #2F5D50;
+/* 详情取数中的占位（#008 AC-12）：旧「✓ 今日复习已完成」页已下线 */
+.today-loading {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 42px;
-  color: #2F5D50;
+  padding: 80px 32px;
+  color: #909399;
 }
 
-.done-text {
+/* ===== 今日复习详情（#008） ===== */
+.today-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.today-date {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.today-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.today-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.today-icon {
+  width: 24px;
+  font-size: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.today-bar-wrap {
+  flex: 1;
+  height: 14px;
+  border-radius: 7px;
+  background: #F5F7FA;
+  overflow: hidden;
+}
+
+.today-bar {
+  height: 100%;
+  border-radius: 7px;
+  transition: width 0.3s;
+}
+
+.today-row-value {
+  width: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.today-row-num {
   font-size: 16px;
-  color: #606266;
+  font-weight: 600;
+  color: #303133;
+}
+
+.today-row-label {
+  font-size: 11px;
+  color: #909399;
+}
+
+.today-split {
+  display: flex;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #E4E7ED;
+}
+
+.today-split-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.today-split-num {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.today-split-label {
+  font-size: 11px;
+  color: #909399;
+}
+
+.today-split-divider {
+  width: 1px;
+  height: 28px;
+  background: #E4E7ED;
+}
+
+.today-done {
+  text-align: center;
+  font-size: 14px;
+  color: #5B8C7D;
+}
+
+.today-empty {
+  padding: 8px 0;
+  text-align: center;
+}
+
+.today-empty-text {
+  font-size: 14px;
+  color: #909399;
 }
 
 /* ===== 复习中 ===== */
@@ -467,6 +567,30 @@
 
 .score-btn.easy:active {
   background: rgba(64, 158, 255, 0.22);
+}
+
+/* 按下加深（#006 AC-01）：hover-class 在真机上比 :active 即时，0.40 为最终加深档 */
+.score-btn-hover-forget,
+.score-btn-hover-vague,
+.score-btn-hover-know,
+.score-btn-hover-easy {
+  transform: scale(0.96);
+}
+
+.score-btn-hover-forget {
+  background: rgba(245, 108, 108, 0.40);
+}
+
+.score-btn-hover-vague {
+  background: rgba(230, 162, 60, 0.40);
+}
+
+.score-btn-hover-know {
+  background: rgba(103, 194, 58, 0.40);
+}
+
+.score-btn-hover-easy {
+  background: rgba(64, 158, 255, 0.40);
 }
 
 .score-label {

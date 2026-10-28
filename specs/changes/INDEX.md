@@ -12,3 +12,6 @@
 | 003 | `003-review-response-time` | 复习响应时间口径（扣除离开时长 + 上限 + 3001 收尾） | L2 | approved | 2026-10-22 | — |
 | 004 | `004-fsrs-user-parameters` | FSRS 参数可配置（保持率 / 最大间隔，参数存后端） | L3 | approved | 2026-10-26 | — |
 | 005 | `005-learning-stats` | 学习统计适配新接口（认知情况 / 新学复习 双图 + 点柱看详情） | L2 | approved | 2026-10-27 | — |
+| 006 | `006-score-btn-feedback` | 评分按钮按下反馈（加深 + 轻震动）+ 下线废弃学习页 | L2 | verified | 2026-10-28 | — |
+| 007 | `007-ai-audit-api-encapsulation` | AI 查词审核接口收进 `utils/api.js`（消除页面硬编码 URL） | L1 | approved | 2026-10-28 | — |
+| 008 | `008-today-cognitive` | 复习完成页展示今日复习详情（四档分布 / 新学复习 / 时长） | L2 | verified | 2026-10-28 | — |
