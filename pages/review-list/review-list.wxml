@@ -168,7 +168,7 @@
     </view>
 
     <!-- 下方空白点击区域（问题阶段点击显示答案） -->
-    <view wx:if="{{!showAnswer}}" class="blank-tap-area" bindtap="onCardTap">
+    <view wx:if="{{!showAnswer}}" class="blank-tap-area" bindtouchstart="onBlankPress" bindtap="onCardTap">
       <text class="blank-tap-hint">点击空白处显示答案</text>
     </view>
   </view>
@@ -179,19 +179,20 @@
   <!-- 评分按钮 — 固定悬浮底部 -->
   <view wx:if="{{showAnswer}}" class="score-bar">
     <!-- 按下加深由 hover-class 提供：真机上 :active 会延迟甚至不触发（#006 AC-01） -->
-    <view class="score-btn forget" hover-class="score-btn-hover-forget" hover-start-time="0" hover-stay-time="100" bindtap="handleScore" data-score="0">
+    <!-- 触感绑 touchstart：tap 在 touchend 才派发，会变成"松手才震"（#012） -->
+    <view class="score-btn forget" hover-class="score-btn-hover-forget" hover-start-time="0" hover-stay-time="100" bindtouchstart="onScorePress" bindtap="handleScore" data-score="0">
       <text class="score-label">忘记</text>
       <text class="score-next">{{ratingPreviews[0].text}}</text>
     </view>
-    <view class="score-btn vague" hover-class="score-btn-hover-vague" hover-start-time="0" hover-stay-time="100" bindtap="handleScore" data-score="1">
+    <view class="score-btn vague" hover-class="score-btn-hover-vague" hover-start-time="0" hover-stay-time="100" bindtouchstart="onScorePress" bindtap="handleScore" data-score="1">
       <text class="score-label">模糊</text>
       <text class="score-next">{{ratingPreviews[1].text}}</text>
     </view>
-    <view class="score-btn know" hover-class="score-btn-hover-know" hover-start-time="0" hover-stay-time="100" bindtap="handleScore" data-score="2">
+    <view class="score-btn know" hover-class="score-btn-hover-know" hover-start-time="0" hover-stay-time="100" bindtouchstart="onScorePress" bindtap="handleScore" data-score="2">
       <text class="score-label">认识</text>
       <text class="score-next">{{ratingPreviews[2].text}}</text>
     </view>
-    <view class="score-btn easy" hover-class="score-btn-hover-easy" hover-start-time="0" hover-stay-time="100" bindtap="handleScore" data-score="3">
+    <view class="score-btn easy" hover-class="score-btn-hover-easy" hover-start-time="0" hover-stay-time="100" bindtouchstart="onScorePress" bindtap="handleScore" data-score="3">
       <text class="score-label">简单</text>
       <text class="score-next">{{ratingPreviews[3].text}}</text>
     </view>

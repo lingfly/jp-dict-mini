@@ -487,15 +487,40 @@ Page({
   },
 
   /**
+   * 按下触感（#006 AC-02 / AC-09，#012）
+   *
+   * 绑在 touchstart 而不是 tap：tap 在 touchend 才派发，手感会变成"松手才震"。
+   * 只用 single + light，长震与双震是"收到消息"的手感；不支持震动时静默跳过。
+   */
+  vibratePress() {
+    if (wx.vibrateShort) {
+      wx.vibrateShort({ type: 'light' })
+    }
+  },
+
+  /**
+   * 评分键按下（#012）：守卫与提交一致——不会真的提交时不震（#006 AC-04）
+   */
+  onScorePress() {
+    if (this.data.loading) return
+    if (this.queueIndex >= this.queue.length) return
+    this.vibratePress()
+  },
+
+  /**
+   * 空白区按下（#006 AC-09）：只在问题阶段有效，区域本身不变色
+   */
+  onBlankPress() {
+    if (this.data.showAnswer) return
+    this.vibratePress()
+  },
+
+  /**
    * 点击下方空白处（问题阶段）显示答案
    */
   onCardTap() {
-    // 只在未显示答案时响应，避免答案阶段误触发
+    // 只在未显示答案时响应，避免答案阶段误触发；触感已在 touchstart 触发（#012）
     if (!this.data.showAnswer) {
-      // 触感确认（#006 AC-09）：与评分同档，单次 light；空白区本身不变色
-      if (wx.vibrateShort) {
-        wx.vibrateShort({ type: 'light' })
-      }
       this.toggleAnswer()
     }
   },
@@ -540,12 +565,7 @@ Page({
     const rating = parseInt(e.currentTarget.dataset.score) // 0=忘记 1=模糊 2=认识 3=简单
     if (this.queueIndex >= this.queue.length) return
 
-    // 触感确认（#006 AC-02 / AC-03 / AC-04）
-    // 只用 short + light 的单次反馈：长震与双震是"收到消息"的手感，这里要的是"点到了"
-    // 不支持震动的环境用存在性判断跳过，失败不影响评分
-    if (wx.vibrateShort) {
-      wx.vibrateShort({ type: 'light' })
-    }
+    // 触感已在手指按下时触发（onScorePress，#012），这里不再补震，避免双震
 
     const item = this.queue[this.queueIndex]
     const now = new Date()
