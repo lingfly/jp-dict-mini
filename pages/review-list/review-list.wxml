@@ -176,8 +176,8 @@
   <!-- 提交失败：停留当前卡片，直接再点评分重试 -->
   <view wx:if="{{submitError}}" class="submit-error">{{submitError}}</view>
 
-  <!-- 评分按钮 — 固定悬浮底部 -->
-  <view wx:if="{{showAnswer}}" class="score-bar">
+  <!-- 评分按钮 — 固定悬浮底部；仅在有卡片且已显示答案时出现（AC-RS-66：完成页不提供可点击元素） -->
+  <view wx:if="{{showAnswer && currentWord}}" class="score-bar">
     <!-- 按下加深由 hover-class 提供：真机上 :active 会延迟甚至不触发（#006 AC-01） -->
     <!-- 触感绑 touchstart：tap 在 touchend 才派发，会变成"松手才震"（#012） -->
     <view class="score-btn forget" hover-class="score-btn-hover-forget" hover-start-time="0" hover-stay-time="100" bindtouchstart="onScorePress" bindtap="handleScore" data-score="0">
