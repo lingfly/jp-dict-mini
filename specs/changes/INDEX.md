@@ -15,3 +15,6 @@
 | 006 | `006-score-btn-feedback` | 评分按钮按下反馈（加深 + 轻震动）+ 下线废弃学习页 | L2 | verified | 2026-10-28 | — |
 | 007 | `007-ai-audit-api-encapsulation` | AI 查词审核接口收进 `utils/api.js`（消除页面硬编码 URL） | L1 | approved | 2026-10-28 | — |
 | 008 | `008-today-cognitive` | 复习完成页展示今日复习详情（四档分布 / 新学复习 / 时长） | L2 | verified | 2026-10-28 | — |
+| 009 | `009-learning-stats-polish` | 学习统计视觉修正（去淡色高柱 / 今天居中 / 时长并入网格 / 整页一屏） | L1 | approved | 2026-10-29 | — |
+| 010 | `010-y-axis-step-ladder` | 学习统计纵轴步长阶梯细化（顶刻度贴住数据） | L1 | approved | 2026-10-29 | — |
+| 011 | `011-y-axis-headroom` | 学习统计纵轴留 10% 顶空（最高柱 ≤ 90% 高度） | L1 | approved | 2026-10-29 | — |

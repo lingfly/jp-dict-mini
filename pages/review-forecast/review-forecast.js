@@ -18,10 +18,15 @@
  */
 const { fsrsApi } = require('../../utils/api')
 
-const CHART_HEIGHT = 720 // rpx，绘图区高度
-const BAR_WIDTH = 82 // rpx，每列宽度（一屏 7 天：7 × 82 = 574rpx）
-const MIN_SEG_HEIGHT = 4 // rpx，极小段的可见高度
-const Y_TICK_COUNT = 10 // 刻度条数（含顶与底）
+const BAR_WIDTH = 82 // rpx，列宽初值；首帧渲染后按可视宽度重算（见 layoutChart）
+const VISIBLE_DAYS = 7 // 一屏天数：前 3 + 今天 + 后 3
+const SIDE_DAYS = 3 // 今天左右各展示几天
+const PLOT_HEIGHT_FALLBACK = 360 // rpx，绘图区高度兜底值（量到剩余高度前先用它渲染）
+const LABEL_BLOCK_HEIGHT = 86 // rpx，横轴标签区高度（.bar-label 的 margin-top 12 + height 74）
+const MIN_PLOT_HEIGHT = 200 // rpx，绘图区最小高度（小屏兜底，宁可略超一屏也不压扁柱子）
+const MAX_TICK_COUNT = 10 // 刻度条数上限（含顶与底，含顶空后实际 6~10 条）
+const HEADROOM = 0.9 // 最高柱最多用到绘图区 90% 高度，顶部留 10% 空（#011）
+const STEP_LADDER = [1, 2, 3, 4, 5, 6, 8, 10] // 刻度步长取档（#010）
 const DAYS_TOTAL = 106 // 后端固定返回的天数（前 90 + 今天 + 后 15）
 const TODAY_INDEX = 90 // 后端固定的今天下标
 
@@ -68,19 +73,19 @@ function splitLabel(label) {
 }
 
 /**
- * 向上取到"好看"的刻度步长（1/2/5 × 10^n），保证刻度是整数、读数不费劲
- * 例：max/9 = 45 -> 50；max/9 = 3.2 -> 5；max/9 = 0.7 -> 1
+ * 向上取到"好看"的刻度步长，保证刻度是整数、读数不费劲
+ *
+ * 阶梯为 1/2/3/4/5/6/8/10 × 10^n（#010）：
+ *   只有 1/2/5 时，max/9 = 27.8 会被抬到 50，顶刻度虚高到 1.8 倍（250 的要画到 450）；
+ *   补上 3/4/6/8 后最坏虚高从 2.5 倍降到 1.33 倍，刻度仍是整数。
+ * 例：max/9 = 45 -> 50；max/9 = 27.8 -> 30；max/9 = 3.2 -> 4；max/9 = 0.7 -> 1
  */
 function niceStep(rawStep) {
   if (rawStep <= 1) return 1
   const exp = Math.floor(Math.log10(rawStep))
   const base = Math.pow(10, exp)
   const f = rawStep / base
-  let nice
-  if (f <= 1) nice = 1
-  else if (f <= 2) nice = 2
-  else if (f <= 5) nice = 5
-  else nice = 10
+  const nice = STEP_LADDER.find((v) => f <= v) || 10
   return Math.max(1, Math.round(nice * base))
 }
 
@@ -105,10 +110,14 @@ function numOrNull(v) {
   return isNaN(n) ? null : n
 }
 
-/** 段高度：数值为 null -> 0（不画）；数值 > 0 但过矮 -> 兜底可见 */
-function segHeight(value, scale) {
+/**
+ * 段高度：按纵轴上限换算成绘图区百分比（0.1% 粒度）
+ * 用百分比而不是 rpx：绘图区高度由 CSS 弹性撑开（一屏不滚动），JS 不必知道像素高度。
+ * null / 0 -> 0（不画）；过矮的段由 .bar-seg 的 min-height 兜底可见
+ */
+function segPct(value, niceMax) {
   if (value === null || value <= 0) return 0
-  return Math.max(MIN_SEG_HEIGHT, Math.round(value * scale))
+  return Math.max(0.1, Math.round((value / niceMax) * 1000) / 10)
 }
 
 /** 详情卡某一项的展示值：null -> 「—」，否则原数字 */
@@ -121,11 +130,13 @@ Page({
     loadState: 'loading', // loading / ready / empty / error
     activeTab: 'cognitive', // cognitive / reviewNew
     days: [], // 归一化后的 106 天
-    barsCognitive: [], // 认知图柱高
-    barsReviewNew: [], // 新学复习图柱高
-    yTicks: [], // 10 个刻度值，从上到下
+    barsCognitive: [], // 认知图柱段高度（占绘图区的百分比）
+    barsReviewNew: [], // 新学复习图柱段高度（百分比）
+    yTicks: [], // 刻度值，从上到下（6~10 个）
+    gridPct: 11.111, // 背景横线间距（%，随刻度段数变化）
     chartWidth: 0, // rpx
     barWidth: BAR_WIDTH,
+    barHeightRpx: PLOT_HEIGHT_FALLBACK, // 绘图区高度（按一屏剩余空间算，见 layoutChart）
     todayIndex: -1,
     selectedIndex: -1,
     detail: null, // 详情卡数据
@@ -218,36 +229,40 @@ Page({
       return cog
     })
     const maxTotal = Math.max(1, ...totals)
-    // 步长取整：10 档刻度（9 段），保证刻度值是整数
-    const step = niceStep(maxTotal / (Y_TICK_COUNT - 1))
-    const niceMax = step * (Y_TICK_COUNT - 1)
-    const scale = CHART_HEIGHT / niceMax
+    // 顶刻度：先按「最高柱只用 90% 高度」反推需要的上限，再向上取成整数步长。
+    // 刻度条数不再写死 10 条：步长取整后按需等分（6~10 条），顶刻度才能同时贴近数据又留出顶空。
+    const targetMax = maxTotal / HEADROOM
+    const step = niceStep(targetMax / (MAX_TICK_COUNT - 1))
+    const intervals = Math.max(1, Math.ceil(targetMax / step))
+    const niceMax = step * intervals
 
     const barsCognitive = days.map((d) => ({
       date: d.date,
       labelChars: d.labelChars,
       isToday: d.isToday,
-      easyH: segHeight(d.easy, scale),
-      goodH: segHeight(d.good, scale),
-      hardH: segHeight(d.hard, scale),
-      forgotH: segHeight(d.forgot, scale),
-      dueH: segHeight(d.due, scale)
+      easyPct: segPct(d.easy, niceMax),
+      goodPct: segPct(d.good, niceMax),
+      hardPct: segPct(d.hard, niceMax),
+      forgotPct: segPct(d.forgot, niceMax),
+      duePct: segPct(d.due, niceMax)
     }))
 
     const barsReviewNew = days.map((d) => ({
       date: d.date,
       labelChars: d.labelChars,
       isToday: d.isToday,
-      newH: segHeight(d.newLearned, scale),
-      reviewH: segHeight(d.review, scale),
-      dueH: segHeight(d.due, scale)
+      newPct: segPct(d.newLearned, niceMax),
+      reviewPct: segPct(d.review, niceMax),
+      duePct: segPct(d.due, niceMax)
     }))
 
-    // 10 条刻度：顶部 niceMax，底部 0，按 step 均分
+    // 刻度：顶部 niceMax，底部 0，按 step 均分（共 intervals + 1 条）
     const yTicks = []
-    for (let i = 0; i < Y_TICK_COUNT; i++) {
+    for (let i = 0; i <= intervals; i++) {
       yTicks.push(niceMax - step * i)
     }
+    // 背景横线间距：与刻度一一对齐（intervals 格）
+    const gridPct = Math.round((100 / intervals) * 1000) / 1000
 
     this.setData(
       {
@@ -256,6 +271,7 @@ Page({
         barsCognitive,
         barsReviewNew,
         yTicks,
+        gridPct,
         chartWidth: days.length * BAR_WIDTH,
         todayIndex,
         // 默认选中今天；切图与刷新都回到今天
@@ -274,7 +290,7 @@ Page({
           { key: 'due', text: '待学' }
         ]
       },
-      () => this.scrollToToday()
+      () => this.layoutChart()
     )
   },
 
@@ -323,10 +339,14 @@ Page({
   onTapBar(e) {
     const idx = Number(e.currentTarget.dataset.index)
     if (isNaN(idx) || idx < 0 || idx >= this.data.days.length) return
-    this.setData({
-      selectedIndex: idx,
-      detail: this.buildDetail(this.data.days[idx])
-    })
+    this.setData(
+      {
+        selectedIndex: idx,
+        detail: this.buildDetail(this.data.days[idx])
+      },
+      // 未来日会多一行「这一天还没到」，详情卡变高 → 图表可用高度变矮，需要重算
+      () => this.resizeChart()
+    )
   },
 
   /** 切换图表：两图口径一致、共用纵轴，按 AC-09 把选中日重置为今天并滚回居中 */
@@ -340,7 +360,7 @@ Page({
         selectedIndex: todayIndex,
         detail: this.buildDetail(this.data.days[todayIndex])
       },
-      () => this.scrollToToday()
+      () => this.layoutChart()
     )
   },
 
@@ -354,38 +374,91 @@ Page({
     this._actualScrollLeft = e.detail.scrollLeft
   },
 
-  /** 初始定位：让"今天"这一列居中 */
-  scrollToToday() {
+  /** rpx -> px 的换算比例（拿不到窗口信息时按 1:1 兜底） */
+  getRpx2Px() {
+    try {
+      return wx.getWindowInfo().windowWidth / 750 || 1
+    } catch (e) {
+      return 1
+    }
+  },
+
+  /**
+   * 只重算绘图区高度，不动横向滚动位置。
+   * 详情卡内容变化（未来日多一行提示）会改变图表可用高度，需要跟着调。
+   */
+  resizeChart() {
+    const query = wx.createSelectorQuery()
+    query.select('.chart-wrap').boundingClientRect()
+    query.exec((res) => {
+      const wrapHeight = res && res[0] && res[0].height > 0 ? res[0].height : 0
+      if (!wrapHeight) return
+      const barHeightRpx = Math.max(
+        MIN_PLOT_HEIGHT,
+        Math.floor(wrapHeight / this.getRpx2Px()) - LABEL_BLOCK_HEIGHT
+      )
+      if (barHeightRpx !== this.data.barHeightRpx) this.setData({ barHeightRpx })
+    })
+  },
+
+  /**
+   * 布局（宽 + 高）与初始定位：让"今天"居中，一屏正好是「前 3 天 + 今天 + 后 3 天」，
+   * 纵向也一屏装完（图表吃掉剩余高度，页面不上下滚动）。
+   *
+   * 宽度：列宽不能写死（可用宽度随机型浮动），由可视宽度反推（viewportRpx ÷ 7），
+   *       "今天居中"就等于"把今天左侧第 3 列贴住视口左边缘"。
+   * 高度：绘图区 = 图表区可用高度 − 横轴标签区高度，量出来写回 data（行内 style）。
+   */
+  layoutChart() {
     const idx = this.data.todayIndex
     if (idx < 0) return
 
     const query = wx.createSelectorQuery()
     query.select('.chart-scroll').boundingClientRect()
+    query.select('.chart-wrap').boundingClientRect()
     query.exec((res) => {
       if (!res || !res[0]) return
       const viewportWidth = res[0].width // px
       if (viewportWidth <= 0) return
 
-      let rpx2px = 1
-      try {
-        rpx2px = wx.getWindowInfo().windowWidth / 750
-      } catch (e) {
-        rpx2px = 1
-      }
+      const rpx2px = this.getRpx2Px()
 
-      const todayCenterPx = (idx + 0.5) * BAR_WIDTH * rpx2px
-      const target = Math.max(0, todayCenterPx - viewportWidth / 2)
+      // 列宽反推：保留 1 位小数即可铺满，误差 < 0.05px
+      const barWidth = Math.round((viewportWidth / rpx2px / VISIBLE_DAYS) * 10) / 10
+      const chartWidth = Math.round(barWidth * this.data.days.length)
+      // 今天居中 <=> 今天左侧第 SIDE_DAYS 列对齐视口左边缘
+      const target = Math.max(0, (idx - SIDE_DAYS) * barWidth * rpx2px)
+
+      // 绘图区高度：图表区（.chart-wrap 由 flex 分配）减去标签区，保证整页一屏。
+      // 向下取整：宁可少 1rpx，也不要让柱区内容比可用高度高出一点而挤出滚动
+      const wrapHeight = res[1] && res[1].height > 0 ? res[1].height : 0
+      const barHeightRpx = wrapHeight > 0
+        ? Math.max(MIN_PLOT_HEIGHT, Math.floor(wrapHeight / rpx2px) - LABEL_BLOCK_HEIGHT)
+        : this.data.barHeightRpx
+
+      const sizeChanged =
+        this.data.barWidth !== barWidth ||
+        this.data.chartWidth !== chartWidth ||
+        this.data.barHeightRpx !== barHeightRpx
+
       const actual = typeof this._actualScrollLeft === 'number' ? this._actualScrollLeft : 0
+      if (!sizeChanged && Math.abs(actual - target) < 1) return // 尺寸与位置都对，无需动
 
-      if (Math.abs(actual - target) < 1) return // 已在今天，无需移动
-
-      // 目标值与 data 现值相同时 scroll-left 不会触发滚动（用户手动滑过之后常见），
-      // 先把 data 同步成真实位置，再设目标值，保证一定生效
-      if (this.data.scrollLeft === target) {
-        this.setData({ scrollLeft: actual }, () => this.setData({ scrollLeft: target }))
-        return
+      const alignScroll = () => {
+        this._actualScrollLeft = target
+        // scroll-left 只在值变化时生效：目标值与 data 现值相同（用户手动滑过之后）时先归零再下发
+        if (Math.abs(this.data.scrollLeft - target) < 1) {
+          this.setData({ scrollLeft: 0 }, () => this.setData({ scrollLeft: target }))
+          return
+        }
+        this.setData({ scrollLeft: target })
       }
-      this.setData({ scrollLeft: target })
+
+      if (sizeChanged) {
+        this.setData({ barWidth, chartWidth, barHeightRpx }, alignScroll)
+      } else {
+        alignScroll()
+      }
     })
   }
 })

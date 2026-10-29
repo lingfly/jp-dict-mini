@@ -1,7 +1,10 @@
 /* pages/review-forecast/review-forecast.wxss */
+/* 整页一屏：纵向 flex 占满视口，图表吃掉剩余高度，页面不上下滚动 */
 .forecast-page {
   padding: 16px;
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #F5F7FA;
   box-sizing: border-box;
 }
@@ -9,8 +12,9 @@
 /* 图表切换：认知情况 / 新学复习 */
 .seg-control {
   display: flex;
+  flex: none;
   padding: 4rpx;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   background: #FFFFFF;
   border-radius: 12rpx;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
@@ -35,27 +39,43 @@
 }
 
 .chart-card {
-  padding: 24px 16px 16px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 12px;
   background: #FFFFFF;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* 图表容器：纵坐标 + 可横向滚动柱状图 */
-.chart-wrap {
+/* 图表区（纵轴 + 柱区 + 图例）：吃掉卡片内剩余高度 */
+.chart-body {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  align-items: flex-start;
-  margin-top: 16px;
+  flex-direction: column;
 }
 
+/* 图表容器：纵坐标 + 可横向滚动柱状图（高度由 flex 撑开，不再写死 720rpx） */
+.chart-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  margin-top: 12rpx;
+}
+
+/* padding-bottom = 横轴标签区高度（.bar-label 的 margin-top 12rpx + height 74rpx），
+   保证刻度顶端/底端与绘图区上下沿对齐 */
 .y-axis {
   width: 48rpx;
-  height: 720rpx;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: flex-end;
   padding-right: 12rpx;
+  padding-bottom: 86rpx;
   box-sizing: border-box;
   flex-shrink: 0;
 }
@@ -72,7 +92,7 @@
   min-width: 0;
 }
 
-/* 柱状图区域 */
+/* 柱状图区域：高度由柱区内容决定，列与列等高（标签区固定高度） */
 .chart {
   display: flex;
   align-items: flex-start;
@@ -85,16 +105,12 @@
   flex-shrink: 0;
 }
 
-/* 选中列：整列浅绿底（含柱下方标签），点击命中也落在这里 */
-.bar-col-active {
-  background: rgba(91, 140, 125, 0.10);
-  border-radius: 8rpx 8rpx 0 0;
-}
-
-/* 绘图区：顶部/底部边框 + 中间横线 + 列间竖线 */
+/* 绘图区：顶部/底部边框 + 中间横线 + 列间竖线。
+   height 由页面按「图表区可用高度 − 标签区高度」写入行内样式（一屏不滚动），
+   这里的 360rpx 只是量到剩余高度之前的首帧兜底 */
 .bar-area {
   width: 100%;
-  height: 720rpx;
+  height: 360rpx;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -104,13 +120,17 @@
   border-bottom: 1rpx solid #F0F2F5;
   border-left: 1rpx solid #F0F2F5;
   background-image: linear-gradient(to bottom, #F0F2F5 1rpx, transparent 1rpx);
-  background-size: 100% 80rpx;
+  /* 横线间距 = 刻度段数分之一，由页面按实际刻度数写入行内样式（#011）；
+     这里的 11.1111%（10 条刻度 / 9 段）只是首帧兜底 */
+  background-size: 100% 11.1111%;
   background-repeat: repeat-y;
 }
 
+/* 段高由 JS 给百分比；过矮的段用 min-height 兜底可见 */
 .bar-seg {
   width: 70%;
   min-width: 4rpx;
+  min-height: 4rpx;
 }
 
 /* 认知图自下而上：简单(深绿) / 认识(中绿) / 模糊(黄) / 忘记(红) / 待学(灰)
@@ -144,14 +164,17 @@
   background: #5B8C7D;
 }
 
-/* 横坐标竖排标签 */
+/* 横坐标竖排标签：高度写死（2 字与 3 字标签等高），列高才好等分 */
 .bar-label {
   margin-top: 12rpx;
   padding-bottom: 8rpx;
+  height: 74rpx;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2rpx;
+  flex: none;
 }
 
 .bar-label-char {
@@ -167,11 +190,12 @@
 
 /* 图例：只说明颜色含义，不放数字 */
 .legend {
-  margin-top: 32rpx;
+  flex: none;
+  margin-top: 16rpx;
   padding: 0 8rpx;
   display: flex;
   flex-wrap: wrap;
-  gap: 24rpx 32rpx;
+  gap: 12rpx 24rpx;
 }
 
 .legend-item {
@@ -220,10 +244,11 @@
   color: #606266;
 }
 
-/* 详情卡：常驻，随点击切换 */
+/* 详情卡：常驻，随点击切换；高度固定不参与弹性分配 */
 .detail-card {
-  margin-top: 16px;
-  padding: 24rpx;
+  flex: none;
+  margin-top: 12px;
+  padding: 20rpx 24rpx;
   background: #FFFFFF;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
@@ -276,18 +301,10 @@
   line-height: 1.2;
 }
 
-.detail-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 16rpx;
-  border-top: 1rpx solid #F0F2F5;
-}
-
-.detail-row .detail-value {
-  font-size: 28rpx;
-  color: #606266;
-  font-weight: 500;
+/* 学习时长沿用 .detail-item 的统一样式：与其余 7 项字号/字重/颜色完全一致，
+   文案偏长（如「12 分 30 秒」）时用 nowrap 保证单行，避免把 25% 的格子挤成两行 */
+.detail-grid .detail-item:last-child .detail-value {
+  white-space: nowrap;
 }
 
 .detail-hint {
