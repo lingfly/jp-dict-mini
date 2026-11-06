@@ -213,6 +213,17 @@ const fsrsApi = {
   // data 直接是日项对象，不含 days 数组；与主接口中 date == 今天 的元素逐字段相等
   getTodayCognitive() {
     return get('/api/fsrs/due-forecast/today') // 需要 token
+  },
+
+  // 重新学习（重置卡片到未学习状态；#013 AC-06~10）
+  // 入参 wordId 必须是字符串（雪花 ID 超 JS 安全整数）；expectedEpoch 做乐观锁
+  // 返回 { code, data: { epoch, resetAt, card } }
+  resetCard(wordId, expectedEpoch, clientRequestId) {
+    return post('/api/fsrs/card/reset', {
+      wordId: String(wordId),
+      expectedEpoch,
+      clientRequestId
+    }) // 需要 token
   }
 }
 

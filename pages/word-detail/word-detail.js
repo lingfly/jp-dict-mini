@@ -1,6 +1,8 @@
 // pages/word-detail/word-detail.js
 const { wordApi, audioApi, userApi, wordlistApi, authApi } = require('../../utils/api')
 const groupSource = require('../../utils/wordlistGroup')
+// #013：重新学习（重置卡片）。wordId 字符串边界与 FSRS 字段转换都在 dataSource 内部处理
+const dataSource = require('../../utils/fsrs/dataSource')
 
 Page({
   data: {
@@ -16,6 +18,10 @@ Page({
     // 收藏状态（是否在默认收藏夹中）
     isFavorited: false,
     favoriting: false,
+
+    /* ===== 重新学习二次确认（#013 AC-14） ===== */
+    showResetConfirm: false,
+    resetting: false,
 
     /* ===== 加入词单弹层 ===== */
     showJoin: false,
@@ -169,6 +175,68 @@ Page({
   /** 切换更多菜单 */
   showCorrectionMenu() {
     this.setData({ showMenu: !this.data.showMenu })
+  },
+
+  /* ===== 重新学习（#013 AC-14 / AC-15 / AC-16） ===== */
+
+  /**
+   * 打开二次确认弹窗
+   * <p>
+   * 文案要求（用户逐字确认）：标题「重新学习这个词？」，
+   * 正文「学习进度将归零，此操作不可撤销。」，按钮「取消」「重新学习」。
+   */
+  openResetConfirm() {
+    this.setData({ showMenu: false, showResetConfirm: true })
+  },
+
+  /** 取消：关闭弹窗，不发起任何请求，不改动任何数据（AC-15） */
+  cancelReset() {
+    this.setData({ showResetConfirm: false })
+  },
+
+  /**
+   * 确认重新学习
+   * <p>
+   * 失败时保留卡片原状态、提示失败原因、入口可再次操作（AC-16）。
+   * 提交中置灰不可再点，避免重复请求（后端有 epoch 乐观锁兜底）。
+   */
+  async confirmReset() {
+    if (this.data.resetting) return
+    const detail = this.data.wordDetail
+    const wordId = detail && detail.word && detail.word.id
+    if (!wordId) {
+      wx.showToast({ title: '单词信息缺失', icon: 'none' })
+      return
+    }
+
+    // AC-20：expectedEpoch 来自 GET /api/word/{id} 的 fsrsCard；未加入学习时为 null → 传 0，
+    // 后端按「该词不在学习列表中」返回 3001
+    const fsrsCard = detail.fsrsCard
+    const expectedEpoch = fsrsCard && fsrsCard.epoch != null ? fsrsCard.epoch : 0
+
+    this.setData({ resetting: true })
+    try {
+      await getApp().waitForLogin()
+      const res = await dataSource.resetCard(wordId, expectedEpoch)
+
+      if (res && res.code === 200) {
+        this.setData({ showResetConfirm: false })
+        wx.showToast({ title: '已重置，将从头开始', icon: 'none' })
+        // 重新拉取详情，让页面上的 FSRS 状态（epoch / learningStatus）回到最新
+        this.loadWordDetail(wordId)
+        return
+      }
+
+      // 失败分支：3001 该词不在学习列表 / 3008 轮次已变化 / 2005 参数不合法
+      this.setData({ showResetConfirm: false })
+      wx.showToast({ title: (res && res.message) || '重新学习失败，请重试', icon: 'none' })
+    } catch (error) {
+      console.error('重新学习失败:', error)
+      // 请求层已提示原因；入口保持可再次操作（AC-16）
+      this.setData({ showResetConfirm: false })
+    } finally {
+      this.setData({ resetting: false })
+    }
   },
 
   /** 进入单词纠错页面 */

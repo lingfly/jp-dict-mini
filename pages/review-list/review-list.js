@@ -14,6 +14,11 @@ Page({
     loadError: '',
     submitError: '',      // 提交失败提示（失败后停留当前卡片）
     firstResponseTime: 0, // 首次评分耗时；重试时沿用，避免把等待算进去
+    pendingRequestId: '', // #013 AC-19：本次评分动作的幂等 ID；重试复用，成功/换卡后清空
+
+    /* ===== 重新学习二次确认（#013 AC-14） ===== */
+    showResetConfirm: false,
+    resetting: false,
     showAnswer: false,
     currentWord: null,
     wordDetail: null, // 完整单词详情（含 definitions/examples）
@@ -223,13 +228,16 @@ Page({
    * 1. 移出队列 —— 不参与本地 FSRS 调度，避免短间隔卡被反复插回形成死循环
    * 2. completedCount++ —— 跳过也是"处理完"，分子 +1 进度条才能收敛到 100%
    * 3. 清 firstResponseTime —— 它只在提交成功时才清，不清就会让下一张沿用上一张的耗时
+   *
+   * 附带清 pendingRequestId（#013 AC-19）：跳过的卡不会再有下一次提交，
+   * 幂等 ID 必须丢弃，否则下一张卡的评分会复用它被当成重复提交。
    */
   skipCurrentCard() {
     if (this.queueIndex < this.queue.length) {
       this.queue.splice(this.queueIndex, 1)
     }
     this.completedCount++
-    this.setData({ firstResponseTime: 0 })
+    this.setData({ firstResponseTime: 0, pendingRequestId: '' })
     this.updateStats()
   },
 
@@ -573,7 +581,17 @@ Page({
     // 已扣除页面不可见时长并截断到 60s（#003 AC-03 / AC-04）
     const responseTimeMs = this.data.firstResponseTime || this.timer.elapsed()
 
-    this.setData({ loading: true, submitError: '', firstResponseTime: responseTimeMs })
+    // #013 AC-19：幂等 ID 代表「这一次评分动作」，必须在动作开始时生成一次，
+    // 失败重试沿用同一个值。否则后端把重试当成新动作，会重复记账（reps 跳格，日志留洞）。
+    // 存到 data 上以便重试复用；成功或换卡后由 showCurrentCard() 清空。
+    const clientRequestId = this.data.pendingRequestId || dataSource.genClientRequestId()
+
+    this.setData({
+      loading: true,
+      submitError: '',
+      firstResponseTime: responseTimeMs,
+      pendingRequestId: clientRequestId
+    })
 
     try {
       // 1. FSRS 计算新状态
@@ -588,6 +606,7 @@ Page({
         wordId: item.wordId,
         rating,
         responseTimeMs,
+        clientRequestId,
         card: newCard,
         log: result.log
       })
@@ -596,6 +615,8 @@ Page({
       //     静默跳过该卡片：移出队列，不参与本地调度（避免短间隔卡被反复插回形成死循环）
       if (res && res.code === dataSource.WORD_NOT_FOUND) {
         console.warn('[handleScore] 单词不存在，直接跳过:', item.wordId)
+        // #013 AC-19：该动作已结束（此卡不会再来），丢弃幂等 ID
+        this.setData({ pendingRequestId: '' })
         this.skipCurrentCard()
         const hasNextAfterSkip = await this.showCurrentCard()
         this.updateBadgeLocally()
@@ -660,7 +681,9 @@ Page({
       this.updateStats()
 
       // 4. 展示下一张卡片
-      this.setData({ submitError: '', firstResponseTime: 0 })
+      // #013 AC-19：本次评分动作已成功落库，必须丢弃幂等 ID，
+      // 否则下一张卡的评分会复用这个 ID，被后端当成重复提交而丢弃。
+      this.setData({ submitError: '', firstResponseTime: 0, pendingRequestId: '' })
       const hasNext = await this.showCurrentCard()
 
       // 评分成功：用本地队列剩余数更新角标（不请求后端 due-count）
@@ -723,6 +746,75 @@ Page({
     this.setData({ showMenu: !this.data.showMenu })
   },
 
+  /* ===== 重新学习（#013 AC-14 / AC-15 / AC-16 / AC-11） ===== */
+
+  /** 打开二次确认弹窗（文案见 spec 界面契约，用户逐字确认） */
+  openResetConfirm() {
+    this.setData({ showMenu: false, showResetConfirm: true })
+  },
+
+  /** 取消：关闭弹窗，不发起任何请求，不改动任何数据（AC-15） */
+  cancelReset() {
+    this.setData({ showResetConfirm: false })
+  },
+
+  /**
+   * 确认重新学习
+   * <p>
+   * 成功后（AC-11）：把当前卡从本地队列移除、重算进度、刷新角标。
+   * 重置后卡片 due=now 会重新进入当天队列，但**本次会话**不应再考它
+   * （用户刚点了"从头开始"，立刻再考一次没有意义），刷新页面即可重新拉取。
+   * <p>
+   * 失败时保留原状态、提示原因、入口可再次操作（AC-16）。
+   */
+  async confirmReset() {
+    if (this.data.resetting) return
+    const item = this.queue[this.queueIndex]
+    if (!item) {
+      wx.showToast({ title: '当前没有可重置的卡片', icon: 'none' })
+      return
+    }
+
+    // AC-20：expectedEpoch 取自队列项的 fsrsCard.epoch（数据源 GET /api/fsrs/due）
+    const expectedEpoch = item.fsrsCard && item.fsrsCard.epoch != null ? item.fsrsCard.epoch : 0
+
+    this.setData({ resetting: true })
+    try {
+      await getApp().waitForLogin()
+      const res = await dataSource.resetCard(item.wordId, expectedEpoch)
+
+      if (res && res.code === 200) {
+        this.setData({ showResetConfirm: false })
+
+        // 从队列移除该卡（不等同于"跳过"：跳过会 completedCount++，而重置的卡会回到待学）
+        this.queue.splice(this.queueIndex, 1)
+        // 重置不是"完成一次复习"，所以不动 completedCount，只重算进度与角标
+        this.updateStats()
+        this.updateBadgeLocally()
+
+        wx.showToast({ title: '已重置，将从头开始', icon: 'none' })
+
+        // 展示下一张；若队列已空，走完成态
+        const hasNext = await this.showCurrentCard()
+        if (!hasNext) {
+          wx.showToast({ title: '本次复习已完成', icon: 'none' })
+          this.loadTodayDetail()
+        }
+        return
+      }
+
+      // 失败分支：3001 该词不在学习列表 / 3008 轮次已变化 / 2005 参数不合法
+      this.setData({ showResetConfirm: false })
+      wx.showToast({ title: (res && res.message) || '重新学习失败，请重试', icon: 'none' })
+    } catch (error) {
+      console.error('重新学习失败:', error)
+      // 请求层已提示原因；卡片留在原位，入口保持可再次操作（AC-16）
+      this.setData({ showResetConfirm: false })
+    } finally {
+      this.setData({ resetting: false })
+    }
+  },
+
   /** 进入单词纠错页面 */
   goCorrection() {
     this.setData({ showMenu: false })
@@ -741,5 +833,8 @@ Page({
     wx.navigateTo({
       url: `/pages/correction-definition/correction-definition?wordId=${wordId}`
     })
-  }
+  },
+
+  /** 空函数：用于 catchtap 阻止弹窗内部点击穿透到遮罩 */
+  noop() {}
 })

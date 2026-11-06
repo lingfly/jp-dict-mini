@@ -18,6 +18,10 @@
         </view>
         <!-- 弹出菜单 -->
         <view wx:if="{{showMenu}}" class="popup-menu" catchtap="">
+          <!-- #013 AC-14：第一项，位于「单词纠错」之上 -->
+          <view class="popup-menu-item" bindtap="openResetConfirm">
+            <text>重新学习</text>
+          </view>
           <view class="popup-menu-item" bindtap="goCorrection">
             <text>单词纠错</text>
           </view>
@@ -168,6 +172,19 @@
       <view class="join-f">
         <view wx:if="{{joinHint}}" class="jhint">{{joinHint}}</view>
         <view class="join-go {{joinCanGo ? '' : 'disabled'}}" bindtap="confirmJoin">{{joinGoText}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 重新学习：二次确认弹窗（#013 AC-14 / AC-15 / AC-16） ===== -->
+  <view wx:if="{{showResetConfirm}}" class="reset-ov">
+    <view class="reset-mask" bindtap="cancelReset"></view>
+    <view class="reset-dialog" catchtap="noop">
+      <view class="reset-title">重新学习这个词？</view>
+      <view class="reset-body">学习进度将归零，此操作不可撤销。</view>
+      <view class="reset-actions">
+        <view class="reset-btn reset-btn-cancel" bindtap="cancelReset">取消</view>
+        <view class="reset-btn reset-btn-ok {{resetting ? 'disabled' : ''}}" bindtap="confirmReset">重新学习</view>
       </view>
     </view>
   </view>

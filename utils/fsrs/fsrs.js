@@ -112,7 +112,10 @@ function normalizeCard(card) {
     lapses: card.lapses,
     learning_steps: card.learning_steps,
     state: card.state,
-    last_review: card.last_review ? toTs(card.last_review) : null
+    last_review: card.last_review ? toTs(card.last_review) : null,
+    // #013 AC-20：ts-fsrs 不认识 epoch，但短间隔卡会被重新插回队列，
+    // 下次调重置时要用它做乐观锁。归一化时丢掉会导致「重新学习」永远 3008。
+    epoch: card.epoch != null ? card.epoch : 0
   }
 }
 
