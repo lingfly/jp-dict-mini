@@ -23,7 +23,7 @@
 
 - [x] **T04** 模拟器验收：automator 打开词单加词页，验证「进入页面 ≤1s 下发聚焦」「唯一搜索框可见」「网络失败不影响」「详情返回/收键盘后不再下发聚焦」；截图为 devtools 窗口级（automator screenshot API 在本环境超时，改用 Windows PrintWindow）· 覆盖 AC-01, AC-02, AC-03, AC-04, AC-05 · 验证：`.jointest/verify-016.js` **4/4 通过**；`delay=392ms`；`setData(searchAutoFocus)` 后续写入 **0 次** · 文件：无
 
-- [ ] **T05** 真机复核：微信开发者工具「预览」→ 手机进入词单详情点「＋ 添加单词」，**进入后键盘应直接弹出、可直接打字**；看单词详情后返回列表不重复弹键盘；手动收起键盘后停留本页不再弹起 · 覆盖 AC-01, AC-02, AC-03 · 验证：真机操作录屏/截图 · 文件：无
+- [x] **T05** 真机复核：微信开发者工具「预览」→ 手机进入词单详情点「＋ 添加单词」，**进入后键盘应直接弹出、可直接打字**；看单词详情后返回列表不重复弹键盘；手动收起键盘后停留本页不再弹起 · 覆盖 AC-01, AC-02, AC-03 · 验证：**用户真机验证通过（2026-11-11，原话「真机验证通过」）** · 文件：无
   > 为什么单列：2026-11-11 实测**开发者工具模拟器不对原生 textarea 执行程序化聚焦**（同页 `input` 的 `focus` 会派发 focus 事件、`getSelectedTextRange` 成功；`textarea` 的 `focus`/`auto-focus` 静态与动态均无 focus 事件、不弹键盘），
   > 属模拟器限制，无法在工具内证明「键盘真的弹出」。代码写法与官方 textarea 示例一致（`focus="{{focus}}"` + setData），真机需人工确认一次。
 
@@ -43,7 +43,7 @@
 
 | AC | 结论 | 证据 | 备注 |
 |----|------|------|------|
-| AC-01 | **模拟器通过（聚焦指令）/ 真机待 T05** | 点 FAB 后页面出现 → `searchAutoFocus=true` 用时 **392ms**（≤1s）；模拟器对 textarea 不做真实聚焦，键盘弹出需真机确认 | 官方 textarea 示例同写法 |
+| AC-01 | **通过（真机已确认）** | 模拟器：页面出现 → `searchAutoFocus=true` 用时 **392ms**（≤1s）；**用户真机预览确认：进入页面键盘直接弹出、可直接打字（2026-11-11 原话「真机验证通过」）** | 官方 textarea 示例同写法 |
 | AC-02 | **通过（运行时监听）** | 钩住 `setData` 后：置 `wordDetail` → `backToResults()` → 等待 1.2s，`searchAutoFocus` 写入 **0 次**，`wordDetail=null` | 代码只有 `onReady` 一处写该字段 |
 | AC-03 | **通过（运行时监听）** | `wx.hideKeyboard()` 后停留 1.5s，`searchAutoFocus` 写入 **0 次**；定时器已在首次触发后置空，无再次触发路径 | 同 AC-02 |
 | AC-04 | **通过** | `.search-input` 唯一且可见（284×44）、`searchKeyword=''`；`git diff` 仅 wxml 加 `focus`、js 加 data+onReady+unload 清理 | 无新增元素/文案 |
@@ -59,9 +59,9 @@
 
 ## 归档前检查
 
-- [ ] 所有任务已勾选（T05 真机复核待补）
+- [x] 所有任务已勾选
 - [x] 每条 AC 都有验收结论
-- [ ] 状态已由人执行 `verify` 改为 `verified`（不是 `approved`）
+- [x] 状态已由人执行 `verify` 改为 `verified`（不是 `approved`）
 - [x] 能力规范已更新（`specs/capabilities/word-search/spec.md` 的 `last_reviewed`）
 - [x] `node scripts/spec.js check` 通过
 - [x] 没有把调试代码（临时 `bindfocus`/`bindblur`、测试页）留在仓库

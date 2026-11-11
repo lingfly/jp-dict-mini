@@ -22,4 +22,4 @@
 | 013 | `013-fsrs-card-reset` | FSRS 卡片重新学习（重置）与复习日志轨迹治理 | L3 | approved | 2026-10-30 | — |
 | 014 | `014-wordlist-add-search` | 词单内查词加词（悬浮入口 + 新查词页 + AI 审核入指定词单 + 归属提示） | L2 | approved | 2026-11-10 | — |
 | 015 | `015-wordlist-remember-group` | 加词时按词单记住上次选择的分组 | L1 | approved | 2026-11-10 | — |
-| 016 | `016-add-search-autofocus` | 进入词单加词页自动聚焦搜索框（直接弹键盘） | L1 | approved | 2026-11-11 | — |
+| 016 | `016-add-search-autofocus` | 进入词单加词页自动聚焦搜索框（直接弹键盘） | L1 | verified | 2026-11-11 | — |

@@ -8,7 +8,7 @@
 | 目录 | `changes/016-add-search-autofocus/` |
 | slug | `add-search-autofocus` |
 | 级别 | L1 |
-| 状态 | approved |
+| 状态 | verified |
 | 负责人 | lead |
 | 日期 | 2026-11-11 |
 | 涉及能力 | `word-search`（词单内查词页的入口聚焦） |
@@ -113,3 +113,10 @@
 | 日期 | 审批人 | 审核内容 | 结论 | 备注 |
 |------|--------|----------|------|------|
 | 2026-11-11 | 用户 | 需求实施（无需二次确认） | 通过 | 原话「词单的单词列表，点击添加单词，进入查词页面后直接弹出输入键盘」；never-ask 会话 |
+
+## 11. 验收记录
+
+- 2026-11-11 用户真机预览确认：进入词单加词页后键盘直接弹出、可直接打字，原话「**真机验证通过**」；
+  模拟器侧 `.jointest/verify-016.js` 4/4 通过（聚焦指令 392ms、后续 0 次重下发、无新增元素、网络失败仍聚焦）。
+- 结论：AC-01~AC-06 全部通过，状态置 `verified`（合并后的能力规范见 `specs/capabilities/word-search/spec.md` 的 AC-WS-15）。
+- 待办：归档（等用户明确说「归档」后执行 `node scripts/spec.js archive 016-add-search-autofocus`）。
