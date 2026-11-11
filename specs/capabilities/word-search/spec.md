@@ -4,9 +4,10 @@ status: active
 owned_paths:
   - pages/home/
   - pages/word-detail/
+  - pages/wordlist-add-search/
   - utils/api.js
   - utils/request.js
-last_reviewed: 2026-10-22
+last_reviewed: 2026-11-11
 ---
 
 # 能力：查词（word-search）
@@ -65,6 +66,14 @@ last_reviewed: 2026-10-22
 - **AC-WS-13** 当用户选择「加入词单」时，系统应展示可用词单及其分组，并标记该词当前是否已在其中。
 - **AC-WS-14** 当用户确认加入时，系统应支持选择「未分组」或某个具体分组；重复加入同一位置不应产生重复数据。
 
+### R5 词单内查词页（pages/wordlist-add-search，由 #014 引入）
+
+- **AC-WS-15** 当用户从词单详情页点「＋ 添加单词」进入词单内查词页时，系统应在页面渲染完成后
+  自动聚焦顶部搜索框（`focus=true`，延迟约 300ms 以避开 iOS 转场），使系统输入法键盘直接弹出，
+  无需用户再点输入框；自动聚焦**只在首次进入页面时发生一次** —— 从单词详情返回查词列表
+  （`backToResults`，页内切换）、用户手动收起键盘之后，均**不得**再次自动聚焦/弹键盘。
+  该页其余查词、AI 查词、加词与分组行为见 `changes/014-wordlist-add-search/spec.md`（#014 归档时合并）。
+
 ## 5. 边界与异常
 
 | 场景 | 预期行为 | 当前实现 |
@@ -105,3 +114,4 @@ last_reviewed: 2026-10-22
 |------|------|----------|
 | 2026-10-22 | 反向补录：首次建立能力规范（覆盖存量实现） | — |
 | 2026-10-22 | 进行中：#001 接口超时治理（影响所有联网能力，含查词） | `changes/001-api-timeout/` |
+| 2026-11-11 | `#016` 词单内查词页进入时自动聚焦搜索框（AC-WS-15）；`pages/wordlist-add-search/` 纳入本能力 `owned_paths` | `changes/016-add-search-autofocus/` |

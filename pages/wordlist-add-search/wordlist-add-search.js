@@ -25,6 +25,8 @@ Page({
 
     // 搜索
     searchKeyword: '',
+    // #016 进入页面自动聚焦搜索框（由 onReady 延迟置 true，驱动 WXML 的 focus 属性）
+    searchAutoFocus: false,
     loading: false,
     searchResults: [],
     wordDetail: null,
@@ -101,7 +103,27 @@ Page({
     this.loadCollapseConfig()
   },
 
+  /**
+   * #016 进入页面自动聚焦搜索框，直接弹出系统输入法键盘。
+   * 用户从词单详情点「＋ 添加单词」进入本页后，无需再点输入框即可开始打字。
+   *
+   * 为什么不在 onLoad / 首帧置 focus：iOS 在页面转场动画期间设置的焦点会被系统丢弃；
+   * 等 onReady（首帧渲染完成）后再延迟 300ms，确保转场结束，聚焦最稳。
+   * 只在首次进入时执行一次 —— 从单词详情返回列表（页内切换）不会重新触发（AC-02）。
+   */
+  onReady() {
+    this._autoFocusTimer = setTimeout(() => {
+      this._autoFocusTimer = null
+      this.setData({ searchAutoFocus: true })
+    }, 300)
+  },
+
   onUnload() {
+    // #016 延迟聚焦的定时器可能还没触发就退出页面，先清掉，避免对已卸载页面 setData
+    if (this._autoFocusTimer) {
+      clearTimeout(this._autoFocusTimer)
+      this._autoFocusTimer = null
+    }
     if (this.data.currentAudio) {
       this.data.currentAudio.stop()
       this.data.currentAudio.destroy()
