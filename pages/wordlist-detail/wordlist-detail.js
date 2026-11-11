@@ -1,6 +1,7 @@
 // pages/wordlist-detail/wordlist-detail.js
 // 词单详情：全量展示词单内单词，按分组分区展示，支持「未选 / 已选 / 全部」三个栏目切换
 const { wordlistApi, wordlistGroupApi, reviewApi, fsrsApi } = require('../../utils/api')
+const { createFabDrag } = require('../../utils/fabDrag')
 
 // 未分组分区使用的固定 key
 const UNGROUPED_KEY = '__ungrouped__'
@@ -34,22 +35,97 @@ Page({
 
     /* 高亮脉冲：可见的选中单词 + 含选中单词但未展开的分组 */
     flashWordIds: [],
-    flashGroupIds: []
+    flashGroupIds: [],
+
+    /* 右下角「＋ 添加单词」悬浮按钮位置（px），长按可拖动，位置本地持久化 */
+    fabLeft: null,
+    fabTop: null,
+    /* 是否已完成首次定位。false 时不渲染按钮，避免 onLoad→onReady 之间
+       用暂时 0 高度的底部栏算出偏低位置、出现「压住底部栏再跳上去」的闪烁 */
+    fabReady: false,
+    /* #014 UI-01c：当前用户是否可编辑该词单。
+       由 GET /api/wordlist/detail 的 canEdit 决定（后端权威判定，前端不复刻权限规则）。
+       初始 false：权限未知时不显示「添加单词」，避免无权限用户看到点了必然失败的入口。 */
+    canEdit: false
   },
 
   onLoad(options) {
     const wordListId = options.wordListId || ''
     this._expanded = {}   // 分组展开状态 { [groupId]: true }，默认收起
+    this._initialLoading = true // 首次加载由 initAndLoad 负责，避免 onShow 与异步排序竞争
+    // 底部操作栏高度（px）：onLoad 时还没渲染，量不到，先按 0 兜底，
+    // onReady / 内容加载完后由 measureBottomBar() 量出真实值并触发 FAB 重新布局
+    this._bottomBarHeight = 0
+    // 悬浮按钮拖动控制器：底部留白 = 底部栏高度 + 16px 间距。
+    // 传函数是因为这个高度要等布局完成才知道；用固定 24 会让按钮压在「顺序/随机/加入学习」上（#014 实测重叠 39px）
+    this._fabDrag = createFabDrag(this, 'wordlistDetailFabPos_v1', { w: 120, h: 46 },
+      () => this._bottomBarHeight + 16)
     this.setData({ wordListId })
     if (wordListId) {
       this.initAndLoad()
     }
   },
 
+  onReady() {
+    // 布局完成后底部栏才有真实高度，此时修正 FAB 位置，避免压在底部操作栏上
+    this.measureBottomBar()
+  },
+
+  /**
+   * 量底部操作栏高度并让 FAB 重新布局。
+   * 底部栏内容会随 selectedWordIds / learningStatus 变化（文案长度不同），高度可能变，
+   * 所以加载完数据后再量一次。
+   *
+   * 量到有效高度后才 setData({ fabReady: true }) 让按钮出现：
+   * 早于这一刻渲染，会用 0 高度算出偏低位置，出现「压住底部栏再跳上去」的闪烁（实测约 120ms）。
+   */
+  measureBottomBar() {
+    if (!this._fabDrag) return
+    wx.createSelectorQuery()
+      .select('.bottom-bar')
+      .boundingClientRect((rect) => {
+        const h = (rect && rect.height) || 0
+        if (h > 0) {
+          this._bottomBarHeight = h
+          this._fabDrag.relayout()
+          // 量到真实高度后才让按钮出现，避免先用 0 高度算出偏低位置再跳上去（实测约 120ms 闪烁）
+          if (!this.data.fabReady) this.setData({ fabReady: true })
+        } else if (!this.data.fabReady) {
+          // 兜底：量不到底部栏（样式未加载等）也要让按钮可用，退化为 24px 留白
+          this.setData({ fabReady: true })
+        }
+      })
+      .exec()
+  },
+
   onShow() {
+    // 首次进入跳过：由 initAndLoad 统一加载（含异步排序判定）
+    if (this._initialLoading) {
+      this._initialLoading = false
+      return
+    }
     if (this.data.wordListId) {
+      // 从「添加单词」页返回后重新拉全量内容，保证新加入的单词可见（#014 UI-08）
+      this.loadAllContent()
       this.loadLearningStatus()
     }
+  },
+
+  /* ===== 悬浮按钮：拖动事件转发 + 点击跳转 ===== */
+  onFabTouchStart(e) { this._fabDrag.touchStart(e) },
+  onFabTouchMove(e) { this._fabDrag.touchMove(e) },
+  onFabTouchEnd(e) { this._fabDrag.touchEnd(e) },
+
+  /** 点击「＋ 添加单词」：进入词单内查词页，wordListId 全程字符串（禁止 Number） */
+  onFabTap() {
+    const wordListId = this.data.wordListId
+    if (!wordListId) {
+      wx.showToast({ title: '词单信息缺失', icon: 'none' })
+      return
+    }
+    wx.navigateTo({
+      url: `/pages/wordlist-add-search/wordlist-add-search?wordListId=${wordListId}`
+    })
   },
 
   onUnload() {
@@ -64,7 +140,9 @@ Page({
       : { sort: 'kana', order: 'asc' }
     this.loadDetail()
     this.loadAllContent()
-    this.loadLearningStatus()
+    // 底部栏文案随 learningStatus 变化（「今日待选 N/20」vs「加入学习 N/20」），
+    // 高度可能变，加载完再量一次交给 FAB 重新布局（不重复发请求）
+    this.loadLearningStatus().then(() => this.measureBottomBar())
   },
 
   /** 判断当前词单是否为默认收藏夹 */
@@ -98,10 +176,20 @@ Page({
   async loadDetail() {
     try {
       const res = await wordlistApi.getDetail(this.data.wordListId)
-      if (res.code === 200 && res.data && res.data.name) {
-        wx.setNavigationBarTitle({ title: res.data.name })
+      if (res.code === 200 && res.data) {
+        if (res.data.name) {
+          wx.setNavigationBarTitle({ title: res.data.name })
+        }
+        // #014 UI-01c：是否可编辑该词单（后端权威判定，与写操作权限校验同源）。
+        // 初始 false：权限未回来前不渲染「添加单词」，避免先显示后消失的闪烁。
+        const canEdit = !!res.data.canEdit
+        if (this.data.canEdit !== canEdit) {
+          this.setData({ canEdit })
+        }
       }
     } catch (error) {
+      // 拉取失败：保持 canEdit=false（不显示添加按钮）。宁可少显示，也不要让无权限用户
+      // 看到一个点了必然失败的入口。
       console.error('加载词单详情失败:', error)
     }
   },

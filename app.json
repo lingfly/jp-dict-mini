@@ -23,7 +23,8 @@
     "pages/correction-my-word-detail/correction-my-word-detail",
     "pages/correction-my-definition-detail/correction-my-definition-detail",
     "pages/correction-word-edit/correction-word-edit",
-    "pages/correction-definition-edit/correction-definition-edit"
+    "pages/correction-definition-edit/correction-definition-edit",
+    "pages/wordlist-add-search/wordlist-add-search"
   ],
   "tabBar": {
     "color": "#909399",

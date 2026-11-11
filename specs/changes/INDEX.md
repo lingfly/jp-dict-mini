@@ -20,3 +20,5 @@
 | 011 | `011-y-axis-headroom` | 学习统计纵轴留 10% 顶空（最高柱 ≤ 90% 高度） | L1 | approved | 2026-10-29 | — |
 | 012 | `012-press-vibration` | 复习页触感改到「按下」触发（而非抬起） | L1 | approved | 2026-10-29 | — |
 | 013 | `013-fsrs-card-reset` | FSRS 卡片重新学习（重置）与复习日志轨迹治理 | L3 | approved | 2026-10-30 | — |
+| 014 | `014-wordlist-add-search` | 词单内查词加词（悬浮入口 + 新查词页 + AI 审核入指定词单 + 归属提示） | L2 | approved | 2026-11-10 | — |
+| 015 | `015-wordlist-remember-group` | 加词时按词单记住上次选择的分组 | L1 | approved | 2026-11-10 | — |

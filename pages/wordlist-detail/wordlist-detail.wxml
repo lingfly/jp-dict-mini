@@ -84,4 +84,23 @@
       </view>
     </view>
   </view>
+
+  <!-- 右下角「＋ 添加单词」悬浮按钮（长按可拖动，位置持久化；#014 UI-01） -->
+  <!-- wx:if="fabReady"：等底部栏高度量到后再渲染，避免先用 0 高度算出偏低位置再跳上去的闪烁 -->
+  <!-- #014 UI-01c：仅当当前用户对该词单有编辑权限（canEdit）时才渲染；
+       无权限（他人公共词单）整块不渲染，不占位、无透明可点击区。
+       注意这只是体验优化，后端写接口仍会校验权限（前端隐藏不是安全边界）。 -->
+  <view
+    wx:if="{{fabReady && canEdit}}"
+    class="fab-add-word"
+    style="left:{{fabLeft}}px;top:{{fabTop}}px;"
+    bindtap="onFabTap"
+    bindtouchstart="onFabTouchStart"
+    catchtouchmove="onFabTouchMove"
+    bindtouchend="onFabTouchEnd"
+    bindtouchcancel="onFabTouchEnd"
+  >
+    <text class="fab-plus">＋</text>
+    <text class="fab-text">添加单词</text>
+  </view>
 </view>

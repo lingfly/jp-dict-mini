@@ -311,6 +311,13 @@ const aiDictApi = {
   // 反馈：不符合预期
   markIncorrect(logId) {
     return post('/api/ai-dict/feedback/incorrect', { logId })
+  },
+
+  // 词单内查词：把某条 AI 查词结果加入当前词单（#014）
+  // logId / wordListId 全程字符串；selectedIndex 为 results 下标；groupId 为 null 表示无分组（保持 null）
+  // 管理员直接写词库并加词单；非管理员提交审核（status=pending），返回 { code, message, data: { wordId, needAudit } }
+  addWordFromWordlist(logId, selectedIndex, wordListId, groupId) {
+    return post('/api/ai-dict/add-word', { logId, selectedIndex, wordListId, groupId }) // 需要 token
   }
 }
 

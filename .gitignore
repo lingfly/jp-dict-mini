@@ -15,3 +15,6 @@ utils/config.local.js
 
 # DSH 工作区权限诊断产物（含本机 SID，不入库）
 .dsh-acl/
+
+# 联调临时脚本/截图/报告（含本机路径与临时 token，不入库）
+.jointest/
