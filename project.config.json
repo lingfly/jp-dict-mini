@@ -5,6 +5,46 @@
       {
         "type": "folder",
         "value": "scripts"
+      },
+      {
+        "type": "folder",
+        "value": "node_modules"
+      },
+      {
+        "type": "folder",
+        "value": ".jointest"
+      },
+      {
+        "type": "folder",
+        "value": ".git"
+      },
+      {
+        "type": "folder",
+        "value": ".workbuddy"
+      },
+      {
+        "type": "folder",
+        "value": ".dsh-acl"
+      },
+      {
+        "type": "folder",
+        "value": "specs"
+      },
+      {
+        "type": "suffix",
+        "value": ".md"
+      },
+      {
+        "type": "file",
+        "value": "word-group-manager.html"
+      },
+      {
+        "type": "file",
+        "value": ".gitignore"
+      },
+      {
+        "type": "file",
+        "value": "project.private.config.json"
       }
     ],
     "include": []
