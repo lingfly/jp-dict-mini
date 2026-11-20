@@ -2,6 +2,8 @@
 // 词单详情：全量展示词单内单词，按分组分区展示，支持「未选 / 已选 / 全部」三个栏目切换
 const { wordlistApi, wordlistGroupApi, reviewApi, fsrsApi } = require('../../utils/api')
 const { createFabDrag } = require('../../utils/fabDrag')
+// #017：把「当前栏目的单词顺序」交给详情页，供左右滑动切换上一个/下一个
+const wordNav = require('../../utils/wordNav')
 
 // 未分组分区使用的固定 key
 const UNGROUPED_KEY = '__ungrouped__'
@@ -598,7 +600,47 @@ Page({
   },
 
   goWordDetail(e) {
-    wx.navigateTo({ url: `/pages/word-detail/word-detail?wordId=${e.currentTarget.dataset.wordId}` })
+    const wordId = String(e.currentTarget.dataset.wordId)
+    const token = wordNav.stage(this.buildNavSequence(), wordId)
+    const suffix = token ? `&navToken=${token}` : ''
+    wx.navigateTo({ url: `/pages/word-detail/word-detail?wordId=${wordId}${suffix}` })
+  },
+
+  /**
+   * 当前栏目的单词展示顺序（#017 AC-09）
+   *
+   * 与 buildSections 的分桶规则保持一致：按栏目过滤 → 按分组顺序分组 → 组内保持原始顺序 →
+   * 「未分组」排最后。折叠分组内的单词也计入：序列描述的是当前栏目的顺序，
+   * 用户不应该先展开分组才能连续往下看。
+   * @returns {String[]} 单词 id 数组（字符串，C-03）
+   */
+  buildNavSequence() {
+    const tab = this.data.activeTab
+    const { groups, words } = this.data
+    const groupIdSet = {}
+    groups.forEach(g => { groupIdSet[g.id] = true })
+
+    const byGroup = {}
+    const ungrouped = []
+    words.forEach(w => {
+      if (tab === 'selected' && w.learningStatus !== 'learning') return
+      if (tab === 'unselected' && w.learningStatus === 'learning') return
+      const key = (w.groupId && groupIdSet[w.groupId]) ? w.groupId : UNGROUPED_KEY
+      if (key === UNGROUPED_KEY) {
+        ungrouped.push(w)
+      } else {
+        if (!byGroup[key]) byGroup[key] = []
+        byGroup[key].push(w)
+      }
+    })
+
+    const ids = []
+    groups.forEach(g => {
+      const list = byGroup[g.id] || []
+      list.forEach(w => ids.push(String(w.wordId)))
+    })
+    ungrouped.forEach(w => ids.push(String(w.wordId)))
+    return ids
   },
 
   onCheckboxTap(e) {

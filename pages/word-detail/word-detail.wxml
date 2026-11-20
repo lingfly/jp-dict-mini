@@ -1,14 +1,26 @@
 <!--pages/word-detail/word-detail.wxml-->
 <wxs module="helper" src="./helper.wxs"></wxs>
-<view class="detail-page">
+<!-- #017：左右滑动切换上一个/下一个单词。
+     - 手势绑在根节点：touchstart 记起点、touchmove 跟手拖动、touchend 判定。
+     - 用 bindtouchmove 而非 catchtouchmove：判定为纵向时不动卡片，页面继续原生滚动。 -->
+<view
+  class="detail-page"
+  bindtouchstart="onSwipeTouchStart"
+  bindtouchmove="onSwipeTouchMove"
+  bindtouchend="onSwipeTouchEnd"
+  bindtouchcancel="onSwipeTouchCancel"
+>
   <!-- 加载中 -->
   <view wx:if="{{loading}}" class="loading-state">
     <text>加载中...</text>
   </view>
 
-  <!-- 单词详情 -->
-  <view wx:elif="{{wordDetail}}" class="word-detail">
-    <view class="detail-content card">
+  <!-- 单词详情：整张卡片跟着手指走（#017 AC-11 / AC-12） -->
+  <view
+    wx:elif="{{wordDetail}}"
+    class="word-detail {{dragging ? 'dragging' : ''}}"
+    style="transform: translate3d({{dragX}}px,0,0); opacity: {{dragOpacity}};"
+  >    <view class="detail-content card">
       <!-- 右上角更多菜单按钮 -->
       <view class="more-btn-wrap">
         <view class="more-btn" bindtap="showCorrectionMenu">
