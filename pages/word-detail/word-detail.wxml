@@ -1,14 +1,26 @@
 <!--pages/word-detail/word-detail.wxml-->
 <wxs module="helper" src="./helper.wxs"></wxs>
-<view class="detail-page">
+<!-- #017：左右滑动切换上一个/下一个单词。
+     - 手势绑在根节点：touchstart 记起点、touchmove 跟手拖动、touchend 判定。
+     - 用 bindtouchmove 而非 catchtouchmove：判定为纵向时不动卡片，页面继续原生滚动。 -->
+<view
+  class="detail-page"
+  bindtouchstart="onSwipeTouchStart"
+  bindtouchmove="onSwipeTouchMove"
+  bindtouchend="onSwipeTouchEnd"
+  bindtouchcancel="onSwipeTouchCancel"
+>
   <!-- 加载中 -->
   <view wx:if="{{loading}}" class="loading-state">
     <text>加载中...</text>
   </view>
 
-  <!-- 单词详情 -->
-  <view wx:elif="{{wordDetail}}" class="word-detail">
-    <view class="detail-content card">
+  <!-- 单词详情：整张卡片跟着手指走（#017 AC-11 / AC-12） -->
+  <view
+    wx:elif="{{wordDetail}}"
+    class="word-detail {{dragging ? 'dragging' : ''}}"
+    style="transform: translate3d({{dragX}}px,0,0); opacity: {{dragOpacity}};"
+  >    <view class="detail-content card">
       <!-- 右上角更多菜单按钮 -->
       <view class="more-btn-wrap">
         <view class="more-btn" bindtap="showCorrectionMenu">
@@ -18,6 +30,10 @@
         </view>
         <!-- 弹出菜单 -->
         <view wx:if="{{showMenu}}" class="popup-menu" catchtap="">
+          <!-- #013 AC-14：第一项，位于「单词纠错」之上 -->
+          <view class="popup-menu-item" bindtap="openResetConfirm">
+            <text>重新学习</text>
+          </view>
           <view class="popup-menu-item" bindtap="goCorrection">
             <text>单词纠错</text>
           </view>
@@ -168,6 +184,19 @@
       <view class="join-f">
         <view wx:if="{{joinHint}}" class="jhint">{{joinHint}}</view>
         <view class="join-go {{joinCanGo ? '' : 'disabled'}}" bindtap="confirmJoin">{{joinGoText}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 重新学习：二次确认弹窗（#013 AC-14 / AC-15 / AC-16） ===== -->
+  <view wx:if="{{showResetConfirm}}" class="reset-ov">
+    <view class="reset-mask" bindtap="cancelReset"></view>
+    <view class="reset-dialog" catchtap="noop">
+      <view class="reset-title">重新学习这个词？</view>
+      <view class="reset-body">学习进度将归零，此操作不可撤销。</view>
+      <view class="reset-actions">
+        <view class="reset-btn reset-btn-cancel" bindtap="cancelReset">取消</view>
+        <view class="reset-btn reset-btn-ok {{resetting ? 'disabled' : ''}}" bindtap="confirmReset">重新学习</view>
       </view>
     </view>
   </view>

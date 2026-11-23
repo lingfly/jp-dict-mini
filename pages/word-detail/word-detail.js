@@ -1,6 +1,26 @@
 // pages/word-detail/word-detail.js
 const { wordApi, audioApi, userApi, wordlistApi, authApi } = require('../../utils/api')
 const groupSource = require('../../utils/wordlistGroup')
+// #013：重新学习（重置卡片）。wordId 字符串边界与 FSRS 字段转换都在 dataSource 内部处理
+const dataSource = require('../../utils/fsrs/dataSource')
+// #017：左右滑动切换上一个 / 下一个单词。序列由列表页暂存，这里按令牌取一次
+const wordNav = require('../../utils/wordNav')
+
+/* ===== #017 左右滑动切换参数 =====
+   跟手拖动（AC-11）+ 松手判定 + 滑出/滑入（AC-12） */
+const SWIPE_MIN_DX = 60        // 松手后「够远」的最小横向位移
+const SWIPE_FAR_DX = 100       // 拖到这个距离以上，不看到达时长，一定算数
+const SWIPE_FLICK_DX = 30      // 快速甩动的位移下限
+const SWIPE_FLICK_SPEED = 0.35 // 快速甩动的速度下限（px/ms）
+const SWIPE_RATIO = 1.5        // 横向必须明显大于纵向，否则算纵向滚动
+const SWIPE_MAX_MS = 900       // 短促滑动的时间上限（超过则只按距离判定）
+// 跟手阻尼：拖到卡片宽度的 45% 之后开始变「重」，避免卡片被拉出屏幕
+const DRAG_RATIO = 0.45
+const DRAG_DAMP = 0.3
+// 序列到头时的整体阻尼，做出「拉不动」的手感
+const DRAG_EDGE_DAMP = 0.28
+// 松手后滑出到「换内容」的等待时间（略大于 0.18s 的 transition，让卡片走完再换）
+const EXIT_MS = 180
 
 Page({
   data: {
@@ -16,6 +36,18 @@ Page({
     // 收藏状态（是否在默认收藏夹中）
     isFavorited: false,
     favoriting: false,
+
+    /* ===== #017 左右滑动切换 ===== */
+    navIds: [],        // 列表当前展示顺序的单词 id（全程字符串，C-03）
+    navIndex: -1,      // 当前单词在 navIds 中的下标；-1 = 没有导航上下文（不响应滑动）
+    /* 跟手拖动（AC-11）：手指按住卡片左右拖动时，卡片实时跟着走 */
+    dragging: false,   // 正在跟手拖动（此时关掉 transition，卡片才跟得上手指）
+    dragX: 0,          // 卡片当前横向位移（px）；>0 向右、<0 向左
+    dragOpacity: 1,    // 拖动时卡片淡出，越拖越淡
+
+    /* ===== 重新学习二次确认（#013 AC-14） ===== */
+    showResetConfirm: false,
+    resetting: false,
 
     /* ===== 加入词单弹层 ===== */
     showJoin: false,
@@ -37,6 +69,10 @@ Page({
 
   onLoad(options) {
     const wordId = options.wordId || ''
+    // #017：取列表页暂存的单词顺序（只在本页 onLoad 同步取一次，取完即删）
+    this.initNavContext(wordId, options.navToken)
+    // #017：滑动阻尼按屏幕宽度算，先量一次（量不到时用 375 兜底）
+    this.measurePageWidth()
     this.checkAdmin()
     if (wordId) {
       this.setData({ wordId })
@@ -47,6 +83,16 @@ Page({
     } else {
       this.setData({ loading: false })
       wx.showToast({ title: '参数错误', icon: 'none' })
+    }
+  },
+
+  /** 量一次页面宽度（滑动距离/阻尼都按它算），量不到时用 375 兜底 */
+  measurePageWidth() {
+    try {
+      const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
+      if (info && info.windowWidth) this._pageWidth = info.windowWidth
+    } catch (e) {
+      console.error('获取窗口宽度失败:', e)
     }
   },
 
@@ -88,6 +134,8 @@ Page({
       if (!defaultId) return
       // 查询该单词在哪些词单中，判断默认收藏夹是否包含
       const res = await wordlistApi.list({ mineOnly: true, wordId })
+      // #017：切换单词后，上一个单词的收藏查询可能才回来 —— 结果对不上当前单词就丢弃
+      if (this.data.wordId && String(this.data.wordId) !== String(wordId)) return
       if (res.code === 200) {
         const lists = res.data || []
         const def = lists.find(w => String(w.id) === String(defaultId))
@@ -141,23 +189,437 @@ Page({
     }
   },
 
+  /* ================= #017 左右滑动切换上一个 / 下一个单词 ================= */
+
+  /**
+   * 取得列表页暂存的单词顺序
+   * 没有令牌 / 令牌过期 / 当前单词不在序列里 → navIndex 保持 -1，滑动不响应（AC-05）
+   */
+  initNavContext(wordId, token) {
+    const ctx = wordNav.take(token)
+    if (!ctx || !ctx.ids || ctx.ids.length < 2) return
+    const index = ctx.ids.indexOf(String(wordId))
+    if (index < 0) return
+    this.setData({ navIds: ctx.ids, navIndex: index })
+  },
+
+  /* -------- 手势：跟手拖动 + 松手判定（AC-11 / AC-12） -------- */
+
+  /**
+   * 按下：记起点，并清掉上一次还没走完的过渡
+   *
+   * 这里**不**阻止页面纵向滚动：只在判定为「横向拖动」之前不做任何位移，
+   * 所以纵向滚动照旧是原生行为（AC-08）。
+   */
+  onSwipeTouchStart(e) {
+    const touch = e.touches && e.touches[0]
+    if (!touch) return
+    if (!this.canSwipe()) {
+      this._swipe = null
+      return
+    }
+    // 上一次滑入动画还没结束就再次按下：直接定格，避免和跟手位移打架
+    if (this._animTimer) {
+      clearTimeout(this._animTimer)
+      this._animTimer = null
+      this._animToken = (this._animToken || 0) + 1
+    }
+    this._swipe = {
+      x: touch.clientX,
+      y: touch.clientY,
+      at: Date.now(),
+      axis: '',        // '' 未判定 / 'x' 横向拖动 / 'y' 纵向滚动
+      lastX: touch.clientX,
+      prevAt: Date.now(),
+      speed: 0
+    }
+  },
+
+  /**
+   * 移动：判定为横向后，卡片实时跟手（AC-11）
+   *
+   * 用 `bindtouchmove` 而非 `catchtouchmove`：只有判定为横向、并且确实调了 setData，
+   * 才在视觉上「接管」这次手势；判定为纵向时什么都不做，页面继续按原生的方式滚。
+   */
+  onSwipeTouchMove(e) {
+    const s = this._swipe
+    if (!s) return
+    const touch = e.touches && e.touches[0]
+    if (!touch) return
+
+    const dx = touch.clientX - s.x
+    const dy = touch.clientY - s.y
+
+    // 轴判定只在位移超过阈值时做一次，之后锁定，避免拖动中途在横/纵之间来回切换
+    if (!s.axis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+      s.axis = Math.abs(dx) >= Math.abs(dy) * SWIPE_RATIO ? 'x' : 'y'
+      if (s.axis === 'y') {
+        // 判定为纵向：放弃本次手势，交还给原生滚动
+        this._swipe = null
+        return
+      }
+      // 确定为横向拖动 → 立刻预取相邻单词。
+      // 用户还在拖（通常 200~800ms），请求多半已经回来，松手后滑出/滑入中间就没有空窗。
+      this.prefetchAdjacent()
+    }
+
+    const now = Date.now()
+    const dt = now - s.prevAt
+    if (dt > 0) {
+      // 速度用最近一帧的瞬时值，松手时用它区分「慢慢拖到底」和「快速甩一下」
+      s.speed = (touch.clientX - s.lastX) / dt
+    }
+    s.lastX = touch.clientX
+    s.prevAt = now
+
+    this.applyDrag(dx)
+  },
+
+  /**
+   * 松手：够远或够快就切到下一个/上一个，否则弹回原位（AC-12）
+   */
+  onSwipeTouchEnd(e) {
+    const s = this._swipe
+    this._swipe = null
+    if (!s) return
+    const touch = e.changedTouches && e.changedTouches[0]
+    if (!touch) {
+      this.springBack()
+      return
+    }
+
+    const dx = touch.clientX - s.x
+    const dy = touch.clientY - s.y
+    const dt = Date.now() - s.at
+    const speed = Math.abs(s.speed || 0)
+
+    // 轴还没判定（极快的甩动可能 touchmove 只上来一两个、甚至没有）：在这里补判一次，
+    // 否则「快速甩一下」会静默失效。方向偏纵就当作滚动，什么都不做。
+    let axis = s.axis
+    if (!axis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) axis = ''   // 基本没动 = 点击
+      else axis = Math.abs(dx) >= Math.abs(dy) * SWIPE_RATIO ? 'x' : 'y'
+    }
+
+    // 点击 / 纵向滚动：什么都不做（若之前拖过一点，把卡片弹回去）
+    if (axis !== 'x') {
+      if (this.data.dragging) this.springBack()
+      return
+    }
+
+    const far = Math.abs(dx) >= SWIPE_FAR_DX
+    const flick = Math.abs(dx) >= SWIPE_FLICK_DX && speed >= SWIPE_FLICK_SPEED
+    const settled = Math.abs(dx) >= SWIPE_MIN_DX && dt <= SWIPE_MAX_MS
+    if (!(far || flick || settled)) {
+      this.springBack()
+      return
+    }
+
+    // 手指向左 → 下一个；向右 → 上一个
+    const delta = dx < 0 ? 1 : -1
+    this.slideOutAndSwitch(delta)
+  },
+
+  onSwipeTouchCancel() {
+    this._swipe = null
+    if (this.data.dragging) this.springBack()
+  },
+
+  /** 当前是否允许滑动（弹层打开 / 加载中 / 没有上下文 / 正在切换 → 不允许） */
+  canSwipe() {
+    if (this._swiping || this.data.loading) return false
+    if (this.data.showMenu || this.data.showJoin || this.data.showResetConfirm) return false
+    const ids = this.data.navIds
+    return !!(ids && ids.length > 1 && this.data.navIndex >= 0)
+  },
+
+  /**
+   * 预取相邻单词（AC-12：让「滑出 → 滑入」之间没有空窗）
+   *
+   * 判定为横向拖动的那一刻就发请求，用户还在拖的时候数据通常已经回来。
+   * 结果按 wordId 存在内存里，松手时直接取用；失败也只是没缓存，松手后照常走正常请求。
+   */
+  prefetchAdjacent() {
+    const ids = this.data.navIds
+    const index = this.data.navIndex
+    if (!ids || index < 0) return
+    this._prefetch = this._prefetch || {}
+    ;[index - 1, index + 1].forEach((i) => {
+      if (i < 0 || i >= ids.length) return
+      const id = ids[i]
+      if (this._prefetch[id] !== undefined) return // 已请求过（含失败标记）
+      this._prefetch[id] = null
+      wordApi.getDetail(id)
+        .then((res) => {
+          const ok = res && res.code === 200 && res.data
+          this._prefetch[id] = ok ? res.data : false
+        })
+        .catch(() => { this._prefetch[id] = false })
+    })
+  },
+
+  /** 取预取到的详情（没有就返回 null，调用方走正常请求） */
+  takePrefetched(wordId) {
+    const cache = this._prefetch || {}
+    const hit = cache[wordId]
+    // 用完即删：同一个词再次滑到时重取，避免看到过期数据
+    if (hit) delete cache[wordId]
+    return hit || null
+  },
+
+  /** 按阻尼曲线算出实际位移，并把卡片移过去 */
+  applyDrag(dx) {
+    const target = this.data.navIndex + (dx < 0 ? 1 : -1)
+    const atEdge = target < 0 || target >= this.data.navIds.length
+    const width = this._pageWidth || 375
+    const limit = width * DRAG_RATIO
+
+    let offset
+    if (atEdge) {
+      // 到头了：阻尼更大，做出「拉不动」的手感
+      offset = dx * DRAG_EDGE_DAMP
+    } else if (Math.abs(dx) <= limit) {
+      offset = dx
+    } else {
+      // 超出 45% 宽度后逐渐变重，避免卡片被整块拉出屏幕
+      const over = Math.abs(dx) - limit
+      const damped = limit + over * DRAG_DAMP
+      offset = dx < 0 ? -damped : damped
+    }
+
+    // 越拖越淡：位移达到 55% 宽度时约剩下 20% 不透明度
+    const fade = Math.min(Math.abs(offset) / (width * 0.55), 1)
+    const opacity = 1 - fade * 0.8
+
+    this.setData({
+      dragging: true,
+      dragX: Math.round(offset),
+      dragOpacity: Math.round(opacity * 100) / 100
+    })
+  },
+
+  /**
+   * 弹回原位（条件不满足 / 用户反悔）
+   * 先关掉 dragging 让 transition 生效，卡片就平滑回弹。
+   */
+  springBack() {
+    this.setData({ dragging: false, dragX: 0, dragOpacity: 1 })
+  },
+
+  /**
+   * 顺着手指方向把卡片滑出去，然后装载相邻单词（AC-12）
+   *
+   * 滑出立刻发生（不等网络），旧内容从当前跟手位置继续滑走；
+   * 数据回来后再把新内容从另一侧滑入。慢网时中间这一段是「卡片已滑走」的短空窗，
+   * 比原来的「停住不动再跳一下」更接近原生翻页手感。
+   */
+  slideOutAndSwitch(delta) {
+    const target = this.data.navIndex + delta
+    const ids = this.data.navIds
+
+    if (target < 0 || target >= ids.length) {
+      // 到头：弹回 + 提示（AC-03 / AC-04）
+      this.springBack()
+      wx.showToast({
+        title: delta > 0 ? '已经是最后一个单词' : '已经是第一个单词',
+        icon: 'none'
+      })
+      return
+    }
+
+    const width = this._pageWidth || 375
+    const outX = delta > 0 ? -width : width
+    this._swiping = true
+
+    // 1) 从当前跟手位置顺着方向继续滑出。
+    //    这里不能先把 dragX 归零——那会让卡片「弹回中间再滑走」，松手瞬间会看到一次回跳。
+    this.setData({ dragging: false, dragX: outX, dragOpacity: 0 })
+
+    // 2) 滑出动画走完再换内容，避免用户看到内容在屏幕中间「闪换」
+    this._animTimer = setTimeout(() => {
+      this._animTimer = null
+      this.switchToWord(ids[target], target, delta)
+    }, EXIT_MS)
+  },
+
+  /**
+   * 切换到相邻单词
+   * @param {Number} delta +1 下一个 / -1 上一个
+   */
+  goAdjacentWord(delta) {
+    // 弹层/菜单打开时、上次切换未完成时、详情加载中：忽略本次滑动
+    if (this._swiping || this.data.loading) return
+    if (this.data.showMenu || this.data.showJoin || this.data.showResetConfirm) return
+
+    const ids = this.data.navIds
+    const index = this.data.navIndex
+    if (!ids || ids.length < 2 || index < 0) return
+
+    const target = index + delta
+    if (target < 0) {
+      wx.showToast({ title: '已经是第一个单词', icon: 'none' })
+      return
+    }
+    if (target >= ids.length) {
+      wx.showToast({ title: '已经是最后一个单词', icon: 'none' })
+      return
+    }
+    this.switchToWord(ids[target], target, delta)
+  },
+
+  /**
+   * 装载相邻单词并切换
+   *
+   * 此时旧卡片已经顺着手指滑出去了（slideOutAndSwitch），所以：
+   * - 成功：把新内容和卡片一起摆到「另一侧尚不可见」的位置，再滑进来；
+   * - 失败：把旧卡片原地滑回中央，页面内容一点不动（AC-07）。
+   */
+  async switchToWord(wordId, targetIndex, delta) {
+    // 预取命中就不用再等网络，滑出/滑入能做成连续的
+    const prefetched = this.takePrefetched(wordId)
+    if (prefetched) {
+      if (this._unloaded) return
+      this.stopCurrentAudio()
+      this.renderDetail(prefetched, targetIndex, delta)
+      this._swiping = false
+      this.loadFavoriteState(wordId)
+      this.prefetchAdjacent() // 为下一次滑动提前备好
+      return
+    }
+
+    let res = null
+    try {
+      res = await wordApi.getDetail(wordId)
+    } catch (error) {
+      // 网络/超时/5xx：请求层已统一提示（C-06），这里不再弹第二个 toast
+      console.error('切换单词失败:', error)
+      this.restoreAfterFailedSwitch(delta)
+      return
+    }
+
+    const detail = res && res.code === 200 && res.data ? res.data : null
+    // 页面已销毁（用户已返回）：不再 setData，也不弹提示
+    if (this._unloaded) return
+    if (!detail) {
+      // 业务失败（如单词已删除）：请求层已按 message 提示过（C-06），这里不重复弹；
+      // 只有「200 但没有数据」这种请求层不会提示的情况才补一句
+      if (res && res.code === 200) {
+        wx.showToast({ title: '加载失败', icon: 'none' })
+      }
+      console.error('切换单词失败:', wordId, res && res.code, res && res.message)
+      this.restoreAfterFailedSwitch(delta)
+      return
+    }
+
+    this.stopCurrentAudio()
+    this.renderDetail(detail, targetIndex, delta)
+    // 滑入动画只负责视觉，不阻塞下一次滑动
+    this._swiping = false
+    this.loadFavoriteState(wordId)
+  },
+
+  /**
+   * 切换失败：把滑出去的旧卡片滑回中央，内容保持原样
+   * 卡片出去又回来，用户能看出「这次没翻页」，而不是页面凭空卡住（AC-07）。
+   */
+  restoreAfterFailedSwitch(delta) {
+    this._swiping = false
+    this.setData({
+      dragging: false,
+      dragX: 0,
+      dragOpacity: 1
+    })
+  },
+
+  /**
+   * 切换后渲染：收起弹层、重置释义展开、新内容自另一侧滑入、回到顶部（AC-06 / AC-12）
+   *
+   * 入参 delta 决定新内容从哪一侧进来：向左翻（delta>0）时新内容从右边进，反之从左边。
+   * 关键点是**两帧**：第一帧把新内容摆到屏幕外（不可见，因为 opacity=0 且 transition 关闭），
+   * 第二帧把位移归零并恢复不透明度，transition 打开，卡片就滑进来了。
+   */
+  renderDetail(detail, targetIndex, delta) {
+    const definitions = detail.definitions || []
+    const expandAll = !this.data.collapseDefinitionOnQuery
+    const initialExpanded = expandAll ? definitions.map((_, i) => i) : []
+    const wordId = detail.word && detail.word.id != null ? String(detail.word.id) : ''
+    const width = this._pageWidth || 375
+    // 动画令牌：连续滑动时，旧定时器不得把新动画提前清掉
+    this._animToken = (this._animToken || 0) + 1
+    const token = this._animToken
+
+    const patch = {
+      wordDetail: detail,
+      wordId,
+      loading: false,
+      expandedSense: initialExpanded,
+      navIndex: targetIndex,
+      // 弹层与菜单一律收起，避免「上一个单词的弹层」留在新单词上
+      showMenu: false,
+      showJoin: false,
+      showResetConfirm: false,
+      joinLoading: false,
+      joinSubmitting: false,
+      resetting: false
+    }
+    // 只有切换才清空收藏态：首次加载时收藏状态的请求可能比详情先回来，
+    // 这里清掉会把刚取到的结果抹掉（切换后由 switchToWord 重新拉取）
+    if (delta !== 0) patch.isFavorited = false
+
+    if (delta !== 0) {
+      // 第 1 帧：新内容直接出现在「进入侧」的屏幕外，并保持透明
+      patch.dragging = true
+      patch.dragX = delta > 0 ? width : -width
+      patch.dragOpacity = 0
+    }
+
+    this.setData(patch, () => {
+      if (delta === 0) {
+        this.setData({ dragging: false, dragX: 0, dragOpacity: 1 })
+        return
+      }
+      // 切换后回到顶部：新单词从头读起（首次加载/重置刷新不动滚动位置，保持原行为）
+      wx.pageScrollTo({ scrollTop: 0, duration: 0 })
+      // 第 2 帧：打开 transition 并归位 → 新卡片从侧面滑入
+      setTimeout(() => {
+        if (this._animToken !== token) return
+        this.setData({ dragging: false, dragX: 0, dragOpacity: 1 })
+      }, 20)
+    })
+  },
+
+  /** 切换前停止并释放音频，避免上一个单词的声音继续播放 */
+  stopCurrentAudio() {
+    const audio = this.data.currentAudio
+    if (!audio) return
+    try {
+      audio.stop()
+      audio.destroy()
+    } catch (e) {
+      console.error('停止音频失败:', e)
+    }
+    this.setData({ currentAudio: null })
+  },
+
+  /* ================= 详情数据加载 ================= */
+
+  /** 只请求详情，不改界面状态（首次加载与切换共用） */
+  async fetchWordDetail(wordId) {
+    const res = await wordApi.getDetail(wordId)
+    if (res && res.code === 200 && res.data) return res.data
+    return null
+  },
+
   async loadWordDetail(wordId) {
     this.setData({ loading: true })
     try {
-      const res = await wordApi.getDetail(wordId)
-      if (res.code === 200 && res.data) {
-        const definitions = res.data.definitions || []
-        const expandAll = !this.data.collapseDefinitionOnQuery
-        const initialExpanded = expandAll ? definitions.map((_, i) => i) : []
-
-        this.setData({
-          wordDetail: res.data,
-          loading: false,
-          expandedSense: initialExpanded
-        })
+      const detail = await this.fetchWordDetail(wordId)
+      if (detail) {
+        this.renderDetail(detail, this.data.navIndex, 0)
       } else {
         this.setData({ loading: false })
-        wx.showToast({ title: res.message || '加载失败', icon: 'none' })
+        wx.showToast({ title: '加载失败', icon: 'none' })
       }
     } catch (error) {
       console.error('加载单词详情失败:', error)
@@ -169,6 +631,68 @@ Page({
   /** 切换更多菜单 */
   showCorrectionMenu() {
     this.setData({ showMenu: !this.data.showMenu })
+  },
+
+  /* ===== 重新学习（#013 AC-14 / AC-15 / AC-16） ===== */
+
+  /**
+   * 打开二次确认弹窗
+   * <p>
+   * 文案要求（用户逐字确认）：标题「重新学习这个词？」，
+   * 正文「学习进度将归零，此操作不可撤销。」，按钮「取消」「重新学习」。
+   */
+  openResetConfirm() {
+    this.setData({ showMenu: false, showResetConfirm: true })
+  },
+
+  /** 取消：关闭弹窗，不发起任何请求，不改动任何数据（AC-15） */
+  cancelReset() {
+    this.setData({ showResetConfirm: false })
+  },
+
+  /**
+   * 确认重新学习
+   * <p>
+   * 失败时保留卡片原状态、提示失败原因、入口可再次操作（AC-16）。
+   * 提交中置灰不可再点，避免重复请求（后端有 epoch 乐观锁兜底）。
+   */
+  async confirmReset() {
+    if (this.data.resetting) return
+    const detail = this.data.wordDetail
+    const wordId = detail && detail.word && detail.word.id
+    if (!wordId) {
+      wx.showToast({ title: '单词信息缺失', icon: 'none' })
+      return
+    }
+
+    // AC-20：expectedEpoch 来自 GET /api/word/{id} 的 fsrsCard；未加入学习时为 null → 传 0，
+    // 后端按「该词不在学习列表中」返回 3001
+    const fsrsCard = detail.fsrsCard
+    const expectedEpoch = fsrsCard && fsrsCard.epoch != null ? fsrsCard.epoch : 0
+
+    this.setData({ resetting: true })
+    try {
+      await getApp().waitForLogin()
+      const res = await dataSource.resetCard(wordId, expectedEpoch)
+
+      if (res && res.code === 200) {
+        this.setData({ showResetConfirm: false })
+        wx.showToast({ title: '已重置，将从头开始', icon: 'none' })
+        // 重新拉取详情，让页面上的 FSRS 状态（epoch / learningStatus）回到最新
+        this.loadWordDetail(wordId)
+        return
+      }
+
+      // 失败分支：3001 该词不在学习列表 / 3008 轮次已变化 / 2005 参数不合法
+      this.setData({ showResetConfirm: false })
+      wx.showToast({ title: (res && res.message) || '重新学习失败，请重试', icon: 'none' })
+    } catch (error) {
+      console.error('重新学习失败:', error)
+      // 请求层已提示原因；入口保持可再次操作（AC-16）
+      this.setData({ showResetConfirm: false })
+    } finally {
+      this.setData({ resetting: false })
+    }
   },
 
   /** 进入单词纠错页面 */
@@ -564,6 +1088,10 @@ Page({
   },
 
   onUnload() {
+    // #017：页面销毁后不再 setData（切换请求可能还在途）
+    this._unloaded = true
+    this._animToken = (this._animToken || 0) + 1
+    this._swipe = null
     if (this.data.currentAudio) {
       this.data.currentAudio.stop()
       this.data.currentAudio.destroy()

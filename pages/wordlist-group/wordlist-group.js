@@ -439,6 +439,9 @@ Page({
       this._toggleId('selectedWordIds', wordId)
       return
     }
+    // #017 注意：这里刻意不传「左右滑动」的导航序列。本页的「未分组」列表默认只渲染前 8 条
+    // （UNGROUPED_LIMIT），序列不完整；把它当上下文会让用户滑到第 9 条时戛然而止。
+    // 从词单详情页 / 分组内单词列表进入的详情页才支持滑动切换。
     wx.navigateTo({ url: `/pages/word-detail/word-detail?wordId=${wordId}` })
   },
 

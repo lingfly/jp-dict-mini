@@ -292,3 +292,33 @@
 .btn-label {
   font-size: 14px;
 }
+
+/* ===== 右下角「＋ 添加单词」悬浮按钮（长按可拖动，#014 UI-01） ===== */
+/* z-index 高于底部操作栏（.bottom-bar z-index:100），避免被盖住 */
+.fab-add-word {
+  position: fixed;
+  height: 46px;
+  padding: 0 18px;
+  border-radius: 23px;
+  background: #5B8C7D;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 8px 20px rgba(91, 140, 125, 0.34);
+  z-index: 150;
+}
+
+.fab-add-word:active {
+  background: #4a7a6b;
+}
+
+.fab-plus {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.fab-text {
+  font-size: 15px;
+  font-weight: 500;
+}

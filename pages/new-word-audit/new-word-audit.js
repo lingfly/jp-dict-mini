@@ -1,6 +1,6 @@
 // pages/new-word-audit/new-word-audit.js
 const app = getApp()
-const { get, post } = require('../../utils/request')
+const { aiAuditApi } = require('../../utils/api')
 
 const PAGE_SIZE = 20
 
@@ -63,9 +63,9 @@ Page({
     this.setData({ loading: true })
     try {
       const { activeTab, page } = this.data
-      const res = await get('/api/ai-dict/audit/list', {
+      const res = await aiAuditApi.list({
         status: activeTab,
-        page: page,
+        page,
         size: PAGE_SIZE
       })
       if (res.code === 200) {
@@ -92,7 +92,7 @@ Page({
     try {
       const { activeTab, page, list } = this.data
       const nextPage = page + 1
-      const res = await get('/api/ai-dict/audit/list', {
+      const res = await aiAuditApi.list({
         status: activeTab,
         page: nextPage,
         size: PAGE_SIZE
@@ -203,7 +203,7 @@ Page({
           this.setData({ submitting: true })
           wx.showLoading({ title: '处理中...', mask: true })
           try {
-            const result = await post('/api/ai-dict/audit/approve-override', {
+            const result = await aiAuditApi.approveOverride({
               logId,
               selectedIndex: currentWordIndex
             })
@@ -232,10 +232,12 @@ Page({
     if (!logId || currentWordIndex < 0) return
     this.setData({ submitting: true })
     wx.showLoading({ title: '处理中...', mask: true })
-    const url = type === 'approve' ? '/api/ai-dict/audit/approve' : '/api/ai-dict/audit/reject'
     const successTitle = type === 'approve' ? '已采纳' : '已驳回'
+    const payload = { logId, selectedIndex: currentWordIndex }
     try {
-      const res = await post(url, { logId, selectedIndex: currentWordIndex })
+      const res = type === 'approve'
+        ? await aiAuditApi.approve(payload)
+        : await aiAuditApi.reject(payload)
       wx.hideLoading()
       if (res.code === 200) {
         wx.showToast({ title: successTitle, icon: 'success' })

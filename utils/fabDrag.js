@@ -10,16 +10,28 @@ const MARGIN_RIGHT = 24   // 距右边缘
  * @param {Object} page 页面实例
  * @param {String} storageKey 位置持久化 key（每个按钮独立）
  * @param {Object} btnSize 按钮近似尺寸 { w, h }，用于默认位置与边界约束
- * @param {Number} marginBottom 按钮底部距视口底部的留白（px，默认 24）
+ * @param {Number|Function} marginBottom 按钮底部距视口底部的留白（px，默认 24）
  *   - tabBar 页面：视口底部即 tabBar 顶部，按钮最多下移到 tabBar 上方留白处
  *   - 普通页面：视口底部即屏幕底部
- * @returns {{ touchStart, touchMove, touchEnd }}
+ *   - **有固定底部操作栏的页面**：必须传函数，返回「底部栏高度 + 间距」，
+ *     否则按钮会压在底部操作栏上（#014 踩过：详情页底部栏 104px，只留 24px → 重叠 39px）。
+ *     传函数是因为 onLoad 时底部栏还没渲染，量不到真实高度。
+ * @returns {{ touchStart, touchMove, touchEnd, relayout }}
  */
 function createFabDrag(page, storageKey, btnSize, marginBottom) {
-  const marginBottomVal = typeof marginBottom === 'number' ? marginBottom : 24
+  // marginBottom 支持动态取值：底部栏高度只有布局完成后才量得到
+  function resolveMargin() {
+    if (typeof marginBottom === 'function') {
+      const v = marginBottom()
+      return (typeof v === 'number' && v >= 0) ? v : 24
+    }
+    return typeof marginBottom === 'number' ? marginBottom : 24
+  }
+
   let timer = null
   let dragging = false
   let moved = false
+  let hasStored = false // 用户是否已经手动拖动并持久化过位置
   let startX = 0
   let startY = 0
   let grabDX = 0
@@ -72,20 +84,20 @@ function createFabDrag(page, storageKey, btnSize, marginBottom) {
     if (top < 0) top = 0
     const maxLeft = i.windowWidth - btnSize.w
     if (left > maxLeft) left = maxLeft
-    const maxTop = viewportHeight() - marginBottomVal - btnSize.h
+    const maxTop = viewportHeight() - resolveMargin() - btnSize.h
     if (top > maxTop) top = maxTop
     if (left !== p.fabLeft || top !== p.fabTop) {
       page.setData({ fabLeft: left, fabTop: top })
     }
   }
 
-  /** 计算默认位置（右下角，距视口底部 marginBottomVal） */
+  /** 计算默认位置（右下角，距视口底部 marginBottom） */
   function defaultPos() {
     const i = winInfo()
     const h = viewportHeight()
     return {
       left: i.windowWidth - MARGIN_RIGHT - btnSize.w,
-      top: h - marginBottomVal - btnSize.h
+      top: h - resolveMargin() - btnSize.h
     }
   }
 
@@ -93,10 +105,31 @@ function createFabDrag(page, storageKey, btnSize, marginBottom) {
   function ensureInit() {
     if (page.data.fabLeft !== null) return
     let pos = wx.getStorageSync(storageKey)
-    if (!pos || typeof pos.left !== 'number' || typeof pos.top !== 'number') {
+    hasStored = !!(pos && typeof pos.left === 'number' && typeof pos.top === 'number')
+    if (!hasStored) {
       pos = defaultPos()
     }
     page.setData({ fabLeft: pos.left, fabTop: pos.top })
+    clampPosition()
+  }
+
+  /**
+   * 重新布局：底部栏渲染完成后调用（或屏幕旋转/键盘收起后）。
+   *
+   * 为什么需要：onLoad 阶段底部操作栏还没渲染，量不到它的高度，
+   * 默认位置只能按兜底 24px 留白算出来 → 会压在底部栏上。
+   * 布局完成后调用本方法：
+   *   - 用户**没**手动拖过 → 按新留白重算默认位置（跟着底部栏往上让）；
+   *   - 用户**拖过** → 保留用户位置，但用新留白做边界校正（不会压到栏上）。
+   */
+  function relayout() {
+    measureViewport()
+    ensureInit()
+    if (page.data.fabLeft === null) return
+    if (!hasStored) {
+      const pos = defaultPos()
+      page.setData({ fabLeft: pos.left, fabTop: pos.top })
+    }
     clampPosition()
   }
 
@@ -137,7 +170,7 @@ function createFabDrag(page, storageKey, btnSize, marginBottom) {
     if (left < 0) left = 0
     if (top < 0) top = 0
     if (left > i.windowWidth - btnSize.w) left = i.windowWidth - btnSize.w
-    const bottomLimit = viewportHeight() - marginBottomVal - btnSize.h
+    const bottomLimit = viewportHeight() - resolveMargin() - btnSize.h
     if (top > bottomLimit) top = bottomLimit
     page.setData({ fabLeft: left, fabTop: top })
   }
@@ -146,6 +179,7 @@ function createFabDrag(page, storageKey, btnSize, marginBottom) {
     clearTimeout(timer)
     if (dragging) {
       dragging = false
+      hasStored = true // 用户拖过了，之后 relayout 不再覆盖它的位置
       wx.setStorageSync(storageKey, { left: page.data.fabLeft, top: page.data.fabTop })
     }
   }
@@ -153,7 +187,7 @@ function createFabDrag(page, storageKey, btnSize, marginBottom) {
   ensureInit()
   measureViewport()
 
-  return { touchStart, touchMove, touchEnd }
+  return { touchStart, touchMove, touchEnd, relayout }
 }
 
 module.exports = { createFabDrag }

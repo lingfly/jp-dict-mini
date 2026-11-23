@@ -55,6 +55,7 @@
       <textarea class="form-textarea" value="{{wordForm.remark}}" data-field="remark" bindinput="onWordInput" placeholder="请说明需要纠正的内容及原因" auto-height maxlength="500" />
     </view>
 
+    <view wx:if="{{submitError}}" class="submit-error">{{submitError}}</view>
     <button class="submit-btn" bindtap="submitWord" disabled="{{submitting}}" loading="{{submitting}}">提交纠错</button>
   </view>
 </view>

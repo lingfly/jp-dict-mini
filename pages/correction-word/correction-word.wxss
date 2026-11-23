@@ -213,3 +213,14 @@
   color: #5B8C7D;
   font-weight: 700;
 }
+
+/* 提交失败（#001：保留已填内容，直接再点提交重试） */
+.submit-error {
+  margin: 0 0 10px;
+  padding: 10px 14px;
+  background: #FFF4E5;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #8A5A1F;
+  line-height: 1.4;
+}

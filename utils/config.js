@@ -14,9 +14,15 @@
  * - 正式版走线上生产地址。
  *
  * apiBaseUrl 取值规则：
- * - 开发者工具且存在 utils/config.local.js：使用其中的本地地址（config.local.js 已在上传时排除）
+ * - 开发者工具且存在 utils/config.local.js：使用其中的本地地址
  * - 真机 develop（预览/真机调试/审核版）、体验版（trial）：使用测试地址 https://jp-cika.cn/test-api
  * - 正式版（release）：使用生产地址 https://jp-cika.cn
+ *
+ * ⚠️ 不要把 utils/config.local.js 加进 project.config.json 的 packOptions.ignore：
+ * 开发者工具在编译阶段就会剔除被 ignore 的文件，工具内 require 必然失败、又被下面的
+ * loadLocalConfig 吞掉 → 本地地址「静默失效」，回落到测试地址且毫无提示。
+ * 这个坑踩过两次：9ababec 把它删掉、befa90b 又加回来。
+ * 防「审核版误连本地」靠的是下面的 platform === 'devtools' 判断，不靠 ignore。
  */
 
 const DEFAULT_API_BASE_URL = 'https://jp-cika.cn'
@@ -49,10 +55,12 @@ function isDevtoolsRuntime() {
 }
 
 // 加载本地配置（不存在时返回 null）
+// 只在开发者工具内调用，所以失败时留一行日志：否则本地地址会静默失效、很难排查
 function loadLocalConfig() {
   try {
     return require('./config.local.js')
   } catch (e) {
+    console.warn('[config] config.local.js 未加载，回落到线上地址:', (e && e.message) || e)
     return null
   }
 }

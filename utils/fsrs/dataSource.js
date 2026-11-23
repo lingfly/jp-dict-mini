@@ -38,6 +38,10 @@ function endOfToday() {
 
 /**
  * 生成幂等请求 ID（后端 clientRequestId 必填，防止网络重试重复提交）
+ *
+ * ⚠️ 语义（#013 AC-19）：这个 ID 代表「一次评分动作」，不是「一次 HTTP 请求」。
+ * 调用方应在动作开始时生成一次，失败重试沿用同一个值，成功后才丢弃。
+ * 若在每次请求内部重新生成，后端会把重试当成全新动作，导致重复记账。
  */
 function genClientRequestId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -47,6 +51,9 @@ function genClientRequestId() {
  * 后端平铺 camelCase 卡片 → ts-fsrs snake_case 卡片
  * 输入：FsrsCardResponse（state/due/stability/... 平铺在顶层）
  * 输出：可直接喂给 scheduler.next() 的 Card 对象
+ *
+ * 注意：epoch 不是 ts-fsrs 的字段，但必须保留（#013 AC-20 / R14）。
+ * 重置接口要用它做乐观锁；丢掉它会让三个入口的「重新学习」永远返回 3008。
  */
 function toFsrsCard(flat) {
   return {
@@ -59,7 +66,9 @@ function toFsrsCard(flat) {
     lapses: flat.lapses,
     learning_steps: flat.learningSteps,
     state: flat.state,
-    last_review: flat.lastReview
+    last_review: flat.lastReview,
+    // 透传：scheduler 不认这个字段，但页面与重置流程需要
+    epoch: flat.epoch != null ? flat.epoch : 0
   }
 }
 
@@ -152,15 +161,20 @@ async function getDueCards() {
       }
     }
   } catch (e) {
-    console.error('获取待复习卡片失败，使用临时数据:', e)
-    return mockStore.getDueCards()
+    // 不能回退到 mock：拉取失败要如实报错，否则用户看到的是假队列（AC-07）
+    console.error('获取待复习卡片失败:', e)
+    throw e
   }
 }
 
 /**
  * 提交复习结果（评分 + FSRS 新状态）
  * 按 FsrsReviewRequest 组装：clientRequestId 必填，card/log 转 camelCase
- * 返回：{ code, data: FsrsReviewResultResponse }
+ *
+ * @param {Object} payload
+ * @param {String} [payload.clientRequestId] 本次评分动作的幂等 ID。
+ *   **#013 AC-19**：由调用方在动作开始时生成并跨重试复用；缺省时才在此生成（仅兼容旧调用点）。
+ * @returns {Promise<{code, data: FsrsReviewResultResponse}>}
  */
 async function submitReview(payload) {
   if (USE_MOCK) {
@@ -169,14 +183,15 @@ async function submitReview(payload) {
   try {
     const res = await fsrsApi.submitReview({
       wordId: payload.wordId,
-      clientRequestId: genClientRequestId(),
+      // 优先用调用方传入的 ID：重试必须复用，否则后端会当成新动作（#013 AC-19）
+      clientRequestId: payload.clientRequestId || genClientRequestId(),
       card: toRequestCard(payload.card),
       log: toRequestLog(payload.log),
       responseTimeMs: payload.responseTimeMs,
       fsrsVersion: FSRS_VERSION
     })
     // 单词不存在（3001）：卡片对应的单词已被删除/移出词单，后端不落库
-    // 静默返回，由页面直接跳过该卡片并继续下一张（request 层已对该码免弹错误提示）
+    // 静默返回：request 层已按「路径 + 业务码」免弹提示（#003 AC-06），页面跳过该卡继续下一张
     if (res && res.code === WORD_NOT_FOUND) {
       console.warn('[submitReview] 单词不存在，跳过该卡片:', payload.wordId, res.message)
       return { code: WORD_NOT_FOUND, message: res.message, data: null }
@@ -192,8 +207,10 @@ async function submitReview(payload) {
     }
     return res
   } catch (e) {
-    console.error('提交复习结果失败，使用临时数据:', e)
-    return mockStore.submitReview(payload)
+    // 不能回退到 mock：否则网络超时会被当成"提交成功"，卡片被移出队列但后端没有记录
+    // 由调用方停留在当前卡片并提示重试（#001 AC-07）
+    console.error('提交复习结果失败:', e)
+    throw e
   }
 }
 
@@ -233,10 +250,58 @@ async function getLearningStatus() {
   }
 }
 
+/**
+ * 获取今日认知情况（复习完成页用；#008）
+ * GET /api/fsrs/due-forecast/today
+ * 返回：{ code, data: { date, due, durationSeconds, cognitive, reviewAndNew } }
+ * 失败时返回 { code: 0, data: null }，由页面决定降级展示（不弹错，请求层已提示）
+ */
+async function getTodayCognitive() {
+  if (USE_MOCK) {
+    // mock 分支未提供该接口：返回空数据，页面走"保留现有完成态"的降级路径
+    return { code: 0, data: null }
+  }
+  try {
+    return await fsrsApi.getTodayCognitive()
+  } catch (e) {
+    console.error('获取今日认知情况失败:', e)
+    return { code: 0, data: null }
+  }
+}
+
+/**
+ * 重新学习：把卡片重置为未学习状态（#013 AC-06~13）
+ *
+ * @param {String|Number} wordId 单词 ID（内部转字符串，雪花 ID 不得丢精度）
+ * @param {Number} expectedEpoch 乐观锁：调用方从卡片数据里拿到的当前轮次
+ * @param {String} [clientRequestId] 幂等 ID（可选；重置本身靠 epoch 乐观锁保证不重复）
+ * @returns {Promise<{code, data: {epoch, resetAt, card}}>}
+ *   失败码：2005 参数不合法 / 3001 该词不在学习列表 / 3008 轮次已变化
+ */
+async function resetCard(wordId, expectedEpoch, clientRequestId) {
+  if (USE_MOCK) {
+    return mockStore.resetCard(wordId, expectedEpoch)
+  }
+  try {
+    const res = await fsrsApi.resetCard(wordId, expectedEpoch, clientRequestId)
+    // 后端返回的 card 是 camelCase 平铺结构，转成 ts-fsrs 结构供页面复用
+    if (res && res.code === 200 && res.data && res.data.card) {
+      res.data.card = toFsrsCard(res.data.card)
+    }
+    return res
+  } catch (e) {
+    console.error('重新学习失败:', e)
+    throw e
+  }
+}
 module.exports = {
   USE_MOCK,
   WORD_NOT_FOUND,
   getDueCards,
   submitReview,
-  getLearningStatus
+  getLearningStatus,
+  getTodayCognitive,
+  resetCard,
+  // #013 AC-19：调用方需在「一次评分动作」开始时生成 ID 并在重试时复用
+  genClientRequestId
 }

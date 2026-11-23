@@ -176,3 +176,34 @@
   color: #303133;
   height: 48px;
 }
+
+/* 复习参数标题行（右侧恢复默认，#004） */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: #F5F7FA;
+  border-bottom: 1px solid #E4E7ED;
+}
+
+.section-header-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+}
+
+.section-action {
+  font-size: 13px;
+  color: #5B8C7D;
+  padding: 2px 4px;
+}
+
+/* 参数生效说明 */
+.fsrs-hint {
+  padding: 10px 20px;
+  font-size: 12px;
+  color: #909399;
+  background: #FFFFFF;
+  border-top: 1px solid #F5F7FA;
+}

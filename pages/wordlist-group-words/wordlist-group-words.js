@@ -1,6 +1,8 @@
 // pages/wordlist-group-words/wordlist-group-words.js
 // 分组详情：以分组为主体的第二个管理入口，解决"往组里加词"和"把词从组里拿出来"
 const groupSource = require('../../utils/wordlistGroup')
+// #017：把「组内单词顺序」交给详情页，供左右滑动切换上一个/下一个
+const wordNav = require('../../utils/wordNav')
 
 const NAME_MAX = 20
 
@@ -172,12 +174,24 @@ Page({
   },
 
   onWordTap(e) {
-    const id = e.currentTarget.dataset.id
+    const id = String(e.currentTarget.dataset.id)
     if (this.data.selectMode) {
       this.onWordCheck(e)
       return
     }
-    wx.navigateTo({ url: `/pages/word-detail/word-detail?wordId=${id}` })
+    // #017：把组内单词顺序交给详情页，供左右滑动切换上一个/下一个
+    const token = wordNav.stage(this.buildNavSequence(), id)
+    const suffix = token ? `&navToken=${token}` : ''
+    wx.navigateTo({ url: `/pages/word-detail/word-detail?wordId=${id}${suffix}` })
+  },
+
+  /**
+   * 组内单词的展示顺序（#017 AC-09）
+   * 直接用原始列表的顺序（= 列表里自上而下的顺序），不重新排序。
+   * @returns {String[]} 单词 id 数组（字符串，C-03）
+   */
+  buildNavSequence() {
+    return (this._rawWords || []).map(w => String(w.wordId))
   },
 
   /* ================= 移出分组 / 移动 / 删除 ================= */

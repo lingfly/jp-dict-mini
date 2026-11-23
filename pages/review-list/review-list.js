@@ -3,6 +3,7 @@ const { wordApi, userApi } = require('../../utils/api')
 const fsrs = require('../../utils/fsrs/fsrs')
 const dataSource = require('../../utils/fsrs/dataSource')
 const { formatBadgeText } = require('../../utils/badge')
+const { createReviewTimer } = require('../../utils/reviewTimer')
 
 // 单词详情批量预取大小：避免复习时逐词查询详情，按批一次拉取
 const WORD_DETAIL_BATCH_SIZE = 20
@@ -10,6 +11,14 @@ const WORD_DETAIL_BATCH_SIZE = 20
 Page({
   data: {
     loading: false,
+    loadError: '',
+    submitError: '',      // 提交失败提示（失败后停留当前卡片）
+    firstResponseTime: 0, // 首次评分耗时；重试时沿用，避免把等待算进去
+    pendingRequestId: '', // #013 AC-19：本次评分动作的幂等 ID；重试复用，成功/换卡后清空
+
+    /* ===== 重新学习二次确认（#013 AC-14） ===== */
+    showResetConfirm: false,
+    resetting: false,
     showAnswer: false,
     currentWord: null,
     wordDetail: null, // 完整单词详情（含 definitions/examples）
@@ -23,10 +32,12 @@ Page({
       remaining: 0
     },
     progressPercent: 0,
-    startTime: 0,
+    // 响应计时不在 data：由 this.timer 持有（utils/reviewTimer.js），生命周期切换不触发 setData
     collapseDefinitionOnReview: false,
     showMenu: false,
-    ratingPreviews: [] // 四级评分对应的下次复习时间
+    ratingPreviews: [], // 四级评分对应的下次复习时间
+    todayView: null, // 今日复习详情（#008）：null = 尚未就绪
+    todayLoading: false // 今日详情取数中：用「加载中...」占位，避免闪旧完成页（#008 AC-12）
   },
 
   // 本地 FSRS 队列调度状态
@@ -37,14 +48,21 @@ Page({
   wordDetailCache: {}, // 单词详情缓存 { wordId: WordDetailResponse }，按批预取复用
 
   onLoad() {
-    this.loadCollapseConfig()
-    this.initReview()
+    this.timer = createReviewTimer()
+    // 参数未就绪前不展示可评分卡片：先占住 loading，避免闪现"今日已完成"（#004 AC-02 / AC-04）
+    this._booting = true
+    this.setData({ loading: true })
+    this.bootstrap()
   },
 
   onShow() {
+    // 从其他页面 / 后台回来：恢复计时，离开期间不计入响应时间（#003 AC-02）
+    if (this.timer) this.timer.resume()
+
     // 有新词加入复习 → 复习列表已变化，重新向后端拉取队列
+    // 首次启动由 bootstrap 串行拉取，这里不重复请求
     const app = getApp()
-    if (app.globalData.reviewListChangedAt > (this._lastQueueRefreshAt || 0)) {
+    if (!this._booting && app.globalData.reviewListChangedAt > (this._lastQueueRefreshAt || 0)) {
       this.initReview()
     }
 
@@ -53,6 +71,11 @@ Page({
     if (this._lastFetchAt && now - this._lastFetchAt < 3000) return
     this._lastFetchAt = now
     this.fetchLearningStatus()
+  },
+
+  onHide() {
+    // 切 tab、进入纠错页、小程序退到后台：暂停计时（#003 AC-01）
+    if (this.timer) this.timer.pause()
   },
 
   /** 下拉刷新：重新拉取当天复习队列与今日统计 */
@@ -66,15 +89,37 @@ Page({
     }
   },
 
-  /** 加载释义折叠配置 */
-  async loadCollapseConfig() {
+  /**
+   * 首屏启动：登录 → 学习配置（FSRS 参数 + 释义折叠）→ 拉取当日队列
+   * 串行是必须的：先有参数，才能算首卡的评分预览与调度（#004 AC-01 / AC-02）
+   */
+  async bootstrap() {
     try {
+      await this.loadLearningConfig()
+      await this.initReview()
+    } finally {
+      this._booting = false
+    }
+  },
+
+  /**
+   * 加载学习配置：应用 FSRS 参数与复习时释义折叠
+   * 请求失败时保留本机缓存/默认参数继续出卡，不阻塞复习（#004 AC-04 / AC-14）
+   */
+  async loadLearningConfig() {
+    try {
+      await getApp().waitForLogin()
       const res = await userApi.getLearningConfig()
-      if (res.code === 200 && res.data) {
+      if (res && res.code === 200 && res.data) {
+        fsrs.applyServerConfig(res.data)
         this.setData({ collapseDefinitionOnReview: res.data.collapseDefinitionOnReview === 1 })
+        return
       }
+      // 非 200：请求层已统一提示；参数保持缓存/默认
+      console.error('[review-list] 学习配置返回异常，沿用本机参数:', res && res.code)
     } catch (e) {
-      console.error('加载释义折叠配置失败:', e)
+      // 网络失败：参数用缓存/默认，卡片列表失败会走既有错误态
+      console.error('[review-list] 加载学习配置失败，沿用本机参数:', e)
     }
   },
 
@@ -83,7 +128,11 @@ Page({
    */
   async initReview() {
     this._lastQueueRefreshAt = Date.now()
-    this.setData({ loading: true })
+    // 新的一轮复习：重置今日详情状态（#008 AC-01 / AC-05 / AC-11）
+    this._todayLoaded = false
+    this._dueRetried = false
+    this._todayDateRetried = false
+    this.setData({ loading: true, loadError: '', todayView: null })
 
     try {
       const res = await dataSource.getDueCards()
@@ -99,19 +148,18 @@ Page({
 
       this.updateStats()
 
-      // 队列为空 → 显示空闲/完成态
+      // 队列为空 → 显示空闲/完成态，并尝试展示今日复习详情（#008 触发点①）
       if (this.queue.length === 0) {
         this.setData({ currentWord: null, wordDetail: null })
+        this.loadTodayDetail()
       } else {
         await this.showCurrentCard()
       }
       // 角标由 onShow 统一刷新一次，避免 due-count 重复请求
     } catch (error) {
       console.error('初始化复习失败:', error)
-      wx.showToast({
-        title: '加载失败',
-        icon: 'none'
-      })
+      // 请求层已提示原因；首行只写结果，次行引导下拉刷新（AC-07）
+      this.setData({ loadError: '加载失败' })
     } finally {
       this.setData({ loading: false })
     }
@@ -145,8 +193,8 @@ Page({
     }
 
     if (!currentWord) {
-      // 单词详情获取失败，跳过这张卡
-      this.queue.splice(this.queueIndex, 1)
+      // 单词详情获取失败，跳过这张卡（与 3001 走同一收尾路径，避免统计与计时不一致）
+      this.skipCurrentCard()
       return this.showCurrentCard()
     }
 
@@ -158,6 +206,9 @@ Page({
     // 预计算四级评分对应的下次复习时间（用于评分按钮下方展示）
     const ratingPreviews = fsrs.getRatingPreviews(item.fsrsCard, new Date())
 
+    // 新卡开始计时（页面不可见时也安全：隐藏起点从此刻算起）
+    this.timer.start()
+
     this.setData({
       currentWord,
       wordDetail,
@@ -165,10 +216,29 @@ Page({
       wordType: item.type,
       hint: '',
       showAnswer: false,
-      startTime: Date.now(),
       ratingPreviews
     })
     return true
+  },
+
+  /**
+   * 跳过当前卡片（单词不存在 3001 / 详情获取失败）
+   *
+   * 三件事必须一起做，漏一件都会让后续数据出错（#003 AC-06 / AC-07）：
+   * 1. 移出队列 —— 不参与本地 FSRS 调度，避免短间隔卡被反复插回形成死循环
+   * 2. completedCount++ —— 跳过也是"处理完"，分子 +1 进度条才能收敛到 100%
+   * 3. 清 firstResponseTime —— 它只在提交成功时才清，不清就会让下一张沿用上一张的耗时
+   *
+   * 附带清 pendingRequestId（#013 AC-19）：跳过的卡不会再有下一次提交，
+   * 幂等 ID 必须丢弃，否则下一张卡的评分会复用它被当成重复提交。
+   */
+  skipCurrentCard() {
+    if (this.queueIndex < this.queue.length) {
+      this.queue.splice(this.queueIndex, 1)
+    }
+    this.completedCount++
+    this.setData({ firstResponseTime: 0, pendingRequestId: '' })
+    this.updateStats()
   },
 
   /**
@@ -285,10 +355,179 @@ Page({
   },
 
   /**
+   * 加载今日复习详情（#008 AC-01）
+   * 只在本地队列清空的完成态调用；同一完成态最多请求一次（AC-11）
+   */
+  async loadTodayDetail() {
+    // 被"due > 0 静默重拉"消费掉的一次调用：避免 拉空 → 查今日 → 再拉空 的循环
+    if (this._todaySuppressOnce) {
+      this._todaySuppressOnce = false
+      return
+    }
+    if (this._todayLoading || this._todayLoaded) return
+    this._todayLoading = true
+    // 先占位再 await：保证 initReview 把 loading 置 false 时不会闪到兜底分支（AC-12）
+    this.setData({ todayLoading: true, todayView: null })
+
+    try {
+      let res = await dataSource.getTodayCognitive()
+      let data = res && res.code === 200 ? res.data : null
+
+      // 跨零点：返回日期与本地不一致时重拉一次（AC-05）
+      if (data && data.date && data.date !== this.localDateKey() && !this._todayDateRetried) {
+        this._todayDateRetried = true
+        res = await dataSource.getTodayCognitive()
+        data = res && res.code === 200 ? res.data : null
+      }
+
+      // 取不到：版式照旧，数值为空（AC-04）
+      if (!data) {
+        this._todayLoaded = true
+        this.setData({ todayView: this.buildEmptyTodayView() })
+        return
+      }
+
+      // 后端仍有待学：先重拉队列，有卡就直接复习（AC-02）
+      const due = Number(data.due) || 0
+      if (due > 0) {
+        this.setData({ dueCount: due })
+        if (!this._dueRetried) {
+          this._dueRetried = true
+          this._todaySuppressOnce = true
+          await this.initReview()
+          const remaining = this.queue.length - this.queueIndex
+          if (remaining > 0) return
+        }
+        // due > 0 但无卡可出：统计口径缺陷，留痕后仍展示详情（AC-13）
+        console.warn('[review-list] due > 0 但无卡可出，疑似统计口径缺陷（仍展示今日详情）:', {
+          due,
+          date: data.date,
+          queueLength: this.queue.length
+        })
+      }
+
+      this._todayLoaded = true
+      this.setData({ todayView: this.buildTodayView(data) })
+    } catch (e) {
+      console.error('[review-list] 加载今日复习详情失败:', e)
+      this._todayLoaded = true
+      this.setData({ todayView: this.buildEmptyTodayView() })
+    } finally {
+      this._todayLoading = false
+      this.setData({ todayLoading: false })
+    }
+  },
+
+  /**
+   * 详情接口失败时的空数据视图：版式与成功态一致，数值为「—」（#008 AC-04）
+   */
+  buildEmptyTodayView() {
+    const placeholder = '—'
+    return {
+      dateText: this.localDateKey().replace(/-/g, '/'),
+      empty: false,
+      noData: true,
+      rows: [
+        { key: 'easy', icon: '😎', label: '简单', value: placeholder, percent: 0, color: '#409EFF' },
+        { key: 'good', icon: '🙂', label: '认识', value: placeholder, percent: 0, color: '#5B8C7D' },
+        { key: 'hard', icon: '😐', label: '模糊', value: placeholder, percent: 0, color: '#E6A23C' },
+        { key: 'forgot', icon: '😕', label: '忘记', value: placeholder, percent: 0, color: '#F56C6C' }
+      ],
+      newLearned: placeholder,
+      review: placeholder,
+      durationText: placeholder
+    }
+  },
+
+  /**
+   * 接口日项 → 页面派生数据（#008 AC-06 ~ AC-10）
+   */
+  buildTodayView(data) {
+    const cognitive = data.cognitive || {}
+    const easy = Number(cognitive.easy) || 0
+    const good = Number(cognitive.good) || 0
+    const hard = Number(cognitive.hard) || 0
+    const forgot = Number(cognitive.forgot) || 0
+    const sum = easy + good + hard + forgot
+    // 条长按四档之和归一；和为 0 时不绘制填充（AC-07）
+    const percentOf = (value) => (sum > 0 ? Math.round((value / sum) * 1000) / 10 : 0)
+    const reviewAndNew = data.reviewAndNew || {}
+
+    return {
+      dateText: this.formatDateSlash(data.date),
+      empty: sum === 0,
+      rows: [
+        { key: 'easy', icon: '😎', label: '简单', value: easy, percent: percentOf(easy), color: '#409EFF' },
+        { key: 'good', icon: '🙂', label: '认识', value: good, percent: percentOf(good), color: '#5B8C7D' },
+        { key: 'hard', icon: '😐', label: '模糊', value: hard, percent: percentOf(hard), color: '#E6A23C' },
+        { key: 'forgot', icon: '😕', label: '忘记', value: forgot, percent: percentOf(forgot), color: '#F56C6C' }
+      ],
+      newLearned: Number(reviewAndNew.newLearned) || 0,
+      review: Number(reviewAndNew.review) || 0,
+      durationText: this.formatDurationText(Number(data.durationSeconds) || 0)
+    }
+  },
+
+  /** 接口日期 yyyy-MM-dd → yyyy/MM/dd（#008：日期用斜杠） */
+  formatDateSlash(isoDate) {
+    if (isoDate && /^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+      return isoDate.replace(/-/g, '/')
+    }
+    return this.localDateKey().replace(/-/g, '/')
+  },
+
+  /** 本地当天 yyyy-MM-dd，用于与接口 date 比对（AC-05） */
+  localDateKey() {
+    const now = new Date()
+    const pad = (n) => (n < 10 ? `0${n}` : `${n}`)
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+  },
+
+  /** 时长文案：0:00 / 0:25 / 17:05 / 1:11:45（#008 AC-08） */
+  formatDurationText(totalSeconds) {
+    const total = Math.max(0, Math.floor(totalSeconds || 0))
+    const hours = Math.floor(total / 3600)
+    const minutes = Math.floor((total % 3600) / 60)
+    const seconds = total % 60
+    const pad = (n) => (n < 10 ? `0${n}` : `${n}`)
+    if (hours > 0) return `${hours}:${pad(minutes)}:${pad(seconds)}`
+    return `${minutes}:${pad(seconds)}`
+  },
+
+  /**
+   * 按下触感（#006 AC-02 / AC-09，#012）
+   *
+   * 绑在 touchstart 而不是 tap：tap 在 touchend 才派发，手感会变成"松手才震"。
+   * 只用 single + light，长震与双震是"收到消息"的手感；不支持震动时静默跳过。
+   */
+  vibratePress() {
+    if (wx.vibrateShort) {
+      wx.vibrateShort({ type: 'light' })
+    }
+  },
+
+  /**
+   * 评分键按下（#012）：守卫与提交一致——不会真的提交时不震（#006 AC-04）
+   */
+  onScorePress() {
+    if (this.data.loading) return
+    if (this.queueIndex >= this.queue.length) return
+    this.vibratePress()
+  },
+
+  /**
+   * 空白区按下（#006 AC-09）：只在问题阶段有效，区域本身不变色
+   */
+  onBlankPress() {
+    if (this.data.showAnswer) return
+    this.vibratePress()
+  },
+
+  /**
    * 点击下方空白处（问题阶段）显示答案
    */
   onCardTap() {
-    // 只在未显示答案时响应，避免答案阶段误触发
+    // 只在未显示答案时响应，避免答案阶段误触发；触感已在 touchstart 触发（#012）
     if (!this.data.showAnswer) {
       this.toggleAnswer()
     }
@@ -296,6 +535,10 @@ Page({
 
   /**
    * 切换答案显示
+   *
+   * 注意：这里故意不碰计时器。看答案（读释义、例句、展开义项）属于同一次作答，
+   * 计入 responseTimeMs，仅受 60s 上限约束（#003 AC-05）。
+   * 依据：Anki 的计时区间是「题目出现 → 按评分键」，作答时长不参与 FSRS 调度。
    */
   toggleAnswer() {
     // 根据配置决定释义是否默认展开
@@ -330,11 +573,25 @@ Page({
     const rating = parseInt(e.currentTarget.dataset.score) // 0=忘记 1=模糊 2=认识 3=简单
     if (this.queueIndex >= this.queue.length) return
 
+    // 触感已在手指按下时触发（onScorePress，#012），这里不再补震，避免双震
+
     const item = this.queue[this.queueIndex]
     const now = new Date()
-    const responseTimeMs = Date.now() - this.data.startTime
+    // 首次评分的真实耗时；失败重试时沿用（#001 AC-15）
+    // 已扣除页面不可见时长并截断到 60s（#003 AC-03 / AC-04）
+    const responseTimeMs = this.data.firstResponseTime || this.timer.elapsed()
 
-    this.setData({ loading: true })
+    // #013 AC-19：幂等 ID 代表「这一次评分动作」，必须在动作开始时生成一次，
+    // 失败重试沿用同一个值。否则后端把重试当成新动作，会重复记账（reps 跳格，日志留洞）。
+    // 存到 data 上以便重试复用；成功或换卡后由 showCurrentCard() 清空。
+    const clientRequestId = this.data.pendingRequestId || dataSource.genClientRequestId()
+
+    this.setData({
+      loading: true,
+      submitError: '',
+      firstResponseTime: responseTimeMs,
+      pendingRequestId: clientRequestId
+    })
 
     try {
       // 1. FSRS 计算新状态
@@ -349,6 +606,7 @@ Page({
         wordId: item.wordId,
         rating,
         responseTimeMs,
+        clientRequestId,
         card: newCard,
         log: result.log
       })
@@ -357,8 +615,9 @@ Page({
       //     静默跳过该卡片：移出队列，不参与本地调度（避免短间隔卡被反复插回形成死循环）
       if (res && res.code === dataSource.WORD_NOT_FOUND) {
         console.warn('[handleScore] 单词不存在，直接跳过:', item.wordId)
-        this.queue.splice(this.queueIndex, 1)
-        this.updateStats()
+        // #013 AC-19：该动作已结束（此卡不会再来），丢弃幂等 ID
+        this.setData({ pendingRequestId: '' })
+        this.skipCurrentCard()
         const hasNextAfterSkip = await this.showCurrentCard()
         this.updateBadgeLocally()
         if (!hasNextAfterSkip) {
@@ -366,6 +625,8 @@ Page({
             title: '今日复习完成',
             icon: 'success'
           })
+          // 完成态：加载今日复习详情（#008 触发点③）
+          this.loadTodayDetail()
         }
         return
       }
@@ -420,6 +681,9 @@ Page({
       this.updateStats()
 
       // 4. 展示下一张卡片
+      // #013 AC-19：本次评分动作已成功落库，必须丢弃幂等 ID，
+      // 否则下一张卡的评分会复用这个 ID，被后端当成重复提交而丢弃。
+      this.setData({ submitError: '', firstResponseTime: 0, pendingRequestId: '' })
       const hasNext = await this.showCurrentCard()
 
       // 评分成功：用本地队列剩余数更新角标（不请求后端 due-count）
@@ -430,13 +694,13 @@ Page({
           title: '今日复习完成',
           icon: 'success'
         })
+        // 完成态：加载今日复习详情（#008 触发点②）
+        this.loadTodayDetail()
       }
     } catch (error) {
       console.error('提交评分失败:', error)
-      wx.showToast({
-        title: '提交失败',
-        icon: 'none'
-      })
+      // 请求层已提示原因；卡片留在原位，直接再点评分即可重试（AC-07）
+      this.setData({ submitError: (error && error.message) || '提交失败，请重新选择' })
     } finally {
       this.setData({ loading: false })
     }
@@ -482,6 +746,75 @@ Page({
     this.setData({ showMenu: !this.data.showMenu })
   },
 
+  /* ===== 重新学习（#013 AC-14 / AC-15 / AC-16 / AC-11） ===== */
+
+  /** 打开二次确认弹窗（文案见 spec 界面契约，用户逐字确认） */
+  openResetConfirm() {
+    this.setData({ showMenu: false, showResetConfirm: true })
+  },
+
+  /** 取消：关闭弹窗，不发起任何请求，不改动任何数据（AC-15） */
+  cancelReset() {
+    this.setData({ showResetConfirm: false })
+  },
+
+  /**
+   * 确认重新学习
+   * <p>
+   * 成功后（AC-11）：把当前卡从本地队列移除、重算进度、刷新角标。
+   * 重置后卡片 due=now 会重新进入当天队列，但**本次会话**不应再考它
+   * （用户刚点了"从头开始"，立刻再考一次没有意义），刷新页面即可重新拉取。
+   * <p>
+   * 失败时保留原状态、提示原因、入口可再次操作（AC-16）。
+   */
+  async confirmReset() {
+    if (this.data.resetting) return
+    const item = this.queue[this.queueIndex]
+    if (!item) {
+      wx.showToast({ title: '当前没有可重置的卡片', icon: 'none' })
+      return
+    }
+
+    // AC-20：expectedEpoch 取自队列项的 fsrsCard.epoch（数据源 GET /api/fsrs/due）
+    const expectedEpoch = item.fsrsCard && item.fsrsCard.epoch != null ? item.fsrsCard.epoch : 0
+
+    this.setData({ resetting: true })
+    try {
+      await getApp().waitForLogin()
+      const res = await dataSource.resetCard(item.wordId, expectedEpoch)
+
+      if (res && res.code === 200) {
+        this.setData({ showResetConfirm: false })
+
+        // 从队列移除该卡（不等同于"跳过"：跳过会 completedCount++，而重置的卡会回到待学）
+        this.queue.splice(this.queueIndex, 1)
+        // 重置不是"完成一次复习"，所以不动 completedCount，只重算进度与角标
+        this.updateStats()
+        this.updateBadgeLocally()
+
+        wx.showToast({ title: '已重置，将从头开始', icon: 'none' })
+
+        // 展示下一张；若队列已空，走完成态
+        const hasNext = await this.showCurrentCard()
+        if (!hasNext) {
+          wx.showToast({ title: '本次复习已完成', icon: 'none' })
+          this.loadTodayDetail()
+        }
+        return
+      }
+
+      // 失败分支：3001 该词不在学习列表 / 3008 轮次已变化 / 2005 参数不合法
+      this.setData({ showResetConfirm: false })
+      wx.showToast({ title: (res && res.message) || '重新学习失败，请重试', icon: 'none' })
+    } catch (error) {
+      console.error('重新学习失败:', error)
+      // 请求层已提示原因；卡片留在原位，入口保持可再次操作（AC-16）
+      this.setData({ showResetConfirm: false })
+    } finally {
+      this.setData({ resetting: false })
+    }
+  },
+
   /** 进入单词纠错页面 */
   goCorrection() {
     this.setData({ showMenu: false })
@@ -500,5 +833,8 @@ Page({
     wx.navigateTo({
       url: `/pages/correction-definition/correction-definition?wordId=${wordId}`
     })
-  }
+  },
+
+  /** 空函数：用于 catchtap 阻止弹窗内部点击穿透到遮罩 */
+  noop() {}
 })

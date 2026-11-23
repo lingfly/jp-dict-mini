@@ -389,9 +389,44 @@ function getLearningStatus() {
   }
 }
 
+/**
+ * 重新学习（mock 版；#013）
+ * 与真实后端语义保持一致：重置卡片状态、保留 reps/lapses、轮次 +1
+ * @returns {{code:number, data:{epoch:number, resetAt:number, card:Object}|null, message?:string}}
+ */
+function resetCard(wordId, expectedEpoch) {
+  const store = getStore()
+  const id = String(wordId)
+  const entry = store[id]
+  if (!entry || !entry.fsrsCard) {
+    return { code: 3001, message: '该词不在学习列表中', data: null }
+  }
+  const currentEpoch = entry.fsrsCard.epoch || 0
+  if (expectedEpoch != null && currentEpoch !== expectedEpoch) {
+    return { code: 3008, message: '已重置或学习状态已变化', data: null }
+  }
+  const now = Date.now()
+  const card = {
+    ...entry.fsrsCard,
+    state: fsrs.State.New,
+    stability: 0,
+    difficulty: 0,
+    due: now,
+    last_review: null,
+    elapsed_days: 0,
+    scheduled_days: 0,
+    learning_steps: 0,
+    // reps / lapses 保留（#013 AC-07）
+    epoch: currentEpoch + 1
+  }
+  entry.fsrsCard = card
+  saveStore(store)
+  return { code: 200, data: { epoch: card.epoch, resetAt: now, card } }
+}
 module.exports = {
   DEMO_WORDS,
   getDueCards,
   submitReview,
-  getLearningStatus
+  getLearningStatus,
+  resetCard
 }

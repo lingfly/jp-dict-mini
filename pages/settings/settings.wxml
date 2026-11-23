@@ -5,6 +5,8 @@
   </view>
 
   <view wx:else class="settings-content">
+    <view class="section-title">通用设置</view>
+
     <!-- 每日新词数量 -->
     <view class="setting-item">
       <view class="setting-label">
@@ -67,6 +69,42 @@
         />
       </view>
     </view>
+
+    <!-- 复习参数（#004） -->
+    <view class="section-header">
+      <text class="section-header-title">复习参数</text>
+      <text class="section-action" bindtap="onRestoreFsrsDefaults">恢复默认</text>
+    </view>
+
+    <!-- 目标记忆保持率 -->
+    <view class="setting-item">
+      <view class="setting-label">
+        <text class="setting-title">目标记忆保持率</text>
+        <text class="setting-desc">越高记得越牢，复习越频繁</text>
+      </view>
+      <view class="setting-control">
+        <view class="model-selector" bindtap="showRetentionPicker">
+          <text class="model-value">{{retentionLabels[fsrsRetentionIndex]}}</text>
+          <text class="model-arrow">›</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 最大复习间隔 -->
+    <view class="setting-item">
+      <view class="setting-label">
+        <text class="setting-title">最大复习间隔</text>
+        <text class="setting-desc">单词最长多久再出现一次</text>
+      </view>
+      <view class="setting-control">
+        <view class="model-selector" bindtap="showIntervalPicker">
+          <text class="model-value">{{intervalLabels[fsrsIntervalIndex]}}</text>
+          <text class="model-arrow">›</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="fsrs-hint">只影响之后的复习安排，已排好的到期日不变</view>
 
     <!-- 管理员专属：AI 查词配置 -->
     <view wx:if="{{isAdmin}}" class="admin-section">
@@ -163,6 +201,40 @@
       <picker-view value="{{[tempReasoningIndex]}}" class="picker-view" bindchange="onReasoningPickerChange">
         <picker-view-column>
           <view wx:for="{{reasoningEffortOptions}}" wx:key="index" class="picker-item">{{item}}</view>
+        </picker-view-column>
+      </picker-view>
+    </view>
+  </view>
+
+  <!-- 目标记忆保持率选择器 -->
+  <view wx:if="{{showRetentionPicker}}" class="picker-modal">
+    <view class="picker-mask" bindtap="cancelRetentionPicker"></view>
+    <view class="picker-content">
+      <view class="picker-header">
+        <text class="picker-cancel" bindtap="cancelRetentionPicker">取消</text>
+        <text class="picker-title">目标记忆保持率</text>
+        <text class="picker-confirm" bindtap="confirmRetentionPicker">确定</text>
+      </view>
+      <picker-view value="{{[tempRetentionIndex]}}" class="picker-view" bindchange="onRetentionPickerChange">
+        <picker-view-column>
+          <view wx:for="{{retentionLabels}}" wx:key="index" class="picker-item">{{item}}</view>
+        </picker-view-column>
+      </picker-view>
+    </view>
+  </view>
+
+  <!-- 最大复习间隔选择器 -->
+  <view wx:if="{{showIntervalPicker}}" class="picker-modal">
+    <view class="picker-mask" bindtap="cancelIntervalPicker"></view>
+    <view class="picker-content">
+      <view class="picker-header">
+        <text class="picker-cancel" bindtap="cancelIntervalPicker">取消</text>
+        <text class="picker-title">最大复习间隔</text>
+        <text class="picker-confirm" bindtap="confirmIntervalPicker">确定</text>
+      </view>
+      <picker-view value="{{[tempIntervalIndex]}}" class="picker-view" bindchange="onIntervalPickerChange">
+        <picker-view-column>
+          <view wx:for="{{intervalLabels}}" wx:key="index" class="picker-item">{{item}}</view>
         </picker-view-column>
       </picker-view>
     </view>

@@ -456,3 +456,25 @@
 .dialog-btn:active {
   opacity: 0.85;
 }
+
+/* 列表加载失败（#001：复用下拉刷新重试） */
+.list-error {
+  margin: 16px 20px;
+  padding: 14px 16px;
+  background: #FFF4E5;
+  border-radius: 10px;
+}
+
+.list-error-text {
+  display: block;
+  font-size: 14px;
+  color: #8A5A1F;
+  line-height: 1.4;
+}
+
+.list-error-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #A8814E;
+}

@@ -18,6 +18,15 @@
 /* 单词详情 */
 .word-detail {
   margin-top: 12px;
+  /* #017：卡片跟手拖动 + 滑出/滑入的过渡基准（AC-11 / AC-12）。
+     拖动时（.dragging）关掉 transition，卡片才跟得上手指；
+     松手后移出 .dragging，这条 transition 负责滑出和回弹。 */
+  transition: transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.18s ease-out;
+  will-change: transform, opacity;
+}
+
+.word-detail.dragging {
+  transition: none;
 }
 
 .detail-content {
@@ -595,5 +604,89 @@
 }
 
 .join-go.disabled {
+  background: #C3CCE8;
+}
+
+/* ===== 重新学习二次确认弹窗（#013 AC-14 / AC-15 / AC-16） =====
+   与「加入词单」浮层同款视觉：半透明遮罩 + 居中卡片。
+   按钮顺序固定「取消」在左、「重新学习」在右；均为普通样式，不使用红色危险色。 */
+.reset-ov {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reset-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 20, 28, 0.42);
+}
+
+.reset-dialog {
+  position: relative;
+  width: 78%;
+  max-width: 320px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 20px 16px;
+  box-sizing: border-box;
+}
+
+.reset-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1F2733;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.reset-body {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #5A6472;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.reset-actions {
+  display: flex;
+  margin-top: 22px;
+  gap: 12px;
+}
+
+.reset-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.reset-btn-cancel {
+  background: #F2F4F7;
+  color: #4A5462;
+}
+
+.reset-btn-cancel:active {
+  background: #E6E9EE;
+}
+
+.reset-btn-ok {
+  background: #5B8C7D;
+  color: #fff;
+}
+
+.reset-btn-ok:active {
+  background: #4a7a6c;
+}
+
+.reset-btn-ok.disabled {
   background: #C3CCE8;
 }
