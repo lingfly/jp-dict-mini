@@ -5,9 +5,10 @@ owned_paths:
   - pages/home/
   - pages/word-detail/
   - pages/wordlist-add-search/
+  - pages/settings/
   - utils/api.js
   - utils/request.js
-last_reviewed: 2026-11-19
+last_reviewed: 2026-11-27
 ---
 
 # 能力：查词（word-search）
@@ -92,6 +93,20 @@ last_reviewed: 2026-11-19
   停止正在播放的音频、按「查词时折叠释义」配置重置释义展开状态、重新读取新单词的收藏状态；
   切换失败（网络失败 / 单词已删除）时应停留在切换前的单词并提示失败，不得展示空白页。
 
+### R7 AI 查词配置（`pages/settings`，由 #019 引入）
+
+- **AC-WS-21** 当设置页加载学习配置成功时，系统应按 `aiDictWebSearch === 1` 把「联网搜索」显示为开启；
+  `0`、`null` 与字段缺失一律按关闭处理。
+- **AC-WS-22** 当所选模型（忽略大小写与首尾空格）属于 `deepseek-flash`、`deepseek-v4-flash`、
+  `deepseek-v4.1-flash` 之一时，系统应在管理员配置区「AI 推理强度」之后显示「联网搜索」开关；
+  模型为其它值或为空（「默认」）时**整项不渲染**，且不得清空已保存的联网值。
+- **AC-WS-23** 当保存任意 AI 查词配置（模型 / 温度 / 思维模式 / 推理强度 / 联网搜索）时，系统应一次性
+  提交完整 5 个字段（全量覆盖语义）；开关被隐藏时仍按已保存值提交，不得省略。
+- **AC-WS-24** 如果保存失败，系统应保持表单原值（开关复位）且不追加自定义提示（提示由请求层统一给出）；
+  成功后应以响应数据回填表单，响应缺字段时保留本地值。
+- **AC-WS-25** 当用户发起 AI 查词时，系统**不得**提交 `webSearch`，由服务端按用户配置与模型能力决定是否联网。
+
+## 5. 边界与异常
 
 | 场景 | 预期行为 | 当前实现 |
 |------|----------|----------|
@@ -117,7 +132,7 @@ last_reviewed: 2026-11-19
 | `/api/ai-dict/feedback/correct` | POST | 需 `logId` + `selectedIndex` |
 | `/api/ai-dict/feedback/incorrect` | POST | 需 `logId` |
 
-**配置依赖**：`userApi.getLearningConfig()` 返回 `collapseDefinitionOnQuery`、`aiQueryLimit`、`aiQueryUsedToday`、`aiDictModel`、`aiDictTemperature`、`aiDictThinking`、`aiDictReasoningEffort`。
+**配置依赖**：`userApi.getLearningConfig()` 返回 `collapseDefinitionOnQuery`、`aiQueryLimit`、`aiQueryUsedToday`、`aiDictModel`、`aiDictTemperature`、`aiDictThinking`、`aiDictReasoningEffort`、`aiDictWebSearch`。
 
 ## 7. 已知限制
 
@@ -137,3 +152,4 @@ last_reviewed: 2026-11-19
 | 2026-11-11 | `#016` 词单内查词页进入时自动聚焦搜索框（AC-WS-15）；`pages/wordlist-add-search/` 纳入本能力 `owned_paths` | `changes/016-add-search-autofocus/` |
 | 2026-11-18 | `#017` 单词详情页左右滑动切换上一个 / 下一个单词（AC-WS-16 ~ AC-WS-18）；导航上下文由列表页经 `utils/wordNav` 交接 | `changes/017-word-detail-swipe/` |
 | 2026-11-19 | `#017` 追加卡片**跟手拖动**与滑出/滑入（AC-WS-19 / AC-WS-20），替换原先「松手后整块跳一下」的过渡 | `changes/017-word-detail-swipe/` |
+| 2026-11-27 | `#019` 设置页新增「联网搜索」开关（AC-WS-21 ~ AC-WS-25）；AI 查词配置保存改为固定 5 字段全量提交；`pages/settings/` 的 AI 配置部分纳入本能力 | `changes/019-ai-dict-web-search/` |

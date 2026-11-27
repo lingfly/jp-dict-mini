@@ -159,11 +159,11 @@
 | 接口 | 代码位置 | 页面功能点 |
 |---|---|---|
 | `GET /api/user/learning-config` | `settings.js:40` | 进入页面回填全部配置 |
-| `PUT /api/user/learning-config/daily-new-words` | `settings.js:70` | 「每日新词数量」输入保存（1-100） |
-| `PUT /api/user/learning-config/voice-config` | `settings.js:84` | 「单词发音」开关 |
-| `PUT /api/user/learning-config/collapse-definition-on-query` | `settings.js:99` | 「查词时释义折叠」开关 |
-| `PUT /api/user/learning-config/collapse-definition-on-review` | `settings.js:114` | 「复习时释义折叠」开关 |
-| `PUT /api/user/learning-config/ai-dict-config` | `settings.js:153` / `176` / `202` / `222` / `266` | AI 查词配置：模型选择、温度、思维模式、推理强度（每次改动四项全量提交） |
+| `PUT /api/user/learning-config/daily-new-words` | `settings.js:187` | 「每日新词数量」输入保存（1-100） |
+| `PUT /api/user/learning-config/voice-config` | `settings.js:201` | 「单词发音」开关 |
+| `PUT /api/user/learning-config/collapse-definition-on-query` | `settings.js:216` | 「查词时释义折叠」开关 |
+| `PUT /api/user/learning-config/collapse-definition-on-review` | `settings.js:231` | 「复习时释义折叠」开关 |
+| `PUT /api/user/learning-config/ai-dict-config` | `settings.js:268` / `277` / `289` / `301` / `333` / `340`（统一入口 `saveAiDictConfig`） | AI 查词配置：模型选择、温度、思维模式、推理强度、**联网搜索**（每次改动**五项全量提交**，后端未传即写 null） |
 | `PUT /api/user/learning-config/fsrs-config` | `settings.js`（`confirmRetentionPicker` / `confirmIntervalPicker` / `onRestoreFsrsDefaults`） | FSRS 参数：目标保持率 / 最大间隔（**部分更新**，只传改动项；恢复默认传两项） |
 
 ---

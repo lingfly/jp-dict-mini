@@ -368,13 +368,23 @@ const userApi = {
     return put('/api/user/learning-config/collapse-definition-on-review', { collapseDefinitionOnReview }) // 需要 token
   },
 
-  // 更新 AI 查词配置
-  updateAiDictConfig(aiDictModel, aiDictTemperature, aiDictThinking, aiDictReasoningEffort) {
+  // 更新 AI 查词配置（#019）
+  // 注意：后端是「整表单覆盖」——请求体里没传的字段会被写成 null。
+  // 所以五个字段必须同时提交；这里用解构默认值兜底，避免调用方漏传时
+  // JSON.stringify 把 undefined 丢掉、后端顺手写成 null。
+  updateAiDictConfig({
+    aiDictModel = null,
+    aiDictTemperature = null,
+    aiDictThinking = null,
+    aiDictReasoningEffort = null,
+    aiDictWebSearch = null
+  } = {}) {
     return put('/api/user/learning-config/ai-dict-config', {
       aiDictModel,
       aiDictTemperature,
       aiDictThinking,
-      aiDictReasoningEffort
+      aiDictReasoningEffort,
+      aiDictWebSearch
     }) // 需要 token
   },
 

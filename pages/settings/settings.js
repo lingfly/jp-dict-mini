@@ -4,6 +4,15 @@ const fsrs = require('../../utils/fsrs/fsrs')
 const fsrsParams = require('../../utils/fsrs/params')
 const app = getApp()
 
+// 支持服务端联网搜索的模型（#019）。这是后端 AiDictModelSupport.WEB_SEARCH_MODELS
+// 的展示用镜像：后端新增模型时这里要同步一行。模型为空 / 未知一律视为不支持。
+const WEB_SEARCH_MODELS = ['deepseek-flash', 'deepseek-v4-flash', 'deepseek-v4.1-flash']
+
+function supportsWebSearch(model) {
+  if (!model) return false
+  return WEB_SEARCH_MODELS.includes(String(model).trim().toLowerCase())
+}
+
 Page({
   data: {
     isAdmin: false,
@@ -15,8 +24,11 @@ Page({
       aiDictModel: '',
       aiDictTemperature: '',
       aiDictThinking: false,
-      aiDictReasoningEffort: ''
+      aiDictReasoningEffort: '',
+      aiDictWebSearch: false
     },
+    // 当前模型是否支持联网搜索，决定「联网搜索」开关是否渲染（#019）
+    webSearchSupported: false,
     loading: true,
     modelOptions: ['deepseek-v4-flash', 'deepseek-v4-pro'],
     showModelPicker: false,
@@ -63,17 +75,21 @@ Page({
     try {
       const res = await userApi.getLearningConfig()
       if (res.code === 200 && res.data) {
+        const learningConfig = {
+          dailyNewWords: res.data.dailyNewWords || 10,
+          voiceConfig: res.data.voiceConfig != null ? !!res.data.voiceConfig : false,
+          collapseDefinitionOnQuery: res.data.collapseDefinitionOnQuery === 1,
+          collapseDefinitionOnReview: res.data.collapseDefinitionOnReview === 1,
+          aiDictModel: res.data.aiDictModel || '',
+          aiDictTemperature: res.data.aiDictTemperature != null ? String(res.data.aiDictTemperature) : '',
+          aiDictThinking: res.data.aiDictThinking === 1,
+          aiDictReasoningEffort: res.data.aiDictReasoningEffort || '',
+          // null / 缺失 = 未设置 = 关闭（对接文档 §3）
+          aiDictWebSearch: res.data.aiDictWebSearch === 1
+        }
         this.setData({
-          learningConfig: {
-            dailyNewWords: res.data.dailyNewWords || 10,
-            voiceConfig: res.data.voiceConfig != null ? !!res.data.voiceConfig : false,
-            collapseDefinitionOnQuery: res.data.collapseDefinitionOnQuery === 1,
-            collapseDefinitionOnReview: res.data.collapseDefinitionOnReview === 1,
-            aiDictModel: res.data.aiDictModel || '',
-            aiDictTemperature: res.data.aiDictTemperature != null ? String(res.data.aiDictTemperature) : '',
-            aiDictThinking: res.data.aiDictThinking === 1,
-            aiDictReasoningEffort: res.data.aiDictReasoningEffort || ''
-          },
+          learningConfig,
+          webSearchSupported: supportsWebSearch(learningConfig.aiDictModel),
           loading: false
         })
         // 应用服务端 FSRS 参数；字段缺失/非法会逐项回落默认（#004 AC-13）
@@ -83,6 +99,80 @@ Page({
       console.error('加载学习配置失败:', error)
       // 保留 onLoad 时按缓存/默认渲染的 FSRS 参数，不阻塞页面
       this.setData({ loading: false })
+    }
+  },
+
+  /**
+   * 把服务端返回的 AI 字典配置回填到界面（#019 AC-09）
+   * 只覆盖响应里确实出现的字段，缺失字段保留本地值，避免把表单清空。
+   * @param {Object} data 后端 learning-config 的 data
+   */
+  applyAiDictConfig(data) {
+    if (!data) return
+    const next = Object.assign({}, this.data.learningConfig)
+    if (data.aiDictModel !== undefined) next.aiDictModel = data.aiDictModel || ''
+    if (data.aiDictTemperature !== undefined) {
+      next.aiDictTemperature = data.aiDictTemperature != null ? String(data.aiDictTemperature) : ''
+    }
+    if (data.aiDictThinking !== undefined) next.aiDictThinking = data.aiDictThinking === 1
+    if (data.aiDictReasoningEffort !== undefined) next.aiDictReasoningEffort = data.aiDictReasoningEffort || ''
+    if (data.aiDictWebSearch !== undefined) next.aiDictWebSearch = data.aiDictWebSearch === 1
+    this.setData({
+      learningConfig: next,
+      webSearchSupported: supportsWebSearch(next.aiDictModel)
+    })
+  },
+
+  /**
+   * 拼出 AI 配置的完整请求体（#019）
+   * 后端是全量覆盖：五个字段缺一个就会被写成 null，所以这里始终从页面
+   * 当前值取齐，再用 patch 覆盖本次改动项。patch 里放的是后端字段值
+   * （如 aiDictThinking: 1、aiDictWebSearch: 0），不是界面布尔值。
+   */
+  buildAiDictPayload(patch = {}) {
+    const c = this.data.learningConfig
+    return Object.assign({
+      aiDictModel: c.aiDictModel || null,
+      aiDictTemperature: c.aiDictTemperature ? parseFloat(c.aiDictTemperature) : null,
+      aiDictThinking: c.aiDictThinking ? 1 : 0,
+      aiDictReasoningEffort: c.aiDictReasoningEffort || null,
+      aiDictWebSearch: c.aiDictWebSearch ? 1 : 0
+    }, patch)
+  },
+
+  /**
+   * 保存 AI 配置的唯一入口（#019）
+   * - 保存期间忽略新的保存请求，避免后发覆盖先发
+   * - 成功：用响应 data 回填（响应缺字段时用 patch 兜底）
+   * - 失败：保持原值，由 options.onFail 回滚界面；提示由 request.js 统一给出，这里不再弹
+   * @param {Object} patch 本次改动的后端字段
+   * @param {Object} options { successToast, onFail }
+   * @returns {Promise<Boolean>}
+   */
+  async saveAiDictConfig(patch, options = {}) {
+    if (this.savingAiConfig) {
+      if (options.onFail) options.onFail()
+      return false
+    }
+    this.savingAiConfig = true
+    try {
+      const res = await userApi.updateAiDictConfig(this.buildAiDictPayload(patch))
+      if (res && res.code === 200) {
+        this.applyAiDictConfig(res.data || patch)
+        if (options.successToast) {
+          wx.showToast({ title: options.successToast, icon: 'success' })
+        }
+        return true
+      }
+      if (options.onFail) options.onFail()
+      return false
+    } catch (error) {
+      // 网络失败：request.js 已经 toast 过，这里只回滚界面并留日志（C-06）
+      console.error('保存 AI 查词配置失败:', error)
+      if (options.onFail) options.onFail()
+      return false
+    } finally {
+      this.savingAiConfig = false
     }
   },
 
@@ -174,22 +264,8 @@ Page({
     const modelIndex = this.data.tempModelIndex
     const selectedModel = this.data.modelOptions[modelIndex]
     this.setData({ showModelPicker: false })
-
-    try {
-      const { aiDictTemperature, aiDictThinking, aiDictReasoningEffort } = this.data.learningConfig
-      const res = await userApi.updateAiDictConfig(
-        selectedModel,
-        aiDictTemperature ? parseFloat(aiDictTemperature) : null,
-        aiDictThinking ? 1 : 0,
-        aiDictReasoningEffort || null
-      )
-      if (res.code === 200) {
-        this.setData({ 'learningConfig.aiDictModel': selectedModel })
-        wx.showToast({ title: '已更新', icon: 'success' })
-      }
-    } catch (error) {
-      console.error('更新模型配置失败:', error)
-    }
+    // 成功由响应回填模型，并重算「联网搜索」开关可见性（#019）
+    await this.saveAiDictConfig({ aiDictModel: selectedModel }, { successToast: '已更新' })
   },
 
   // 修改温度参数
@@ -198,21 +274,7 @@ Page({
 
     // 允许为空
     if (value === '') {
-      try {
-        const { aiDictModel, aiDictThinking, aiDictReasoningEffort } = this.data.learningConfig
-        const res = await userApi.updateAiDictConfig(
-          aiDictModel || null,
-          null,
-          aiDictThinking ? 1 : 0,
-          aiDictReasoningEffort || null
-        )
-        if (res.code === 200) {
-          this.setData({ 'learningConfig.aiDictTemperature': '' })
-          wx.showToast({ title: '已清除', icon: 'success' })
-        }
-      } catch (error) {
-        console.error('清除温度参数失败:', error)
-      }
+      await this.saveAiDictConfig({ aiDictTemperature: null }, { successToast: '已清除' })
       return
     }
 
@@ -224,41 +286,22 @@ Page({
       return
     }
 
-    try {
-      const { aiDictModel, aiDictThinking, aiDictReasoningEffort } = this.data.learningConfig
-      const res = await userApi.updateAiDictConfig(
-        aiDictModel || null,
-        numValue,
-        aiDictThinking ? 1 : 0,
-        aiDictReasoningEffort || null
-      )
-      if (res.code === 200) {
-        this.setData({ 'learningConfig.aiDictTemperature': String(numValue) })
-        wx.showToast({ title: '已更新', icon: 'success' })
+    await this.saveAiDictConfig(
+      { aiDictTemperature: numValue },
+      {
+        successToast: '已更新',
+        onFail: () => this.setData({ 'learningConfig.aiDictTemperature': this.data.learningConfig.aiDictTemperature })
       }
-    } catch (error) {
-      console.error('更新温度参数失败:', error)
-    }
+    )
   },
 
   // 切换思维模式
   async onToggleThinking(e) {
     const value = e.detail.value
-    try {
-      const { aiDictModel, aiDictTemperature, aiDictReasoningEffort } = this.data.learningConfig
-      const res = await userApi.updateAiDictConfig(
-        aiDictModel || null,
-        aiDictTemperature ? parseFloat(aiDictTemperature) : null,
-        value ? 1 : 0,
-        aiDictReasoningEffort || null
-      )
-      if (res.code === 200) {
-        this.setData({ 'learningConfig.aiDictThinking': value })
-      }
-    } catch (error) {
-      console.error('更新思维模式失败:', error)
-      this.setData({ 'learningConfig.aiDictThinking': !value })
-    }
+    await this.saveAiDictConfig(
+      { aiDictThinking: value ? 1 : 0 },
+      { onFail: () => this.setData({ 'learningConfig.aiDictThinking': !value }) }
+    )
   },
 
   // 显示推理强度选择器
@@ -287,22 +330,17 @@ Page({
     const reasoningIndex = this.data.tempReasoningIndex
     const selectedReasoning = this.data.reasoningEffortOptions[reasoningIndex]
     this.setData({ showReasoningPicker: false })
+    await this.saveAiDictConfig({ aiDictReasoningEffort: selectedReasoning }, { successToast: '已更新' })
+  },
 
-    try {
-      const { aiDictModel, aiDictTemperature, aiDictThinking } = this.data.learningConfig
-      const res = await userApi.updateAiDictConfig(
-        aiDictModel || null,
-        aiDictTemperature ? parseFloat(aiDictTemperature) : null,
-        aiDictThinking ? 1 : 0,
-        selectedReasoning
-      )
-      if (res.code === 200) {
-        this.setData({ 'learningConfig.aiDictReasoningEffort': selectedReasoning })
-        wx.showToast({ title: '已更新', icon: 'success' })
-      }
-    } catch (error) {
-      console.error('更新推理强度失败:', error)
-    }
+  // 切换联网搜索（#019）：先乐观跟随，保存失败时复位，保证 switch 与 data 一致
+  async onToggleWebSearch(e) {
+    const value = e.detail.value
+    this.setData({ 'learningConfig.aiDictWebSearch': value })
+    await this.saveAiDictConfig(
+      { aiDictWebSearch: value ? 1 : 0 },
+      { onFail: () => this.setData({ 'learningConfig.aiDictWebSearch': !value }) }
+    )
   },
 
   // ===== FSRS 参数（#004）=====

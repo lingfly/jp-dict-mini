@@ -169,6 +169,21 @@
           </view>
         </view>
       </view>
+
+      <!-- AI 联网搜索（#019）：仅 flash 家族模型支持，其余模型整项不渲染 -->
+      <view wx:if="{{webSearchSupported}}" class="setting-item">
+        <view class="setting-label">
+          <text class="setting-title">联网搜索</text>
+          <text class="setting-desc">先联网检索再作答（会显著增加查询时间）</text>
+        </view>
+        <view class="setting-control">
+          <switch
+            checked="{{learningConfig.aiDictWebSearch}}"
+            bindchange="onToggleWebSearch"
+            color="#5B8C7D"
+          />
+        </view>
+      </view>
     </view>
   </view>
 
